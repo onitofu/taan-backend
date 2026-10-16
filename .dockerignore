@@ -1,0 +1,14 @@
+# Only Maven inputs enter the build context.
+**
+!mvnw
+!pom.xml
+!checkstyle.xml
+!.mvn/
+!.mvn/**
+!src/
+!src/**
+
+# Keep local configuration and build artifacts out of included directories too.
+**/.env
+**/.env.*
+**/target
