@@ -9,11 +9,36 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.logging.WarningLogLimiter;
 
 class ConnectionLimitHandlerTest {
+    @Test
+    void releasesPermitWhenTheChannelClosesBeforeInactiveIsDispatched() {
+        var permits = new Semaphore(1);
+        var warnings = new WarningLogLimiter(
+            LoggerFactory.getLogger(getClass()),
+            1,
+            Duration.ofSeconds(1),
+            System::nanoTime
+        );
+        var channel = new EmbeddedChannel(new ConnectionLimitHandler(permits, warnings));
+        var availableAtClose = new AtomicInteger(-1);
+        channel.closeFuture().addListener(ignored -> availableAtClose.set(permits.availablePermits()));
+
+        channel.close();
+
+        assertEquals(1, availableAtClose.get());
+        assertEquals(1, permits.availablePermits());
+
+        channel.pipeline().fireChannelInactive();
+        channel.finishAndReleaseAll();
+
+        assertEquals(1, permits.availablePermits());
+    }
+
     @Test
     void releasesSlotAfterFrameAssemblyTimeoutAndAcceptsAnotherConnection() {
         var permits = new Semaphore(1);
