@@ -1,0 +1,84 @@
+{
+  "fixtures": [
+    {
+      "PrCheckAccount-status0-selector0.root.hex": "e94485f86d23031eb08b96c5eedac6b23903fbc8d7f7a24399b4c01fc256000b",
+      "original_file": "PrCheckAccount-status0-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCheckAccount-status0-selector1.root.hex": "b763ca956411fdbdfc66112ca44157a0eedd692fea3fe70677d2721c3c30a4d6",
+      "original_file": "PrCheckAccount-status0-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCheckAccount-status1-selector0.root.hex": "fd4d2d520856f514e0a4226f04d4f102b24000196498dee7fcda8950bbd22bff",
+      "original_file": "PrCheckAccount-status1-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCheckAccount-status1-selector1.root.hex": "b6f86a9fbe13d42f6facef3434093ad93f1fe20c447c0c933395556d0229858e",
+      "original_file": "PrCheckAccount-status1-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCheckAccount-status255-selector0.root.hex": "4f360b7dd5f7017c649eee933702449c5dacf9bf5b8fc0dea1731a32845c729c",
+      "original_file": "PrCheckAccount-status255-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCheckAccount-status255-selector1.root.hex": "0521ae2b04539af96e725210d31493e0b4b562777d3ba8ddf4e2fac8449cdfca",
+      "original_file": "PrCheckAccount-status255-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status0-selector0.root.hex": "afcd1871c37f6c6ed6b323f2a5afe51424fc9bedffbf8bb8b0fa39f1e501bf09",
+      "original_file": "PrCreateAccount-status0-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status0-selector1.root.hex": "a7f3c478cd398f71854c6ad0f6864b3e914d0328f5360740274080d0466b3af6",
+      "original_file": "PrCreateAccount-status0-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status1-selector0.root.hex": "5377f31addc4aab13316a46581c8cdc736f92e94f9f3e54dfc2b3f631dd888ff",
+      "original_file": "PrCreateAccount-status1-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status1-selector1.root.hex": "32a428316d5e04d6286974af06c3bcd5135df356b5cd692583d75bf351fe4e88",
+      "original_file": "PrCreateAccount-status1-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status255-selector0.root.hex": "1c351a012535017f1463f2fae22024afd1f5724540501dd61f591ad43293bfcf",
+      "original_file": "PrCreateAccount-status255-selector0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PrCreateAccount-status255-selector1.root.hex": "c9de2d8c9a6f8a576490267bf465ed62ed008a2308a74590b725bd2e2f89ace3",
+      "original_file": "PrCreateAccount-status255-selector1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "check-local-account.root.hex": "587f813177eed3aefd949e99c03d52109c2a5c62f7fe8b5033978c83f31b0532",
+      "original_file": "check-local-account.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "create-probe_only.frame.hex": "17b3c1e3e4482b5961350114bd6a785184d37874bfaad93ee4c68c4886582b93",
+      "original_file": "create-probe_only.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "create-probe_only.root.hex": "ffe39c13277bfef0301748625fd15017ed7f2302ba26662b8db0fdbf4062f747",
+      "original_file": "create-probe_only.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "negative-create-surrogate.root.hex": "36b8334422f1ee939ce5e781d7d70dba48b48d9691bda03baefac2581263e77a",
+      "original_file": "negative-create-surrogate.root.bin",
+      "origin": "SYNTHETIC"
+    }
+  ]
+}

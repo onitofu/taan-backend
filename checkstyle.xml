@@ -47,6 +47,13 @@
             <property name="format" value="^[a-z]+(\.[a-z][a-z0-9_]*)*$"/>
         </module>
         <module name="TypeName"/>
+        <module name="OneTopLevelClass"/>
+        <module name="OuterTypeFilename"/>
+        <module name="MatchXpath">
+            <property name="query"
+                      value="//*[self::CLASS_DEF or self::INTERFACE_DEF or self::ENUM_DEF or self::RECORD_DEF or self::ANNOTATION_DEF][not(parent::COMPILATION_UNIT)] | //LITERAL_NEW[OBJBLOCK] | //ENUM_CONSTANT_DEF[OBJBLOCK]"/>
+            <message key="matchxpath.match" value="Declare each Java type in its own file; nested and anonymous types are not allowed."/>
+        </module>
         <module name="MemberName">
             <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
         </module>
@@ -92,8 +99,8 @@
             <property name="basicOffset" value="4"/>
             <property name="braceAdjustment" value="0"/>
             <property name="caseIndent" value="4"/>
-            <property name="throwsIndent" value="8"/>
-            <property name="lineWrappingIndentation" value="8"/>
+            <property name="throwsIndent" value="4"/>
+            <property name="lineWrappingIndentation" value="4"/>
             <property name="arrayInitIndent" value="4"/>
         </module>
 
