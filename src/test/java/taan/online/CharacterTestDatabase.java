@@ -54,7 +54,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public JdbcCharacterRepository characters() {
-        return new JdbcCharacterRepository(source, 5, new JdbcInventoryRepository(5));
+        return new JdbcCharacterRepository(source, 5, new JdbcInventoryRepository(source, 5));
     }
 
     public CreateCharacterResult create(AccountId owner, String name, AccountGender gender) {
@@ -83,7 +83,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
                 }
             }
 
-            new JdbcInventoryRepository(5).create(
+            new JdbcInventoryRepository(source, 5).create(
                 connection,
                 id,
                 new StarterEquipment(
@@ -91,9 +91,9 @@ public final class CharacterTestDatabase implements AutoCloseable {
                         part -> new StarterItem(
                             part.slot(),
                             part.itemId(),
-                            part.parameter0(),
-                            part.parameter1(),
-                            part.parameter2()
+                            part.palette1Id(),
+                            part.palette2Id(),
+                            part.palette3Id()
                         )
                     ).toList()
                 )

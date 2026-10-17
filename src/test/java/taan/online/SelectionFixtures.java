@@ -104,7 +104,7 @@ public final class SelectionFixtures {
             assertEquals(0x123903ce, input.getInt());
             assertTrue(Integer.toUnsignedLong(input.getInt()) > 0);
             assertEquals(0, input.get());
-            assertEquals(new int[]{64, 16, 0}[inventory], Byte.toUnsignedInt(input.get()));
+            assertEquals(new int[]{80, 16, 0}[inventory], Byte.toUnsignedInt(input.get()));
             int count = input.getInt();
 
             assertEquals(inventory == 1 ? 4 : 0, count);
@@ -121,9 +121,9 @@ public final class SelectionFixtures {
                 assertEquals(0, input.get());
                 assertEquals(65535, Short.toUnsignedInt(input.getShort()));
                 assertEquals(0, input.getShort());
-                assertEquals(appearance.parameter0(), Short.toUnsignedInt(input.getShort()));
-                assertEquals(appearance.parameter1(), Short.toUnsignedInt(input.getShort()));
-                assertEquals(appearance.parameter2(), Short.toUnsignedInt(input.getShort()));
+                assertEquals(appearance.palette1Id(), Short.toUnsignedInt(input.getShort()));
+                assertEquals(appearance.palette2Id(), Short.toUnsignedInt(input.getShort()));
+                assertEquals(appearance.palette3Id(), Short.toUnsignedInt(input.getShort()));
                 assertEquals(0, input.get());
 
                 ids.add(uid);
@@ -176,9 +176,9 @@ public final class SelectionFixtures {
                         item.slot(),
                         item.itemId(),
                         1,
-                        item.parameter0(),
-                        item.parameter1(),
-                        item.parameter2()
+                        item.palette1Id(),
+                        item.palette2Id(),
+                        item.palette3Id()
                     )
                 ).toList()
             ),
@@ -193,7 +193,14 @@ public final class SelectionFixtures {
         var access = new SessionCharacterAccess(sessions);
         var channelAccess = new SessionChannelAccess(sessions);
         return new SelectedCharacterRequestDispatcher(
-            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
+            new SelectCharacterPacketHandler(
+                new SelectCharacterAction(
+                    access,
+                    characters,
+                    InventoryFixtures.catalog()
+                ),
+                access
+            ),
             new GetChannelListPacketHandler(
                 new GetChannelListAction(channelAccess, registry(channelAccess)),
                 channelAccess

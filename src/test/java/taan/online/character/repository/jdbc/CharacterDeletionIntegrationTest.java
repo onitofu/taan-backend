@@ -240,7 +240,7 @@ class CharacterDeletionIntegrationTest {
 
         new DatabaseMigrator().migrate(isolated);
         new DatabaseMigrator().migrate(isolated);
-        var repository = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(5));
+        var repository = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(isolated, 5));
         var loaded = repository.findByAccount(owner.id());
 
         assertEquals(1, loaded.size());

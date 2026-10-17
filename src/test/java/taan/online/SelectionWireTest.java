@@ -46,12 +46,27 @@ class SelectionWireTest {
             String name = male ? "MaleHero" : "Luma";
             characters.stored.add(CharacterFixtures.character(id, new AccountId(1), gender, name));
             characters.inventoryData = SelectionFixtures.inventories(gender);
-            var handler = new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access);
+            var handler = new SelectCharacterPacketHandler(
+                new SelectCharacterAction(
+                    access,
+                    characters,
+                    InventoryFixtures.catalog()
+                ),
+                access
+            );
             var reply = handler.handle(UUID.randomUUID(), CharacterFixtures.select(id)).response();
+
+            assertEquals(80, reply.inventories().getFirst().capacity());
+            var reference = new PrSelectCharacter(
+                reply.character(),
+                reply.inventories().stream().map(
+                    value -> new Inventory(value.id(), value.id() == 10010 ? 64 : value.capacity(), value.items())
+                ).toList()
+            );
 
             assertArrayEquals(
                 SelectionFixtures.fixture((male ? "male" : "female") + "-selected.root.hex"),
-                new SelectCharacterResponseCodec().encode(reply)
+                new SelectCharacterResponseCodec().encode(reference)
             );
             assertThrows(UnsupportedOperationException.class, () -> reply.inventories().clear());
             assertThrows(UnsupportedOperationException.class, () -> reply.inventories().get(1).items().clear());

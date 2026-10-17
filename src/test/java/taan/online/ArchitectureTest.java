@@ -44,7 +44,8 @@ class ArchitectureTest {
             "taan.online.character.service",
             "taan.online.character.model..",
             "taan.online.channel.service",
-            "taan.online.channel.model.."
+            "taan.online.channel.model..",
+            "taan.online.inventory.service.."
         );
 
     @ArchTest
@@ -344,7 +345,10 @@ class ArchitectureTest {
             "taan.online.character.model..",
             "taan.online.character.repository..",
             "taan.online.inventory.model..",
-            "taan.online.inventory.repository.jdbc.."
+            "taan.online.inventory.repository.jdbc..",
+            "taan.online.inventory.repository",
+            "taan.online.account.model..",
+            "taan.online.logging.."
         );
 
     @ArchTest
@@ -359,7 +363,8 @@ class ArchitectureTest {
             "taan.online.character.service..",
             "taan.online.inventory.model..",
             "taan.online.inventory.protocol.packet..",
-            "taan.online.character.protocol.."
+            "taan.online.character.protocol..",
+            "taan.online.inventory.controller.."
         );
 
     @ArchTest
@@ -414,7 +419,11 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule INVENTORY_MODEL_DEPENDENCIES = classes().that()
         .resideInAPackage("taan.online.inventory.model..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.inventory.model..");
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.inventory.model..",
+            "taan.online.account.model.."
+        );
 
     @ArchTest
     static final ArchRule INVENTORY_PACKET_DEPENDENCIES = classes().that()
@@ -435,8 +444,12 @@ class ArchitectureTest {
         .resideInAPackage("taan.online.inventory.repository.jdbc..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
+            "javax.sql..",
             "taan.online.inventory.model..",
-            "taan.online.inventory.repository.jdbc.."
+            "taan.online.inventory.repository.jdbc..",
+            "taan.online.inventory.repository",
+            "taan.online.account.model..",
+            "taan.online.logging.."
         );
 
     @ArchTest

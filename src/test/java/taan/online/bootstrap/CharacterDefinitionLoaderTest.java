@@ -11,7 +11,7 @@ import taan.online.CharacterFixtures;
 import taan.online.character.model.CharacterName;
 
 class CharacterDefinitionLoaderTest {
-    private static final String HEADER = "gender,slot,item_id,parameter0,parameter1,parameter2\n";
+    private static final String HEADER = "gender,slot,item_id,palette_1_id,palette_2_id,palette_3_id\n";
 
     @Test
     void loadsTheExactSourceListsAndCreationCategories() throws Exception {

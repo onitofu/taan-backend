@@ -37,7 +37,7 @@ public final class CreateCharacterPacketHandler {
 
         for (int slot = 0; slot < request.parts().size(); slot++) {
             var part = request.parts().get(slot);
-            parts.add(new AppearancePart(slot, part.itemId(), part.parameter0(), part.parameter1(), part.parameter2()));
+            parts.add(new AppearancePart(slot, part.itemId(), part.palette1Id(), part.palette2Id(), part.palette3Id()));
         }
 
         var result = action.execute(

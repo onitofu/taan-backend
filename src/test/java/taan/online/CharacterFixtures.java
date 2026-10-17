@@ -1,8 +1,6 @@
 package taan.online;
 
 import java.io.IOException;
-import taan.online.inventory.model.StarterEquipment;
-import taan.online.inventory.model.StarterItem;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +19,8 @@ import taan.online.character.model.CharacterName;
 import taan.online.character.model.CharacterNameFilter;
 import taan.online.character.model.GameCharacter;
 import taan.online.character.protocol.codec.CreateCharacterRequestCodec;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
 
 public final class CharacterFixtures {
     private CharacterFixtures() {
@@ -57,7 +57,7 @@ public final class CharacterFixtures {
 
         for (int slot = 0; slot < request.parts().size(); slot++) {
             var part = request.parts().get(slot);
-            parts.add(new AppearancePart(slot, part.itemId(), part.parameter0(), part.parameter1(), part.parameter2()));
+            parts.add(new AppearancePart(slot, part.itemId(), part.palette1Id(), part.palette2Id(), part.palette3Id()));
         }
 
         return new CharacterAppearance(parts);
@@ -82,9 +82,9 @@ public final class CharacterFixtures {
                     part -> new StarterItem(
                         part.slot(),
                         part.itemId(),
-                        part.parameter0(),
-                        part.parameter1(),
-                        part.parameter2()
+                        part.palette1Id(),
+                        part.palette2Id(),
+                        part.palette3Id()
                     )
                 ).toList()
         );
@@ -116,8 +116,8 @@ public final class CharacterFixtures {
             .putInt(0x27b90578).put((byte) slot).putInt(name.length()).put(text);
 
         for (var part : appearance.parts()) {
-            output.putInt((int) part.itemId()).putShort((short) part.parameter0())
-                .putShort((short) part.parameter1()).putShort((short) part.parameter2());
+            output.putInt((int) part.itemId()).putShort((short) part.palette1Id())
+                .putShort((short) part.palette2Id()).putShort((short) part.palette3Id());
         }
 
         return output.array();

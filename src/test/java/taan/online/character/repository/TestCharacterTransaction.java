@@ -60,9 +60,9 @@ final class TestCharacterTransaction implements CharacterTransaction {
                             item -> new AppearancePart(
                                 slot,
                                 item.itemId(),
-                                item.parameter0(),
-                                item.parameter1(),
-                                item.parameter2()
+                                item.palette1Id(),
+                                item.palette2Id(),
+                                item.palette3Id()
                             )
                         ).findFirst().orElse(new AppearancePart(slot, 0, 0, 0, 0))
                 ).toList()

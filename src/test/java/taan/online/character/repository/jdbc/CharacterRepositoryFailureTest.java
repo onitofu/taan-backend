@@ -21,7 +21,14 @@ class CharacterRepositoryFailureTest {
         for (String stage : List.of("source.getConnection", "statement.executeQuery", "rows.getLong")) {
             var stub = new CharacterJdbcStub();
             stub.failures.add(stage);
-            var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5));
+            var repository = new JdbcCharacterRepository(
+                stub.source(),
+                5,
+                new JdbcInventoryRepository(
+                    stub.source(),
+                    5
+                )
+            );
             var failure = assertThrows(
                 CharacterPersistenceException.class,
                 () -> repository.findByAccount(new AccountId(1))
@@ -36,7 +43,14 @@ class CharacterRepositoryFailureTest {
         safe(
             assertThrows(
                 CharacterPersistenceException.class,
-                () -> new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5)).existsByName(
+                () -> new JdbcCharacterRepository(
+                    stub.source(),
+                    5,
+                    new JdbcInventoryRepository(
+                        stub.source(),
+                        5
+                    )
+                ).existsByName(
                     new CharacterName(
                         "Luma"
                     )
@@ -70,7 +84,14 @@ class CharacterRepositoryFailureTest {
 
         assertThrows(
             CharacterPersistenceException.class,
-            () -> new JdbcCharacterRepository(missing.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+            () -> new JdbcCharacterRepository(
+                missing.source(),
+                5,
+                new JdbcInventoryRepository(
+                    missing.source(),
+                    5
+                )
+            ).beginTransaction(
                 new AccountId(
                     1
                 )
@@ -83,7 +104,14 @@ class CharacterRepositoryFailureTest {
 
             assertThrows(
                 CharacterPersistenceException.class,
-                () -> new JdbcCharacterRepository(invalid.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+                () -> new JdbcCharacterRepository(
+                    invalid.source(),
+                    5,
+                    new JdbcInventoryRepository(
+                        invalid.source(),
+                        5
+                    )
+                ).beginTransaction(
                     new AccountId(
                         1
                     )
@@ -138,7 +166,7 @@ class CharacterRepositoryFailureTest {
     void reportsCorruptRowsAndNameConflictsWithoutGuessingMissingState() {
         var stub = new CharacterJdbcStub();
         stub.missingEquipment = true;
-        var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5));
+        var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(stub.source(), 5));
 
         assertThrows(CharacterPersistenceException.class, () -> repository.findByAccount(new AccountId(1)));
 
@@ -157,8 +185,8 @@ class CharacterRepositoryFailureTest {
         assertTrue(
             repository.findByAccount(new AccountId(1)).getFirst().appearance().parts().stream()
                 .allMatch(
-                    part -> part.itemId() == 0 && part.parameter0() == 0
-                        && part.parameter1() == 0 && part.parameter2() == 0
+                    part -> part.itemId() == 0 && part.palette1Id() == 0
+                        && part.palette2Id() == 0 && part.palette3Id() == 0
                 )
         );
 
@@ -206,7 +234,14 @@ class CharacterRepositoryFailureTest {
     }
 
     private CharacterTransaction transaction(CharacterJdbcStub stub) {
-        return new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+        return new JdbcCharacterRepository(
+            stub.source(),
+            5,
+            new JdbcInventoryRepository(
+                stub.source(),
+                5
+            )
+        ).beginTransaction(
             new AccountId(
                 1
             )

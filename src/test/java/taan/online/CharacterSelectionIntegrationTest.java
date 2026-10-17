@@ -223,7 +223,8 @@ class CharacterSelectionIntegrationTest {
                 statement.execute("UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE name = 'OldHero'");
                 statement.execute(
                     "INSERT INTO character_appearance_parts "
-                        + "SELECT c.id, slot, CASE WHEN slot IN (1, 3, 5, 8) THEN 100 + slot ELSE 0 END, "
+                        + "SELECT c.id, slot, CASE WHEN slot IN (1, 3, 5, 8) THEN CASE slot "
+                        + "WHEN 1 THEN 729 WHEN 3 THEN 823 WHEN 5 THEN 725 ELSE 736 END ELSE 0 END, "
                         + "CASE WHEN slot IN (1, 3, 5, 8) THEN 1 ELSE 0 END, "
                         + "CASE WHEN slot IN (1, 3, 5, 8) THEN 2 ELSE 0 END, "
                         + "CASE WHEN slot IN (1, 3, 5, 8) THEN 3 ELSE 0 END "

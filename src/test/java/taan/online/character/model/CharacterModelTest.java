@@ -59,7 +59,7 @@ class CharacterModelTest {
             assertThrows(IllegalArgumentException.class, () -> new CharacterId(id));
         }
 
-        assertEquals(0xffff, new AppearancePart(15, 0xffff_ffffL, 0xffff, 0xffff, 0xffff).parameter2());
+        assertEquals(0xffff, new AppearancePart(15, 0xffff_ffffL, 0xffff, 0xffff, 0xffff).palette3Id());
 
         for (int slot : new int[]{-1, 16}) {
             assertThrows(IllegalArgumentException.class, () -> new AppearancePart(slot, 0, 0, 0, 0));

@@ -47,7 +47,7 @@ class InventoryModelTest {
         }
 
         assertEquals(65535, new InventoryItem(id, 255, 0xffff_ffffL, 65535, 65535, 65535, 65535).quantity());
-        assertEquals(65535, new StarterItem(15, 0xffff_ffffL, 65535, 65535, 65535).parameter2());
+        assertEquals(65535, new StarterItem(15, 0xffff_ffffL, 65535, 65535, 65535).palette3Id());
     }
 
     @Test
@@ -83,7 +83,7 @@ class InventoryModelTest {
         );
 
         assertEquals(255, jewel.items().getFirst().slot());
-        assertEquals(64, InventoryKind.BAG.capacity());
+        assertEquals(80, InventoryKind.BAG.capacity());
         assertTrue(new StarterEquipment(List.of()).items().isEmpty());
         assertThrows(
             IllegalArgumentException.class,

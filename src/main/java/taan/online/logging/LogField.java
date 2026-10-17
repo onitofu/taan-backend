@@ -43,6 +43,18 @@ public final class LogField {
         return new LogField("characterId", value);
     }
 
+    public static LogField sourceInventoryId(long value) {
+        return new LogField("sourceInventoryId", value);
+    }
+
+    public static LogField destinationInventoryId(long value) {
+        return new LogField("destinationInventoryId", value);
+    }
+
+    public static LogField instanceId(long value) {
+        return new LogField("instanceId", value);
+    }
+
     public static LogField channelId(int value) {
         return new LogField("channelId", value);
     }

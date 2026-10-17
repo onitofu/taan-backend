@@ -41,6 +41,9 @@ class SelectedSessionTest {
         assertEquals(principal, registry.principal(anonymous).orElseThrow());
         var access = new SessionCharacterAccess(registry);
         var channels = new SessionChannelAccess(registry);
+        var inventoryAccess = new SessionInventoryAccess(registry);
+
+        assertTrue(inventoryAccess.selected(missing.value()).isEmpty());
 
         assertFalse(channels.hasSelectedCharacter(anonymous.value()));
         assertFalse(
@@ -57,6 +60,7 @@ class SelectedSessionTest {
         assertTrue(registry.channelParticipant(missing).isEmpty());
         assertTrue(access.trySelect(anonymous.value(), character));
         assertEquals(SessionPhase.CHARACTER_SELECTED, registry.phase(anonymous));
+        assertEquals(character.id().value(), inventoryAccess.selected(anonymous.value()).orElseThrow().characterId());
         assertTrue(channels.hasSelectedCharacter(anonymous.value()));
         assertTrue(access.authenticatedAccount(anonymous.value()).isEmpty());
         assertEquals(character.id(), access.selectedCharacter(anonymous.value()).orElseThrow());

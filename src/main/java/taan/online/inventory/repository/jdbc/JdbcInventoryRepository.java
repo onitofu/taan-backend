@@ -4,18 +4,83 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
+import taan.online.account.model.AccountId;
 import taan.online.inventory.model.CharacterInventory;
 import taan.online.inventory.model.InventoryId;
 import taan.online.inventory.model.InventoryItem;
 import taan.online.inventory.model.InventoryItemId;
 import taan.online.inventory.model.InventoryKind;
 import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.repository.InventoryRepository;
+import taan.online.inventory.repository.InventoryTransaction;
 
-public final class JdbcInventoryRepository {
+public final class JdbcInventoryRepository implements InventoryRepository {
+    private final DataSource source;
     private final int timeout;
 
-    public JdbcInventoryRepository(int timeout) {
+    public JdbcInventoryRepository(DataSource source, int timeout) {
+        this.source = source;
         this.timeout = timeout;
+    }
+
+    @Override
+    public InventoryTransaction beginTransaction(AccountId owner, long characterId) {
+        Connection connection = null;
+
+        try {
+            connection = source.getConnection();
+            connection.setAutoCommit(false);
+
+            try (var lock = connection.prepareStatement("SELECT id FROM accounts WHERE id = ? FOR UPDATE")) {
+                lock.setQueryTimeout(timeout);
+                lock.setLong(1, owner.value());
+                lock.executeQuery().close();
+            }
+
+            String sql = "SELECT id FROM characters WHERE id = ? AND account_id = ? AND deleted_at IS NULL FOR UPDATE";
+
+            try (var lock = connection.prepareStatement(sql)) {
+                lock.setQueryTimeout(timeout);
+                lock.setLong(1, characterId);
+                lock.setLong(2, owner.value());
+
+                try (var rows = lock.executeQuery()) {
+                    if (!rows.next()) {
+                        throw new SQLException("Inventory owner is no longer active", "22000");
+                    }
+                }
+            }
+
+            try (var lock = connection.prepareStatement(
+                "SELECT id FROM inventories WHERE character_id = ? ORDER BY id FOR UPDATE"
+            )) {
+                lock.setQueryTimeout(timeout);
+                lock.setLong(1, characterId);
+                lock.executeQuery().close();
+            }
+
+            try (var lock = connection.prepareStatement(
+                "SELECT e.id FROM inventory_items e JOIN inventories i ON i.id = e.inventory_id "
+                    + "WHERE i.character_id = ? ORDER BY e.id FOR UPDATE OF e"
+            )) {
+                lock.setQueryTimeout(timeout);
+                lock.setLong(1, characterId);
+                lock.executeQuery().close();
+            }
+
+            return new JdbcInventoryTransaction(connection, this, owner.value(), characterId, timeout);
+        } catch (SQLException failure) {
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (SQLException closeFailure) {
+                    failure.addSuppressed(closeFailure);
+                }
+            }
+
+            throw new InventoryPersistenceException(failure);
+        }
     }
 
     public void create(Connection connection, long characterId, StarterEquipment starter) throws SQLException {
@@ -78,7 +143,7 @@ public final class JdbcInventoryRepository {
 
     private void insertItems(Connection connection, long inventoryId, StarterEquipment starter) throws SQLException {
         try (var statement = connection.prepareStatement(
-            "INSERT INTO inventory_items (inventory_id, slot, item_id, parameter0, parameter1, parameter2) "
+            "INSERT INTO inventory_items (inventory_id, slot, item_id, palette_1_id, palette_2_id, palette_3_id) "
                 + "VALUES (?, ?, ?, ?, ?, ?)"
         )) {
             statement.setQueryTimeout(timeout);
@@ -87,9 +152,9 @@ public final class JdbcInventoryRepository {
                 statement.setLong(1, inventoryId);
                 statement.setInt(2, item.slot());
                 statement.setLong(3, item.itemId());
-                statement.setInt(4, item.parameter0());
-                statement.setInt(5, item.parameter1());
-                statement.setInt(6, item.parameter2());
+                statement.setInt(4, item.palette1Id());
+                statement.setInt(5, item.palette2Id());
+                statement.setInt(6, item.palette3Id());
                 statement.addBatch();
             }
 
@@ -101,7 +166,7 @@ public final class JdbcInventoryRepository {
         var result = new ArrayList<InventoryItem>();
 
         try (var statement = connection.prepareStatement(
-            "SELECT id, slot, item_id, quantity, parameter0, parameter1, parameter2 "
+            "SELECT id, slot, item_id, quantity, palette_1_id, palette_2_id, palette_3_id "
                 + "FROM inventory_items WHERE inventory_id = ? ORDER BY slot"
         )) {
             statement.setQueryTimeout(timeout);
@@ -115,9 +180,9 @@ public final class JdbcInventoryRepository {
                             rows.getInt("slot"),
                             rows.getLong("item_id"),
                             rows.getInt("quantity"),
-                            rows.getInt("parameter0"),
-                            rows.getInt("parameter1"),
-                            rows.getInt("parameter2")
+                            rows.getInt("palette_1_id"),
+                            rows.getInt("palette_2_id"),
+                            rows.getInt("palette_3_id")
                         )
                     );
                 }
