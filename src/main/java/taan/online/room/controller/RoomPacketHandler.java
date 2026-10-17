@@ -1,15 +1,14 @@
 package taan.online.room.controller;
 
 import static taan.online.logging.LogField.reason;
-import static taan.online.logging.LogField.sessionId;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import taan.online.channel.service.SelectedCharacterAccess;
-import taan.online.logging.EventLogger;
+import taan.online.protocol.PacketOutput;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.protocol.connection.packet.PcNoticeMsg;
-import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.codec.RoomRequestCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -19,17 +18,19 @@ import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.service.CreateRoomAction;
+import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
+import taan.online.room.service.model.EnterRoomOutcome;
+import taan.online.room.view.ProtocolRoomView;
 
 public final class RoomPacketHandler {
-    private static final EventLogger LOG = EventLogger.forClass(RoomPacketHandler.class);
-
     private final SelectedCharacterAccess sessions;
     private final CreateRoomAction create;
+    private final EnterRoomAction enter;
     private final LeaveRoomAction leave;
     private final RequestRoomStartAction start;
     private final RoomRegistry rooms;
@@ -37,18 +38,20 @@ public final class RoomPacketHandler {
     public RoomPacketHandler(
         SelectedCharacterAccess sessions,
         CreateRoomAction create,
+        EnterRoomAction enter,
         LeaveRoomAction leave,
         RequestRoomStartAction start,
         RoomRegistry rooms
     ) {
         this.sessions = sessions;
         this.create = create;
+        this.enter = enter;
         this.leave = leave;
         this.start = start;
         this.rooms = rooms;
     }
 
-    public RoomReply handle(UUID id, int type, byte[] root) {
+    public RoomReply handle(UUID id, int type, byte[] root, PacketOutput output) {
         if (!sessions.hasSelectedCharacter(id)) {
             return ignored();
         }
@@ -56,16 +59,27 @@ public final class RoomPacketHandler {
         var codec = new RoomRequestCodec();
 
         if (type == PqGameSessionEnter.TYPE_ID) {
-            codec.enter(root);
+            var request = codec.enter(root);
+            var result = enter.execute(id, request.roomId(), new ProtocolRoomView(output));
 
-            if (!sessions.hasSelectedCharacter(id)) {
+            if (result.outcome() == EnterRoomOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
                 return ignored();
             }
 
-            LOG.log(RoomLogEvent.ENTRY_REJECTED, sessionId(id), reason("FEATURE_UNAVAILABLE"));
+            if (result.outcome() == EnterRoomOutcome.ENTERED) {
+                return new RoomReply(RoomReplyOutcome.ENTERED, result.delivery());
+            }
+
+            int reason = switch (result.outcome()) {
+                case ALREADY_IN_ROOM -> 3;
+                case NOT_FOUND -> 4;
+                case FULL -> 5;
+                case NO_SLOT -> 8;
+                default -> 0;
+            };
             return new RoomReply(
                 RoomReplyOutcome.ENTRY_REJECTED,
-                List.of(new RoomResponseCodec().encode(new PrGameSessionEnterFail(0)))
+                output.send(List.of(new RoomResponseCodec().encode(new PrGameSessionEnterFail(reason))))
             );
         }
 
@@ -86,19 +100,16 @@ public final class RoomPacketHandler {
                     settings.password() != null,
                     settings.mapId()
                 );
-            var result = create.execute(id, command);
+            var result = create.execute(id, command, new ProtocolRoomView(output));
 
             if (result.outcome() == CreateRoomOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
                 return ignored();
             }
 
             return result.outcome() == CreateRoomOutcome.CREATED
-                ? new RoomReply(
-                    RoomReplyOutcome.CREATED,
-                    List.of(new RoomResponseCodec().encode(new RoomSnapshotMapper().map(result.room())))
-                ) : new RoomReply(
+                ? new RoomReply(RoomReplyOutcome.CREATED, result.delivery()) : new RoomReply(
                     RoomReplyOutcome.CREATE_REJECTED,
-                    List.of(new RoomResponseCodec().encode(new PrGameSessionCreateFail(0)))
+                    output.send(List.of(new RoomResponseCodec().encode(new PrGameSessionCreateFail(0))))
                 );
         }
 
@@ -118,9 +129,11 @@ public final class RoomPacketHandler {
 
             return new RoomReply(
                 outcome,
-                List.of(
-                    new RoomResponseCodec().encode(
-                        new PrGameSessionLeave(outcome == RoomReplyOutcome.LEAVE_REJECTED ? 0 : 1)
+                output.send(
+                    List.of(
+                        new RoomResponseCodec().encode(
+                            new PrGameSessionLeave(outcome == RoomReplyOutcome.LEAVE_REJECTED ? 0 : 1)
+                        )
                     )
                 )
             );
@@ -135,7 +148,7 @@ public final class RoomPacketHandler {
 
         return new RoomReply(
             RoomReplyOutcome.START_UNAVAILABLE,
-            List.of(new NoticeMessageCodec().encode(new PcNoticeMsg(result.message())))
+            output.send(List.of(new NoticeMessageCodec().encode(new PcNoticeMsg(result.message()))))
         );
     }
 
@@ -144,6 +157,6 @@ public final class RoomPacketHandler {
     }
 
     private RoomReply ignored() {
-        return new RoomReply(RoomReplyOutcome.IGNORED, List.of());
+        return new RoomReply(RoomReplyOutcome.IGNORED, CompletableFuture.completedFuture(null));
     }
 }

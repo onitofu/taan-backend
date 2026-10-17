@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
 import taan.online.CollectingPacketOutput;
+import taan.online.RecordingRoomOutput;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.account.model.AccountGender;
@@ -19,7 +20,6 @@ import taan.online.channel.service.model.ChannelMembershipSnapshot;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.model.RoomParticipant;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.RoomMembership;
@@ -31,9 +31,9 @@ class RoomRegistryTest {
         try (var scenario = new RoomScenario()) {
             var a = scenario.player(1, 1);
             var b = scenario.player(2, 2);
-            var first = scenario.create.execute(a, RoomScenario.command()).room();
+            var first = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
             var token = scenario.rooms.membership(a).orElseThrow();
-            var second = scenario.create.execute(b, RoomScenario.command()).room();
+            var second = scenario.create.execute(b, RoomScenario.command(), new RecordingRoomOutput()).room();
 
             assertNotEquals(first.id(), second.id());
             assertEquals(1, first.channelId());
@@ -49,13 +49,13 @@ class RoomRegistryTest {
                 RoomListingFixtures.view(a, scenario.channels, scenario.rooms, new CollectingPacketOutput())
             );
             scenario.lobby(a);
-            var next = scenario.create.execute(a, RoomScenario.command()).room();
+            var next = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
 
             assertNotEquals(first.id(), next.id());
-            assertEquals(LeaveRoomOutcome.REPLAYED, scenario.leave.execute(a, first.id().value(), 0).outcome());
+            assertEquals(LeaveRoomOutcome.REJECTED, scenario.leave.execute(a, first.id().value(), 0).outcome());
             scenario.rooms.release(token, "LATE_CLOSE");
             scenario.rooms.release(
-                new RoomMembership(a, next.id(), UUID.randomUUID(), next.channelId()),
+                new RoomMembership(a, next.id(), UUID.randomUUID(), next.channelId(), UUID.randomUUID()),
                 "STALE_GENERATION"
             );
 
@@ -75,7 +75,8 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     scenario.channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),
-                    scenario.owner(a)
+                    scenario.owner(a),
+                    new RecordingRoomOutput()
                 ).outcome()
             );
         }
@@ -95,7 +96,8 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     new ChannelMembershipSnapshot(1, ChannelPresencePhase.MEMBER, actor),
                     settings,
-                    owner
+                    owner,
+                    new RecordingRoomOutput()
                 ).reason()
             );
             assertEquals(
@@ -103,7 +105,8 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     new ChannelMembershipSnapshot(2, ChannelPresencePhase.LOBBY, actor),
                     settings,
-                    owner
+                    owner,
+                    new RecordingRoomOutput()
                 ).reason()
             );
 
@@ -113,17 +116,26 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     context,
                     settings,
-                    new RoomParticipant(id, scenario.owner(other).character(), 0, RoomTeam.BLUE, 3)
+                    new RoomParticipant(id, scenario.owner(other).character(), 3),
+                    new RecordingRoomOutput()
                 ).reason()
             );
             var changed = CharacterFixtures.character(99, actor.accountId(), AccountGender.FEMALE, "OtherHero");
             assertEquals(
                 "CHARACTER_CHANGED",
-                scenario.rooms.create(context, settings, new RoomParticipant(id, changed, 0, RoomTeam.BLUE, 3)).reason()
+                scenario.rooms.create(
+                    context,
+                    settings,
+                    new RoomParticipant(id, changed, 3),
+                    new RecordingRoomOutput()
+                ).reason()
             );
-            scenario.rooms.create(context, settings, owner);
+            scenario.rooms.create(context, settings, owner, new RecordingRoomOutput());
 
-            assertEquals("ALREADY_IN_ROOM", scenario.rooms.create(context, settings, owner).reason());
+            assertEquals(
+                "ALREADY_IN_ROOM",
+                scenario.rooms.create(context, settings, owner, new RecordingRoomOutput()).reason()
+            );
             scenario.channels.move(id, new MoveToCommand(0, 2, 0, 929));
 
             assertEquals(LeaveRoomOutcome.REJECTED, scenario.leave.execute(id, 1, 0).outcome());
@@ -139,7 +151,10 @@ class RoomRegistryTest {
             }
             try (var exhausted = new RoomRegistry(scenario.channels, pool)) {
                 var current = scenario.channels.membership(other).orElseThrow();
-                assertEquals("ROOM_IDS_EXHAUSTED", exhausted.create(current, settings, scenario.owner(other)).reason());
+                assertEquals(
+                    "ROOM_IDS_EXHAUSTED",
+                    exhausted.create(current, settings, scenario.owner(other), new RecordingRoomOutput()).reason()
+                );
                 assertTrue(exhausted.membership(other).isEmpty());
             }
         }
@@ -153,13 +168,13 @@ class RoomRegistryTest {
             var first = workers.submit(
                 () -> {
                     barrier.await(5, TimeUnit.SECONDS);
-                    return scenario.create.execute(id, RoomScenario.command());
+                    return scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
                 }
             );
             var second = workers.submit(
                 () -> {
                     barrier.await(5, TimeUnit.SECONDS);
-                    return scenario.create.execute(id, RoomScenario.command());
+                    return scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
                 }
             );
             var a = first.get(5, TimeUnit.SECONDS);

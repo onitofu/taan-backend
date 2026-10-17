@@ -54,8 +54,10 @@ import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.service.CreateRoomAction;
+import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
+import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
 import taan.online.server.ConnectionContext;
 import taan.online.server.InventoryRequestDispatcher;
@@ -143,6 +145,10 @@ public final class Application implements AutoCloseable {
         channels = new ChannelRegistry(channelAccess, config.port());
         rooms = new RoomRegistry(channels);
         var roomDefinitions = new RoomDefinitionLoader();
+        var roomDefaults = roomDefinitions.defaults(
+            Application.class.getResourceAsStream("/room/bootstrap.properties")
+        );
+        var roomCharacters = new RoomCharacterLoader(characters, itemCatalog);
         var roomDispatcher = new RoomRequestDispatcher(
             new RoomPacketHandler(
                 channelAccess,
@@ -150,11 +156,11 @@ public final class Application implements AutoCloseable {
                     channelAccess,
                     channels,
                     rooms,
-                    characters,
-                    itemCatalog,
+                    roomCharacters,
                     roomDefinitions.titleFilter(Application.class.getResourceAsStream("/character/name-filters.txt")),
-                    roomDefinitions.defaults(Application.class.getResourceAsStream("/room/bootstrap.properties"))
+                    roomDefaults
                 ),
+                new EnterRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
                 new LeaveRoomAction(rooms),
                 new RequestRoomStartAction(channelAccess, channels, rooms),
                 rooms
@@ -239,6 +245,8 @@ public final class Application implements AutoCloseable {
         channels.initialize(new JdbcChannelRepository(dataSource, config.socketTimeoutSeconds()).load());
         var catalog = new ChannelListResponseCodec().encode(new ChannelCatalogMapper().map(channels.catalog()));
         new LobbyOutputValidator().validate(config, channels.catalog(), catalog.length);
+
+        new RoomOutputValidator().validate(config);
 
         server.start();
 

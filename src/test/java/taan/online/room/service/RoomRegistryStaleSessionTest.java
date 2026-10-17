@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
 import taan.online.CollectingPacketOutput;
+import taan.online.RecordingRoomOutput;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
@@ -17,7 +18,6 @@ import taan.online.channel.model.ChannelParticipant;
 import taan.online.channel.service.ChannelTestAccess;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.room.model.RoomParticipant;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.CreateRoomOutcome;
 
 class RoomRegistryStaleSessionTest {
@@ -35,7 +35,8 @@ class RoomRegistryStaleSessionTest {
             var old = rooms.create(
                 channels.membership(first).orElseThrow(),
                 RoomScenario.settings(),
-                new RoomParticipant(first, character, 0, RoomTeam.BLUE, 3)
+                new RoomParticipant(first, character, 3),
+                new RecordingRoomOutput()
             );
             var token = rooms.membership(first).orElseThrow();
             var next = UUID.randomUUID();
@@ -57,7 +58,8 @@ class RoomRegistryStaleSessionTest {
             var current = rooms.create(
                 channels.membership(next).orElseThrow(),
                 RoomScenario.settings(),
-                new RoomParticipant(next, character, 0, RoomTeam.BLUE, 3)
+                new RoomParticipant(next, character, 3),
+                new RecordingRoomOutput()
             );
 
             assertEquals(CreateRoomOutcome.CREATED, current.outcome());

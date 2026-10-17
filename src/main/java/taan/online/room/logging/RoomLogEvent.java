@@ -4,6 +4,10 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    ENTRY_SUCCEEDED("room.entry.succeeded", Level.INFO, "Room entered"),
+    ENTRY_FAILED("room.entry.failed", Level.ERROR, "Room entry failed"),
+    OWNER_CHANGED("room.owner.changed", Level.INFO, "Room owner changed"),
+    NOTIFICATION_FAILED("room.notification.failed", Level.ERROR, "Room notification failed"),
     ENTRY_REJECTED("room.entry.rejected", Level.DEBUG, "Room entry rejected"),
     CREATION_SUCCEEDED("room.creation.succeeded", Level.INFO, "Room created"),
     CREATION_REJECTED("room.creation.rejected", Level.INFO, "Room creation rejected"),

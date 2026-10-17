@@ -67,6 +67,10 @@ public final class LogField {
         return new LogField("recipientSessionId", value);
     }
 
+    public static LogField slotIndex(int value) {
+        return new LogField("slotIndex", value);
+    }
+
     public static LogField roomId(int value) {
         return new LogField("roomId", value);
     }
