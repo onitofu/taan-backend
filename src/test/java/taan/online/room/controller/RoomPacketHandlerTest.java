@@ -25,6 +25,7 @@ import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.room.service.model.RoomSnapshot;
 import taan.online.room.view.RoomSnapshotMapper;
@@ -141,6 +142,7 @@ class RoomPacketHandlerTest {
         for (int type : new int[]{
             PqGameSessionCreate.TYPE_ID,
             PqGameSessionEnter.TYPE_ID,
+            PqGameSessionQuickJoin.TYPE_ID,
             PqGameSessionLeave.TYPE_ID,
             PqGameSessionStartGame.TYPE_ID
         }) {
@@ -160,12 +162,14 @@ class RoomPacketHandlerTest {
                     guarded,
                     scenario.create,
                     scenario.enter,
+                    scenario.quickJoin,
                     scenario.leave,
                     scenario.start,
                     scenario.rooms
                 );
                 byte[] request = type == PqGameSessionCreate.TYPE_ID ? root("create-unprotected")
                     : type == PqGameSessionEnter.TYPE_ID ? root("enter-empty-password")
+                    : type == PqGameSessionQuickJoin.TYPE_ID ? root("quickjoin-any")
                     : type == PqGameSessionLeave.TYPE_ID ? leave(1, 0) : root("start-empty");
 
                 assertEquals(
@@ -200,6 +204,7 @@ class RoomPacketHandlerTest {
                 closing,
                 scenario.create,
                 scenario.enter,
+                scenario.quickJoin,
                 scenario.leave,
                 scenario.start,
                 scenario.rooms

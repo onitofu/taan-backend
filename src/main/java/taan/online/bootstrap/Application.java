@@ -56,6 +56,7 @@ import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
+import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
@@ -161,6 +162,7 @@ public final class Application implements AutoCloseable {
                     roomDefaults
                 ),
                 new EnterRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
+                new QuickJoinRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
                 new LeaveRoomAction(rooms),
                 new RequestRoomStartAction(channelAccess, channels, rooms),
                 rooms

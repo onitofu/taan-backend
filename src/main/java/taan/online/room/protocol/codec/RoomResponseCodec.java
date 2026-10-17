@@ -12,8 +12,19 @@ import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
+import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PrGameSessionQuickJoinFail response) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PrGameSessionQuickJoinFail.TYPE_ID)).toByteArray();
+    }
+
+    public PrGameSessionQuickJoinFail quickJoinFail(byte[] root) {
+        var input = new BinaryReader(root, PrGameSessionQuickJoinFail.TYPE_ID);
+        input.finish();
+        return new PrGameSessionQuickJoinFail();
+    }
+
     public byte[] encode(PrGameSessionCreateFail response) {
         return new BinaryWriter().unsignedInt(
             PrGameSessionCreateFail.TYPE_ID

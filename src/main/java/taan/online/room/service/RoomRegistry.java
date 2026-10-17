@@ -30,6 +30,7 @@ import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
+import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
@@ -188,6 +189,44 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         channels.roomChanged(room.channelId(), room.id().value());
         log(RoomLogEvent.ENTRY_SUCCEEDED, result, participant, "ENTERED");
         return new EnterRoomResult(EnterRoomOutcome.ENTERED, "ENTERED", delivery);
+    }
+
+    public synchronized EnterRoomResult quickJoin(
+        ChannelMembershipSnapshot context,
+        RoomParticipant participant,
+        RoomPresenceOutput output
+    ) {
+        if (phase == RoomRegistryPhase.CLOSED) {
+            return entryRejected(EnterRoomOutcome.IGNORED, "SERVER_STOPPING");
+        }
+
+        if (memberships.containsKey(participant.sessionId())) {
+            return entryRejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
+        }
+
+        if (!current(context, participant) || !matches(context, participant)) {
+            return entryRejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
+        }
+
+        var target = rooms.values().stream()
+            .filter(room -> room.channelId() == context.channelId() && room.state() == RoomState.WAITING)
+            .filter(room -> !room.protectedRoom() && room.playerCount() < room.settings().capacity())
+            .filter(room -> room.slots().stream().anyMatch(slot -> slot.state() == RoomSlotState.OPEN))
+            .filter(room -> !room.contains(participant))
+            .min(Comparator.comparingInt(Room::playerCount).reversed().thenComparingInt(room -> room.id().value()));
+
+        if (target.isEmpty()) {
+            return entryRejected(EnterRoomOutcome.NOT_FOUND, "NO_MATCHING_ROOM");
+        }
+
+        var room = target.orElseThrow();
+        return enter(
+            context,
+            new RoomEntryTarget(room.id(), room.generation(), room.channelId()),
+            participant,
+            "",
+            output
+        );
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
