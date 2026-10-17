@@ -60,6 +60,7 @@ import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.server.logging.ConnectionLogEvent;
@@ -178,7 +179,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID,
                 PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID, PqMoveInventoryItem.TYPE_ID,
                 PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
-                PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID -> { }
+                PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID -> { }
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         }
 
@@ -481,7 +482,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
                 case PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
-                    PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID ->
+                    PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID ->
                     RoomLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,
                     PqSelectCharacter.TYPE_ID, PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID ->

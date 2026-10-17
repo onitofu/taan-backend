@@ -8,6 +8,7 @@ import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
@@ -23,7 +24,8 @@ public final class RoomRequestDispatcher {
         var event = switch (result.outcome()) {
             case ENTERED -> ProtocolEvent.ROOM_ENTERED;
             case CREATED -> ProtocolEvent.ROOM_CREATED;
-            case CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED, LEAVE_REJECTED, START_UNAVAILABLE ->
+            case CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED, LEAVE_REJECTED, START_UNAVAILABLE,
+                SLOT_AVAILABILITY_UPDATED, SLOT_AVAILABILITY_REJECTED ->
                 ProtocolEvent.ROOM_REQUEST_COMPLETED;
             case LEFT -> ProtocolEvent.ROOM_LEFT;
             case LEAVE_REPLAYED -> ProtocolEvent.ROOM_LEAVE_REPLAYED;
@@ -39,10 +41,14 @@ public final class RoomRequestDispatcher {
     static boolean accepts(int type) {
         return type == PqGameSessionCreate.TYPE_ID || type == PqGameSessionEnter.TYPE_ID
             || type == PqGameSessionQuickJoin.TYPE_ID || type == PqGameSessionLeave.TYPE_ID
-            || type == PqGameSessionStartGame.TYPE_ID;
+            || type == PqGameSessionStartGame.TYPE_ID || type == PqGameSessionOpenCloseSlot.TYPE_ID;
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PqGameSessionOpenCloseSlot.TYPE_ID) {
+            return RoomLogEvent.SLOT_AVAILABILITY_FAILED;
+        }
+
         if (type == PqGameSessionQuickJoin.TYPE_ID) {
             return RoomLogEvent.QUICK_JOIN_FAILED;
         }

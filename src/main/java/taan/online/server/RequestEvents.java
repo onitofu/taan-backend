@@ -15,6 +15,7 @@ import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.session.protocol.packet.PcLogging;
@@ -45,6 +46,7 @@ final class RequestEvents {
             case PqGameSessionCreate.TYPE_ID -> ProtocolEvent.ROOM_CREATE;
             case PqGameSessionEnter.TYPE_ID -> ProtocolEvent.ROOM_ENTER;
             case PqGameSessionQuickJoin.TYPE_ID -> ProtocolEvent.ROOM_QUICK_JOIN;
+            case PqGameSessionOpenCloseSlot.TYPE_ID -> ProtocolEvent.ROOM_SLOT_AVAILABILITY;
             case PqGameSessionLeave.TYPE_ID -> ProtocolEvent.ROOM_LEAVE;
             case PqGameSessionStartGame.TYPE_ID -> ProtocolEvent.ROOM_START;
             default -> ProtocolEvent.KEEP_ALIVE;

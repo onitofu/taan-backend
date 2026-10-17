@@ -4,10 +4,18 @@ import taan.online.protocol.BinaryReader;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestCodec {
+    public PqGameSessionOpenCloseSlot slotAvailability(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionOpenCloseSlot.TYPE_ID);
+        var request = new PqGameSessionOpenCloseSlot(input.unsignedByte(), input.unsignedByte());
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionQuickJoin quickJoin(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionQuickJoin.TYPE_ID);
         var request = new PqGameSessionQuickJoin(input.unsignedShort(), new PeerMetaCodec().decode(input));

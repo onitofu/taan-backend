@@ -27,6 +27,7 @@ import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.server.RoomRequestDispatcher;
 import taan.online.session.model.AuthenticatedPrincipal;
@@ -70,6 +71,7 @@ public final class RoomScenario implements AutoCloseable {
         create,
         enter,
         quickJoin,
+        new SetRoomSlotAvailabilityAction(rooms),
         leave,
         start,
         rooms
@@ -142,6 +144,7 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomBootstrapDefinition(1, 3)
                 ),
+                new SetRoomSlotAvailabilityAction(rooms),
                 new LeaveRoomAction(rooms),
                 new RequestRoomStartAction(access, channels, rooms),
                 rooms

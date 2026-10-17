@@ -3,6 +3,7 @@ package taan.online.room.service;
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.characterId;
+import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.recipientSessionId;
 import static taan.online.logging.LogField.roomId;
@@ -44,6 +45,8 @@ import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSnapshot;
+import taan.online.room.service.model.SlotAvailabilityOutcome;
+import taan.online.room.service.model.SlotAvailabilityResult;
 
 public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private static final EventLogger LOG = EventLogger.forClass(RoomRegistry.class);
@@ -71,7 +74,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized Optional<RoomSnapshot> current(UUID id) {
-        return membership(id).map(member -> snapshot(rooms.get(member.roomId())));
+        return membership(id).map(member -> RoomSnapshot.from(rooms.get(member.roomId())));
     }
 
     public synchronized Optional<RoomMembership> membership(UUID id) {
@@ -127,7 +130,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var room = new Room(allocated.orElseThrow(), UUID.randomUUID(), context.channelId(), settings, password, owner);
         rooms.put(room.id(), room);
         var subscription = subscribe(room, owner, output);
-        var result = snapshot(room);
+        var result = RoomSnapshot.from(room);
         var delivery = deliver(subscription, () -> output.initialize(result));
         publish(room.channelId());
         channels.hideFromLobby(id);
@@ -181,7 +184,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var subscription = subscribe(room, participant, output);
-        var result = snapshot(room);
+        var result = RoomSnapshot.from(room);
         var delivery = deliver(subscription, () -> output.initialize(result));
         notifyMembers(result, participant.sessionId(), occupied.orElseThrow().index(), false);
         publish(room.channelId());
@@ -227,6 +230,75 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             "",
             output
         );
+    }
+
+    public synchronized SlotAvailabilityResult setSlotAvailability(UUID id, int index, RoomSlotState desiredState) {
+        if (phase == RoomRegistryPhase.CLOSED) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.IGNORED, "SERVER_STOPPING");
+        }
+
+        var subscription = memberships.get(id);
+
+        if (subscription == null) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "NO_MEMBERSHIP");
+        }
+
+        var member = subscription.membership();
+        var room = rooms.get(member.roomId());
+        var context = channels.membership(id).orElse(null);
+
+        if (context == null) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.IGNORED, "SESSION_CLOSED");
+        }
+
+        if (context.channelId() != member.channelId() || context.phase() != ChannelPresencePhase.MEMBER
+            || !matches(context, participant(subscription))) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "CONTEXT_CHANGED");
+        }
+
+        if (!room.ownerSessionId().equals(id)) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "NOT_OWNER");
+        }
+
+        if (room.state() != RoomState.WAITING) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "ROOM_UNAVAILABLE");
+        }
+
+        if (index < 0 || index > 7 || desiredState == null || desiredState == RoomSlotState.OCCUPIED) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "INVALID_SLOT_AVAILABILITY");
+        }
+
+        if (room.slots().get(index).participant() != null) {
+            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "OCCUPIED_SLOT");
+        }
+
+        var actor = participant(subscription);
+        boolean changed = room.setSlotAvailability(index, desiredState);
+        var outcome = changed ? SlotAvailabilityOutcome.CHANGED : SlotAvailabilityOutcome.UNCHANGED;
+        var recipients = memberships.values().stream()
+            .filter(value -> value.membership().roomId().equals(room.id()))
+            .filter(value -> changed || value == subscription).toList();
+        CompletionStage<Void> delivery = CompletableFuture.completedFuture(null);
+
+        for (var recipient : recipients) {
+            var sent = deliver(recipient, () -> recipient.output().slotAvailability(index, desiredState));
+
+            if (recipient == subscription) {
+                delivery = sent;
+            }
+        }
+
+        LOG.log(
+            desiredState == RoomSlotState.OPEN ? RoomLogEvent.SLOT_OPENED : RoomLogEvent.SLOT_CLOSED,
+            sessionId(id),
+            accountId(actor.character().accountId().value()),
+            characterId(actor.character().id().value()),
+            channelId(room.channelId()),
+            roomId(room.id().value()),
+            slotIndex(index),
+            outcome(outcome.name())
+        );
+        return new SlotAvailabilityResult(outcome, outcome.name(), delivery);
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
@@ -320,7 +392,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var room = rooms.get(expected.roomId());
-        var previous = snapshot(room);
+        var previous = RoomSnapshot.from(room);
         var removed = room.leave(expected.sessionId()).orElseThrow();
         memberships.remove(expected.sessionId());
         log(RoomLogEvent.LEFT, previous, removed.participant(), closeReason);
@@ -334,7 +406,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return;
         }
 
-        var result = snapshot(room);
+        var result = RoomSnapshot.from(room);
         boolean ownerChanged = !previous.ownerSessionId().equals(result.ownerSessionId());
         notifyMembers(result, expected.sessionId(), removed.index(), ownerChanged);
         publish(room.channelId());
@@ -389,20 +461,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private void publish(int channelId) {
         var updated = new HashMap<>(listings);
         var snapshot = rooms.values().stream().filter(room -> room.channelId() == channelId)
-            .sorted(Comparator.comparingInt(room -> room.id().value())).map(
-                room -> new RoomListing(
-                    room.id(),
-                    room.channelId(),
-                    room.settings().title(),
-                    room.state(),
-                    room.settings().mode(),
-                    room.settings().rule(),
-                    room.playerCount(),
-                    room.settings().capacity(),
-                    room.settings().mapId(),
-                    room.protectedRoom()
-                )
-            ).toList();
+            .sorted(Comparator.comparingInt(room -> room.id().value())).map(RoomListing::from).toList();
 
         if (snapshot.isEmpty()) {
             updated.remove(channelId);
@@ -411,18 +470,6 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         listings = Map.copyOf(updated);
-    }
-
-    private RoomSnapshot snapshot(Room room) {
-        return new RoomSnapshot(
-            room.id(),
-            room.generation(),
-            room.channelId(),
-            room.settings(),
-            room.ownerSessionId(),
-            room.slots(),
-            room.protectedRoom()
-        );
     }
 
     private void log(RoomLogEvent event, RoomSnapshot room, RoomParticipant actor, String closeReason) {
