@@ -7,6 +7,8 @@ import taan.online.account.model.CredentialVerifier;
 import taan.online.account.model.LoginName;
 
 public interface AccountRepository {
+    Optional<Account> findByLogin(LoginName login);
+
     boolean existsByLogin(LoginName login);
 
     Optional<Account> tryCreate(LoginName login, CredentialVerifier verifier, AccountGender gender);

@@ -14,6 +14,26 @@ import taan.online.account.model.LoginName;
 
 class JdbcAccountRepositoryUnitTest {
     @Test
+    void findsAccountsWithoutRetainingConnectionsAndReportsReadFailuresSafely() {
+        var database = new JdbcTestDatabase();
+        var repository = new JdbcAccountRepository(database.source(), 5);
+        var login = new LoginName(TestFixtures.LOGIN);
+
+        assertEquals(login, repository.findByLogin(login).orElseThrow().login());
+        assertEquals("close", database.calls().getLast());
+        assertFalse(database.calls().contains("commit"));
+
+        database.hasRow(false);
+
+        assertTrue(repository.findByLogin(login).isEmpty());
+
+        database.fail("executeQuery");
+        var failure = assertThrows(AccountPersistenceException.class, () -> repository.findByLogin(login));
+
+        assertFalse(failure.getMessage().contains("secret-value"));
+    }
+
+    @Test
     void mapsRowsClosesResourcesAndCommitsBeforeReturning() {
         var database = new JdbcTestDatabase();
         var repository = new JdbcAccountRepository(database.source(), 5);

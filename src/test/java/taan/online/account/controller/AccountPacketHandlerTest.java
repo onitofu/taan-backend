@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import taan.online.TestFixtures;
+import taan.online.TestCredentialHasher;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.CredentialVerifier;
 import taan.online.account.protocol.packet.PqCheckAccount;
@@ -18,7 +19,10 @@ class AccountPacketHandlerTest {
         var repository = new PacketHandlerTestAccountRepository();
         var check = new CheckAccountPacketHandler(new CheckAccountAction(repository));
         var create = new CreateAccountPacketHandler(
-            new RegisterAccountAction(repository, credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+            new RegisterAccountAction(
+                repository,
+                new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+            )
         );
 
         assertEquals(1, check.handle(new PqCheckAccount(TestFixtures.LOGIN, 0)).status());
@@ -32,7 +36,10 @@ class AccountPacketHandlerTest {
         for (int value : new int[]{1, 2}) {
             var repository = new PacketHandlerTestAccountRepository();
             var handler = new CreateAccountPacketHandler(
-                new RegisterAccountAction(repository, credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+                new RegisterAccountAction(
+                    repository,
+                    new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+                )
             );
 
             assertEquals(
@@ -49,7 +56,10 @@ class AccountPacketHandlerTest {
         repository.fail(true);
         var check = new CheckAccountPacketHandler(new CheckAccountAction(repository));
         var create = new CreateAccountPacketHandler(
-            new RegisterAccountAction(repository, credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+            new RegisterAccountAction(
+                repository,
+                new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+            )
         );
 
         for (int selector : new int[]{1, 2, 255}) {

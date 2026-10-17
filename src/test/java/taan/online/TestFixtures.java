@@ -50,6 +50,15 @@ public final class TestFixtures {
         return result;
     }
 
+    public static byte[] login(String login, String credential) {
+        byte[] name = login.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] digest = credential.getBytes(StandardCharsets.ISO_8859_1);
+        return ByteBuffer.allocate(35 + name.length + digest.length).order(ByteOrder.LITTLE_ENDIAN)
+            .putInt(0x198b0459).putInt(1).putInt(0x34b00652).putInt(name.length).put(name)
+            .putInt(digest.length).put(digest).putInt(123456).putInt(0).putInt(0).putShort((short) 0)
+            .put((byte) 0).array();
+    }
+
     public static byte[] check(String login, int selector) {
         byte[] text = login.getBytes(StandardCharsets.UTF_16LE);
         return ByteBuffer.allocate(9 + text.length).order(ByteOrder.LITTLE_ENDIAN)

@@ -116,6 +116,10 @@ class ConnectionContextTest {
             try (var harness = new ConnectionContextTestHarness(8)) {
                 harness.channel().writeInbound(packet);
 
+                if (!harness.jobs().isEmpty()) {
+                    harness.run();
+                }
+
                 assertFalse(harness.channel().isActive());
                 assertTrue(harness.jobs().isEmpty());
             }
@@ -302,7 +306,8 @@ class ConnectionContextTest {
 
             assertTrue(harness.channel().isActive());
 
-            harness.channel().pipeline().fireUserEventTriggered(IdleStateEvent.READER_IDLE_STATE_EVENT);
+            harness.channel().advanceTimeBy(301, TimeUnit.SECONDS);
+            harness.channel().runScheduledPendingTasks();
 
             assertFalse(harness.channel().isActive());
         }

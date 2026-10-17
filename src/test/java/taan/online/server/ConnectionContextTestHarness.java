@@ -11,6 +11,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.TestCredentialHasher;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
 import taan.online.account.model.CredentialVerifier;
@@ -18,6 +19,10 @@ import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
+import java.time.Clock;
+import taan.online.session.controller.UserLoginPacketHandler;
+import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionRegistry;
 
 final class ConnectionContextTestHarness implements AutoCloseable {
     private final ConnectionContextTestRepository repository = new ConnectionContextTestRepository();
@@ -26,9 +31,22 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     private final ChannelHandlerContext context;
     private final EmbeddedChannel channel;
     private final QueuedTestExecutor workers;
+    private final UserLoginPacketHandler login;
     private int hashes;
 
     ConnectionContextTestHarness(int capacity) {
+        this(capacity, new SessionRegistry());
+    }
+
+    ConnectionContextTestHarness(int capacity, SessionRegistry sessions) {
+        this(capacity, sessions, true);
+    }
+
+    ConnectionContextTestHarness(int capacity, SessionRegistry sessions, boolean activate) {
+        this(capacity, sessions, activate, Clock.systemUTC());
+    }
+
+    ConnectionContextTestHarness(int capacity, SessionRegistry sessions, boolean activate, Clock clock) {
         var warnings = new WarningLogLimiter(
             LoggerFactory.getLogger(ConnectionContext.class),
             10,
@@ -36,29 +54,41 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             System::nanoTime
         );
         workers = new QueuedTestExecutor(jobs);
+        var hasher = new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER));
+        login = new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions);
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
             new CreateAccountPacketHandler(
                 new RegisterAccountAction(
                     repository,
-                    credential -> {
-                        hashes++;
-                        return new CredentialVerifier(TestFixtures.VERIFIER);
-                    }
+                    new TestCredentialHasher(
+                        credential -> {
+                            hashes++;
+                            return new CredentialVerifier(TestFixtures.VERIFIER);
+                        }
+                    )
                 )
             ),
             warnings,
             capacity,
-            10
+            10,
+            login,
+            clock,
+            300
         );
-        channel = new EmbeddedChannel(new FrameEncoder(), handler);
+        channel = new EmbeddedChannel(new FrameEncoder());
+        channel.pipeline().addLast(handler);
         context = channel.pipeline().context(handler);
-        ByteBuf greeting = channel.readOutbound();
 
-        assertEquals(21, greeting.readIntLE());
+        if (activate) {
+            handler.channelActive(context);
+            ByteBuf greeting = channel.readOutbound();
 
-        greeting.release();
+            assertEquals(21, greeting.readIntLE());
+
+            greeting.release();
+        }
     }
 
     void run() {
@@ -109,6 +139,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
 
     int hashes() {
         return hashes;
+    }
+
+    void invalidateSession() {
+        login.close("SESSION_INVALIDATED");
     }
 
     void rejectWork(boolean rejectWork) {

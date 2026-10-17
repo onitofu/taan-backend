@@ -27,6 +27,10 @@ public final class LogField {
         return new LogField("connectionId", value);
     }
 
+    public static LogField sessionId(UUID value) {
+        return new LogField("sessionId", value);
+    }
+
     public static LogField operationId(UUID value) {
         return new LogField("operationId", value);
     }

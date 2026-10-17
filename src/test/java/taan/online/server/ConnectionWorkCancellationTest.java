@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.TestCredentialHasher;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
 import taan.online.account.model.CredentialVerifier;
@@ -24,6 +25,10 @@ import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
+import java.time.Clock;
+import taan.online.session.controller.UserLoginPacketHandler;
+import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionRegistry;
 
 class ConnectionWorkCancellationTest {
     @Test
@@ -150,21 +155,28 @@ class ConnectionWorkCancellationTest {
             Duration.ofMinutes(1),
             System::nanoTime
         );
+        var sessions = new SessionRegistry();
+        var hasher = new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER));
         var handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
             new CreateAccountPacketHandler(
                 new RegisterAccountAction(
                     repository,
-                    credential -> {
-                        hashes.incrementAndGet();
-                        return new CredentialVerifier(TestFixtures.VERIFIER);
-                    }
+                    new TestCredentialHasher(
+                        credential -> {
+                            hashes.incrementAndGet();
+                            return new CredentialVerifier(TestFixtures.VERIFIER);
+                        }
+                    )
                 )
             ),
             warnings,
             8,
-            10
+            10,
+            new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions),
+            Clock.systemUTC(),
+            300
         );
         var channel = new EmbeddedChannel(new FrameEncoder(), handler);
         ByteBuf greeting = channel.readOutbound();

@@ -14,6 +14,11 @@ final class PacketHandlerTestAccountRepository implements AccountRepository {
     private boolean fail;
 
     @Override
+    public Optional<Account> findByLogin(LoginName login) {
+        return Optional.ofNullable(saved);
+    }
+
+    @Override
     public boolean existsByLogin(LoginName login) {
         if (fail) {
             throw new IllegalStateException("Persistence unavailable");

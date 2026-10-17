@@ -2,6 +2,7 @@ package taan.online.server;
 
 import java.time.Instant;
 import java.util.Optional;
+import taan.online.TestFixtures;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
@@ -15,6 +16,25 @@ final class ConnectionContextTestRepository implements AccountRepository {
     private int checks;
     private int inserts;
     private Runnable onCheck = () -> { };
+
+    @Override
+    public Optional<Account> findByLogin(LoginName login) {
+        onCheck.run();
+
+        if (failure != null) {
+            throw failure;
+        }
+
+        return exists ? Optional.of(
+            new Account(
+                new AccountId(1),
+                login,
+                new CredentialVerifier(TestFixtures.VERIFIER),
+                AccountGender.FEMALE,
+                Instant.EPOCH
+            )
+        ) : Optional.empty();
+    }
 
     @Override
     public boolean existsByLogin(LoginName login) {

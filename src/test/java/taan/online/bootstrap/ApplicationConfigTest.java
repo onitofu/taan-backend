@@ -14,7 +14,7 @@ class ApplicationConfigTest {
 
         assertEquals(2181, config.port());
         assertEquals(5432, config.databasePort());
-        assertEquals(1024, config.maxFrameBytes());
+        assertEquals(16384, config.maxFrameBytes());
         assertEquals(8, config.maxPendingRequests());
         assertEquals(10, config.frameAssemblyTimeoutSeconds());
         assertEquals("postgres", config.databaseHost());

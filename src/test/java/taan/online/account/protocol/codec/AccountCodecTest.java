@@ -13,8 +13,8 @@ import taan.online.account.protocol.packet.PrCheckAccount;
 import taan.online.account.protocol.packet.PrCreateAccount;
 import taan.online.protocol.BinaryReader;
 import taan.online.protocol.MalformedPacketException;
-import taan.online.protocol.connection.FirstAcceptCodec;
-import taan.online.protocol.connection.PcFirstAccept;
+import taan.online.protocol.connection.codec.FirstAcceptCodec;
+import taan.online.protocol.connection.packet.PcFirstAccept;
 
 class AccountCodecTest {
     @Test
