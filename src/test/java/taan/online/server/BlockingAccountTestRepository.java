@@ -16,6 +16,11 @@ final class BlockingAccountTestRepository implements AccountRepository {
     private Runnable onCheck = () -> { };
 
     @Override
+    public Optional<Account> findByLogin(LoginName login) {
+        return Optional.empty();
+    }
+
+    @Override
     public boolean existsByLogin(LoginName login) {
         checks.incrementAndGet();
         onCheck.run();

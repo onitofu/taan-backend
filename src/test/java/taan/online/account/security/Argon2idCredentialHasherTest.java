@@ -17,9 +17,22 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.TestFixtures;
+import taan.online.account.model.CredentialVerifier;
 import taan.online.account.service.model.ClientCredential;
 
 class Argon2idCredentialHasherTest {
+    @Test
+    void verifiesUsingStoredParametersAndRejectsWrongCredentialsOrCorruptVerifiers() {
+        var writer = new Argon2idCredentialHasher(19456, 2, 2);
+        var reader = new Argon2idCredentialHasher(19456, 3, 1);
+        var credential = new ClientCredential(TestFixtures.CREDENTIAL);
+        var verifier = writer.hash(credential);
+
+        assertTrue(reader.verify(credential, verifier));
+        assertFalse(reader.verify(new ClientCredential("0".repeat(32)), verifier));
+        assertThrows(RuntimeException.class, () -> reader.verify(credential, new CredentialVerifier("broken")));
+    }
+
     @Test
     void hashesReceivedAsciiCredentialWithIndependentRandomSalts() {
         var hasher = new Argon2idCredentialHasher(19456, 2, 1);

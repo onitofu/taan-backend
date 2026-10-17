@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import taan.online.TestFixtures;
+import taan.online.TestCredentialHasher;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.CredentialVerifier;
 import taan.online.account.model.LoginName;
@@ -25,10 +26,12 @@ class AccountActionTest {
         var hashes = new AtomicInteger();
         var action = new RegisterAccountAction(
             repository,
-            credential -> {
-                hashes.incrementAndGet();
-                return new CredentialVerifier(TestFixtures.VERIFIER);
-            }
+            new TestCredentialHasher(
+                credential -> {
+                    hashes.incrementAndGet();
+                    return new CredentialVerifier(TestFixtures.VERIFIER);
+                }
+            )
         );
 
         assertEquals(RegistrationResult.CREATED, action.execute(command()));
@@ -43,15 +46,20 @@ class AccountActionTest {
     void handlesConcurrentUniqueConflictAndPropagatesInfrastructureFailures() {
         var repository = new ActionTestAccountRepository();
         repository.conflict(true);
-        var action = new RegisterAccountAction(repository, credential -> new CredentialVerifier(TestFixtures.VERIFIER));
+        var action = new RegisterAccountAction(
+            repository,
+            new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER))
+        );
 
         assertEquals(RegistrationResult.ALREADY_EXISTS, action.execute(command()));
 
         var failed = new RegisterAccountAction(
             repository,
-            credential -> {
-                throw new IllegalStateException("Hashing unavailable");
-            }
+            new TestCredentialHasher(
+                credential -> {
+                    throw new IllegalStateException("Hashing unavailable");
+                }
+            )
         );
 
         assertThrows(IllegalStateException.class, () -> failed.execute(command()));

@@ -15,6 +15,11 @@ final class ActionTestAccountRepository implements AccountRepository {
     private int inserts;
 
     @Override
+    public Optional<Account> findByLogin(LoginName login) {
+        return Optional.ofNullable(saved);
+    }
+
+    @Override
     public boolean existsByLogin(LoginName login) {
         return saved != null;
     }

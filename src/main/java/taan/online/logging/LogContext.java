@@ -7,10 +7,18 @@ public final class LogContext implements AutoCloseable {
     private final Map<String, String> previous;
 
     public LogContext(String connectionId, String operationId) {
+        this(connectionId, operationId, null);
+    }
+
+    public LogContext(String connectionId, String operationId, String sessionId) {
         previous = MDC.getCopyOfContextMap();
         MDC.clear();
         MDC.put("connectionId", connectionId);
         MDC.put("operationId", operationId);
+
+        if (sessionId != null) {
+            MDC.put("sessionId", sessionId);
+        }
     }
 
     @Override

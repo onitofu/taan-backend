@@ -4,7 +4,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import java.util.concurrent.Semaphore;
 import java.util.function.Supplier;
@@ -36,7 +35,6 @@ final class TcpChannelInitializer extends ChannelInitializer<SocketChannel> {
         clients.add(channel);
         channel.pipeline().addLast(
             new ConnectionLimitHandler(permits, warnings),
-            new IdleStateHandler(settings.idleTimeoutSeconds(), 0, 0),
             new WriteTimeoutHandler(settings.writeTimeoutSeconds()),
             new FrameDecoder(settings.maxFrameBytes(), settings.frameAssemblyTimeoutSeconds()),
             new FrameEncoder(),

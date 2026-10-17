@@ -76,6 +76,51 @@
       "origin": "SYNTHETIC"
     },
     {
+      "first-packet-fixed-time.root.hex": "c43c7353dedef79107735fc04643e54d05b0cbae3183aa72329777879c68a124",
+      "original_file": "timed-first-packet.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "first-packet-minimal.root.hex": "d28e7ce745724320fd5e2f5a1535c7dae55f5c448473709e3fd5acddff9bd67e",
+      "original_file": "first-login-schema.md",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-failure-code0.root.hex": "e9628c2d2534ae5f17bca95a5c6e324296158a1fd304134372d7d4164a776e1d",
+      "original_file": "login-failure-code0.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-failure-code1.root.hex": "fef676f14e6137290c0d2c5db146b6cebb72fc16475df0bce772b09580e79cfa",
+      "original_file": "login-failure-code1.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-failure-code2.root.hex": "4ac5faa69da1575e4a598409ad68e5654c8a8d99adb567018ab1f67c3cdb6d9d",
+      "original_file": "login-failure-code2.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-failure-code7.root.hex": "8d9e2cdd3010e6492124455b8ed43444df3949f63dcf44f6246ddc0f0cafa790",
+      "original_file": "login-failure-code7.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-probe_only.root.hex": "e1d3eeeeb738c989d9a1ce75daa1b6adb4418046611204c21076745b1b866de1",
+      "original_file": "login-probe_only.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-success-empty-female.root.hex": "ed2029c7c65847986de8637d238f763e0a807c86a2f9176a7f72615b1c841938",
+      "original_file": "login-success-empty-female.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "login-two-local-accounts.root.hex": "f4444286d7dc5ffafde86e73be028f96341f5d99d64f946b0cda077dee3d449b",
+      "original_file": "login-two-local-accounts.root.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
       "negative-create-surrogate.root.hex": "36b8334422f1ee939ce5e781d7d70dba48b48d9691bda03baefac2581263e77a",
       "original_file": "negative-create-surrogate.root.bin",
       "origin": "SYNTHETIC"

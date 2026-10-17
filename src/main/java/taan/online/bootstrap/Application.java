@@ -5,6 +5,7 @@ import static taan.online.logging.LogField.port;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import java.time.Duration;
+import java.time.Clock;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -25,6 +26,9 @@ import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.server.ConnectionContext;
+import taan.online.session.controller.UserLoginPacketHandler;
+import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionRegistry;
 
 public final class Application implements AutoCloseable {
     private static final EventLogger LOG = EventLogger.forClass(Application.class);
@@ -61,6 +65,9 @@ public final class Application implements AutoCloseable {
         var check = new CheckAccountPacketHandler(new CheckAccountAction(accounts));
         var create = new CreateAccountPacketHandler(new RegisterAccountAction(accounts, hasher));
 
+        var sessions = new SessionRegistry();
+        var login = new LoginAction(accounts, hasher, sessions);
+
         workers = new ThreadPoolExecutor(
             config.workerThreads(),
             config.workerThreads(),
@@ -96,7 +103,10 @@ public final class Application implements AutoCloseable {
                 create,
                 warnings,
                 config.maxPendingRequests(),
-                config.requestTimeoutSeconds()
+                config.requestTimeoutSeconds(),
+                new UserLoginPacketHandler(login, sessions),
+                Clock.systemUTC(),
+                config.idleTimeoutSeconds()
             )
         );
     }

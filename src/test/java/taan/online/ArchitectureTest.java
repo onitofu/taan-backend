@@ -13,6 +13,80 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
     @ArchTest
+    static final ArchRule PROTOCOL_STATE_MACHINE_DEPENDENCIES = classes().that().haveNameMatching(
+        "taan\\.online\\.server\\.(ProtocolStateMachine|ProtocolPhase|ProtocolEvent|ProtocolDecision)"
+    ).should().onlyDependOnClassesThat().haveNameMatching(
+        "(?:\\[L)?(?:java\\.(?:lang\\..*|util\\.[^.]+)|taan\\.online\\.server\\."
+            + "(?:ProtocolStateMachine|ProtocolPhase|ProtocolEvent|ProtocolDecision));?"
+    );
+
+    @ArchTest
+    static final ArchRule SESSION_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.session.model..",
+            "taan.online.account.model.."
+        );
+
+    @ArchTest
+    static final ArchRule SESSION_SERVICE_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.service..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.session.model..",
+            "taan.online.session.service..",
+            "taan.online.account.model..",
+            "taan.online.account.service",
+            "taan.online.account.service.model..",
+            "taan.online.account.repository"
+        );
+
+    @ArchTest
+    static final ArchRule SESSION_SERVICE_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.service.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.session.service.model..",
+            "taan.online.session.model..",
+            "taan.online.account.model..",
+            "taan.online.account.service.model.."
+        );
+
+    @ArchTest
+    static final ArchRule SESSION_PACKET_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.protocol.packet..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.session.protocol.packet..");
+
+    @ArchTest
+    static final ArchRule SESSION_CODEC_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.protocol.codec..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.protocol..",
+            "taan.online.session.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule SESSION_CONTROLLER_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.session.controller..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.logging..",
+            "taan.online.session.controller..",
+            "taan.online.session.model..",
+            "taan.online.session.service..",
+            "taan.online.session.protocol..",
+            "taan.online.session.logging..",
+            "taan.online.account.model..",
+            "taan.online.account.service.model.."
+        );
+
+    @ArchTest
+    static final ArchRule SESSION_LAYER_CYCLES = slices().matching("taan.online.session.(*)..")
+        .should().beFreeOfCycles();
+
+    @ArchTest
     static final ArchRule ACCOUNT_MODEL_DEPENDENCIES = classes().that()
         .resideInAPackage("taan.online.account.model..")
         .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.account.model..");
@@ -24,6 +98,7 @@ class ArchitectureTest {
             "java..",
             "taan.online.logging..",
             "taan.online.account.logging..",
+            "taan.online.session.logging..",
             "taan.online.account.model..",
             "taan.online.account.service..",
             "taan.online.account.repository"
@@ -80,6 +155,7 @@ class ArchitectureTest {
             "java..",
             "taan.online.logging..",
             "taan.online.account.logging..",
+            "taan.online.session.logging..",
             "taan.online.account.model..",
             "taan.online.account.controller..",
             "taan.online.account.service..",
@@ -114,6 +190,7 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule LOG_CATALOG_DEPENDENCIES = classes().that().resideInAnyPackage(
         "taan.online.account.logging..",
+        "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
     ).should().onlyDependOnClassesThat().resideInAnyPackage(
@@ -121,6 +198,7 @@ class ArchitectureTest {
         "org.slf4j.event..",
         "taan.online.logging",
         "taan.online.account.logging..",
+        "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
     );
@@ -140,6 +218,7 @@ class ArchitectureTest {
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.server..",
             "taan.online.account..",
+            "taan.online.session..",
             "taan.online.persistence..",
             "taan.online.bootstrap.."
         );
@@ -150,6 +229,7 @@ class ArchitectureTest {
             "taan.online.network..",
             "taan.online.server..",
             "taan.online.account..",
+            "taan.online.session..",
             "taan.online.persistence..",
             "taan.online.bootstrap..",
             "io.netty.."
@@ -164,6 +244,8 @@ class ArchitectureTest {
             "taan.online.account.service..",
             "taan.online.account.repository..",
             "taan.online.account.security..",
+            "taan.online.session.model..",
+            "taan.online.session.service..",
             "java.sql..",
             "javax.sql.."
         );

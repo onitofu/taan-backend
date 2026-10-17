@@ -19,6 +19,12 @@ public final class Argon2idCredentialHasher implements CredentialHasher {
     }
 
     @Override
+    public boolean verify(ClientCredential credential, CredentialVerifier verifier) {
+        return Password.check(credential.hex(), verifier.encoded())
+            .with(Argon2Function.getInstanceFromHash(verifier.encoded()));
+    }
+
+    @Override
     public CredentialVerifier hash(ClientCredential credential) {
         return new CredentialVerifier(Password.hash(credential.hex()).addRandomSalt(16).with(function).getResult());
     }

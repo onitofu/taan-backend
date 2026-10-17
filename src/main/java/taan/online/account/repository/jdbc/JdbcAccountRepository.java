@@ -22,6 +22,37 @@ public final class JdbcAccountRepository implements AccountRepository {
     }
 
     @Override
+    public Optional<Account> findByLogin(LoginName login) {
+        String sql = "SELECT id, login, credential_verifier, gender, created_at FROM accounts WHERE login = ?";
+        Optional<Account> account;
+
+        try (var connection = dataSource.getConnection(); var statement = connection.prepareStatement(sql)) {
+            statement.setQueryTimeout(queryTimeoutSeconds);
+            statement.setString(1, login.value());
+
+            try (var rows = statement.executeQuery()) {
+                if (rows.next()) {
+                    account = Optional.of(
+                        new Account(
+                            new AccountId(rows.getLong("id")),
+                            new LoginName(rows.getString("login")),
+                            new CredentialVerifier(rows.getString("credential_verifier")),
+                            accountGender(rows.getShort("gender")),
+                            rows.getObject("created_at", OffsetDateTime.class).toInstant()
+                        )
+                    );
+                } else {
+                    account = Optional.empty();
+                }
+            }
+        } catch (SQLException failure) {
+            throw new AccountPersistenceException("findByLogin", failure);
+        }
+
+        return account;
+    }
+
+    @Override
     public boolean existsByLogin(LoginName login) {
         try (var connection = dataSource.getConnection();
             var statement = connection.prepareStatement("SELECT EXISTS (SELECT 1 FROM accounts WHERE login = ?)")) {

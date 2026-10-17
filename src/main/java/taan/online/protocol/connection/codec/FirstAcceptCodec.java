@@ -1,7 +1,8 @@
-package taan.online.protocol.connection;
+package taan.online.protocol.connection.codec;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import taan.online.protocol.connection.packet.PcFirstAccept;
 
 public final class FirstAcceptCodec {
     public byte[] encode(PcFirstAccept message) {
