@@ -217,6 +217,7 @@ class RoomConnectionTest {
             var room = harness.rooms.create(
                 harness.channels.membership(owner.value()).orElseThrow(),
                 RoomScenario.settings(),
+                null,
                 new RoomParticipant(owner.value(), character, 3),
                 new RecordingRoomOutput()
             );

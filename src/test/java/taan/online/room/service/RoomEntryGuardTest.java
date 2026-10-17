@@ -28,6 +28,7 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.model.RoomModelFixtures;
 import taan.online.room.model.RoomParticipant;
+import taan.online.room.model.RoomPassword;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.service.model.EnterRoomOutcome;
@@ -57,6 +58,7 @@ class RoomEntryGuardTest {
                     context,
                     target,
                     new RoomParticipant(b, scenario.owner(a).character(), 3),
+                    "",
                     out
                 ).outcome()
             );
@@ -68,7 +70,7 @@ class RoomEntryGuardTest {
             );
             assertEquals(
                 EnterRoomOutcome.REJECTED,
-                scenario.rooms.enter(context, target, new RoomParticipant(b, changed, 3), out).outcome()
+                scenario.rooms.enter(context, target, new RoomParticipant(b, changed, 3), "", out).outcome()
             );
             assertEquals(
                 EnterRoomOutcome.NOT_FOUND,
@@ -76,6 +78,7 @@ class RoomEntryGuardTest {
                     context,
                     new RoomEntryTarget(target.id(), UUID.randomUUID(), 1),
                     owner,
+                    "",
                     out
                 ).outcome()
             );
@@ -85,6 +88,7 @@ class RoomEntryGuardTest {
                     context,
                     new RoomEntryTarget(target.id(), target.generation(), 2),
                     owner,
+                    "",
                     out
                 ).outcome()
             );
@@ -94,14 +98,18 @@ class RoomEntryGuardTest {
                     scenario.channels.membership(c).orElseThrow(),
                     target,
                     scenario.owner(c),
+                    "",
                     out
                 ).outcome()
             );
-            scenario.characters.onCommit = () -> scenario.rooms.enter(context, target, owner, out);
+            scenario.characters.onCommit = () -> scenario.rooms.enter(context, target, owner, "", out);
 
-            assertEquals(EnterRoomOutcome.ALREADY_IN_ROOM, scenario.enter.execute(b, room, out).outcome());
+            assertEquals(EnterRoomOutcome.ALREADY_IN_ROOM, scenario.enter.execute(b, room, "", out).outcome());
             assertEquals(1, out.initializations.size());
-            assertEquals(EnterRoomOutcome.ALREADY_IN_ROOM, scenario.rooms.enter(context, target, owner, out).outcome());
+            assertEquals(
+                EnterRoomOutcome.ALREADY_IN_ROOM,
+                scenario.rooms.enter(context, target, owner, "", out).outcome()
+            );
         }
     }
 
@@ -144,14 +152,14 @@ class RoomEntryGuardTest {
             var bad = new RecordingRoomOutput();
             var good = new RecordingRoomOutput();
             int room = scenario.create.execute(a, RoomScenario.command(), bad).room().id().value();
-            scenario.enter.execute(b, room, good);
+            scenario.enter.execute(b, room, "", good);
             bad.onUpdate = () -> {
                 throw new IllegalStateException("Private room password");
             };
 
             assertEquals(
                 EnterRoomOutcome.ENTERED,
-                scenario.enter.execute(c, room, new RecordingRoomOutput()).outcome()
+                scenario.enter.execute(c, room, "", new RecordingRoomOutput()).outcome()
             );
             assertEquals("ROOM_NOTIFICATION_FAILED", bad.closed);
             assertEquals(1, good.updates.size());
@@ -166,7 +174,7 @@ class RoomEntryGuardTest {
             initialFailure.onInitialize = () -> {
                 throw new IllegalStateException("Private credential");
             };
-            var result = scenario.enter.execute(newcomer, room, initialFailure);
+            var result = scenario.enter.execute(newcomer, room, "", initialFailure);
 
             assertTrue(result.delivery().toCompletableFuture().isCompletedExceptionally());
             assertEquals("ROOM_NOTIFICATION_FAILED", initialFailure.closed);
@@ -206,6 +214,7 @@ class RoomEntryGuardTest {
                 int id = rooms.create(
                     channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),
+                    null,
                     new RoomParticipant(a, owner, 3),
                     new RecordingRoomOutput()
                 ).room().id().value();
@@ -224,6 +233,7 @@ class RoomEntryGuardTest {
                         context,
                         target,
                         new RoomParticipant(b, character, 3),
+                        "",
                         new RecordingRoomOutput()
                     ).outcome()
                 );
@@ -271,7 +281,7 @@ class RoomEntryGuardTest {
                 RoomScenario.command(),
                 new RecordingRoomOutput()
             ).room().id().value();
-            scenario.enter.execute(b, first, new RecordingRoomOutput());
+            scenario.enter.execute(b, first, "", new RecordingRoomOutput());
             var out = new RecordingRoomOutput();
             var second = scenario.create.execute(c, RoomScenario.command(), out).room();
             scenario.rooms.release(b, "PEER_CLOSED");
@@ -295,6 +305,7 @@ class RoomEntryGuardTest {
                 var first = rooms.create(
                     scenario.channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),
+                    new RoomPassword("old"),
                     scenario.owner(a),
                     new RecordingRoomOutput()
                 ).room();
@@ -311,6 +322,7 @@ class RoomEntryGuardTest {
                     rooms.create(
                         scenario.channels.membership(a).orElseThrow(),
                         RoomScenario.settings(),
+                        new RoomPassword("new"),
                         scenario.owner(a),
                         new RecordingRoomOutput()
                     );
@@ -318,7 +330,7 @@ class RoomEntryGuardTest {
 
                 assertEquals(
                     EnterRoomOutcome.NOT_FOUND,
-                    entry.execute(b, first.id().value(), new RecordingRoomOutput()).outcome()
+                    entry.execute(b, first.id().value(), "new", new RecordingRoomOutput()).outcome()
                 );
                 assertEquals(first.id(), rooms.current(a).orElseThrow().id());
                 assertNotEquals(first.generation(), rooms.current(a).orElseThrow().generation());

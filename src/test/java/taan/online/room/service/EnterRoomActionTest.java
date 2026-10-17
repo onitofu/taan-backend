@@ -30,11 +30,11 @@ class EnterRoomActionTest {
             int room = scenario.create.execute(a, RoomScenario.command(), outA).room().id().value();
             scenario.characters.onCommit = () -> assertFalse(Thread.holdsLock(scenario.rooms));
 
-            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(b, room, outB).outcome());
+            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(b, room, "", outB).outcome());
             assertEquals(2, outB.initializations.getFirst().slots().get(2).participant().character().id().value());
             assertEquals(List.of(2), outA.changedSlots.getFirst());
             assertEquals(2, scenario.rooms.forChannel(1).getFirst().playerCount());
-            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(c, room, outC).outcome());
+            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(c, room, "", outC).outcome());
             assertEquals(c, outC.initializations.getFirst().slots().get(1).participant().sessionId());
             assertEquals(1, outA.initializations.size());
             assertEquals(2, outA.updates.size());
@@ -44,7 +44,7 @@ class EnterRoomActionTest {
             assertEquals(RoomSlotState.OPEN, outA.updates.getLast().slots().get(2).state());
             assertFalse(outA.ownerChanges.getLast());
             scenario.lobby(b);
-            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(b, room, outB).outcome());
+            assertEquals(EnterRoomOutcome.ENTERED, scenario.enter.execute(b, room, "", outB).outcome());
             var current = scenario.rooms.membership(b).orElseThrow();
             scenario.rooms.release(old, "OLD_DELIVERY");
 
@@ -74,23 +74,26 @@ class EnterRoomActionTest {
             var output = new RecordingRoomOutput();
             int room = scenario.create.execute(a, RoomScenario.command(), output).room().id().value();
 
-            assertEquals(EnterRoomOutcome.IGNORED, scenario.enter.execute(UUID.randomUUID(), room, output).outcome());
-            assertEquals(EnterRoomOutcome.ALREADY_IN_ROOM, scenario.enter.execute(a, room, output).outcome());
-            assertEquals("NOT_IN_LOBBY", scenario.enter.execute(b, room, output).reason());
+            assertEquals(
+                EnterRoomOutcome.IGNORED,
+                scenario.enter.execute(UUID.randomUUID(), room, "", output).outcome()
+            );
+            assertEquals(EnterRoomOutcome.ALREADY_IN_ROOM, scenario.enter.execute(a, room, "", output).outcome());
+            assertEquals("NOT_IN_LOBBY", scenario.enter.execute(b, room, "", output).reason());
             scenario.channels.move(b, new MoveToCommand(0, 1, 0, 929));
 
-            assertEquals("NOT_IN_LOBBY", scenario.enter.execute(b, room, output).reason());
+            assertEquals("NOT_IN_LOBBY", scenario.enter.execute(b, room, "", output).reason());
             scenario.lobby(b);
-            assertEquals(EnterRoomOutcome.NOT_FOUND, scenario.enter.execute(b, 65535, output).outcome());
+            assertEquals(EnterRoomOutcome.NOT_FOUND, scenario.enter.execute(b, 65535, "", output).outcome());
             scenario.channels.move(b, new MoveToCommand(0, 2, 0, 929));
             scenario.lobby(b);
 
-            assertEquals(EnterRoomOutcome.NOT_FOUND, scenario.enter.execute(b, room, output).outcome());
+            assertEquals(EnterRoomOutcome.NOT_FOUND, scenario.enter.execute(b, room, "", output).outcome());
             scenario.channels.move(b, new MoveToCommand(0, 1, 0, 929));
             scenario.lobby(b);
             scenario.characters.stored.removeIf(value -> value.id().value() == 2);
 
-            assertEquals("CHARACTER_UNAVAILABLE", scenario.enter.execute(b, room, output).reason());
+            assertEquals("CHARACTER_UNAVAILABLE", scenario.enter.execute(b, room, "", output).reason());
             assertEquals(1, output.initializations.size());
             assertTrue(scenario.rooms.membership(b).isEmpty());
         }
@@ -119,10 +122,10 @@ class EnterRoomActionTest {
                 };
 
                 if (mode.equals("FAIL")) {
-                    assertThrows(IllegalStateException.class, () -> scenario.enter.execute(b, room, out));
+                    assertThrows(IllegalStateException.class, () -> scenario.enter.execute(b, room, "", out));
                     assertEquals(1, scenario.characters.rollbacks);
                 } else {
-                    var result = scenario.enter.execute(b, room, out);
+                    var result = scenario.enter.execute(b, room, "", out);
                     assertEquals(
                         switch (mode) {
                             case "CLOSE", "STOP" -> EnterRoomOutcome.IGNORED;

@@ -9,7 +9,7 @@ public record CreateRoomCommand(
     int rule,
     int playerCount,
     int capacity,
-    boolean protectedRoom,
+    String password,
     int mapId
 ) {
     @Override

@@ -91,7 +91,7 @@ public final class RoomScenario implements AutoCloseable {
     }
 
     public static CreateRoomCommand command() {
-        return new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, false, 0);
+        return new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, null, 0);
     }
 
     public static RoomRequestDispatcher dispatcher(

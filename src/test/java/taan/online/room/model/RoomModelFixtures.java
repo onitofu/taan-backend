@@ -13,6 +13,6 @@ public final class RoomModelFixtures {
     ) {
         var slots = IntStream.range(0, 8)
             .mapToObj(index -> new RoomSlot(index, RoomSlotState.CLOSED, null)).toList();
-        return new Room(id, generation, channelId, settings, owner, slots);
+        return new Room(id, generation, channelId, settings, null, owner, slots);
     }
 }

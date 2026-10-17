@@ -41,7 +41,7 @@ public final class EnterRoomAction {
         this.defaults = defaults;
     }
 
-    public EnterRoomResult execute(UUID id, int requestedRoomId, RoomPresenceOutput output) {
+    public EnterRoomResult execute(UUID id, int requestedRoomId, String password, RoomPresenceOutput output) {
         long started = System.nanoTime();
 
         if (!sessions.hasSelectedCharacter(id)) {
@@ -76,7 +76,7 @@ public final class EnterRoomAction {
         }
 
         var participant = new RoomParticipant(id, character.orElseThrow(), defaults.weaponId());
-        var result = rooms.enter(member, target.orElseThrow(), participant, output);
+        var result = rooms.enter(member, target.orElseThrow(), participant, password, output);
 
         if (result.outcome() == EnterRoomOutcome.ENTERED || result.outcome() == EnterRoomOutcome.IGNORED) {
             return result;

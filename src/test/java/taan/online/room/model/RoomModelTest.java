@@ -85,12 +85,12 @@ class RoomModelTest {
         for (int channel : new int[]{0, 65536}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new Room(new RoomId(1), UUID.randomUUID(), channel, settings, owner)
+                () -> new Room(new RoomId(1), UUID.randomUUID(), channel, settings, null, owner)
             );
         }
 
         var generation = UUID.randomUUID();
-        var room = new Room(new RoomId(1), generation, 65535, settings, owner);
+        var room = new Room(new RoomId(1), generation, 65535, settings, null, owner);
 
         assertEquals(new RoomId(1), room.id());
         assertEquals(generation, room.generation());

@@ -24,7 +24,7 @@ public final class LobbyRoomListMapper {
             room.playerCount(),
             room.capacity(),
             room.mapId(),
-            null
+            room.protectedRoom() ? "" : null
         );
     }
 }

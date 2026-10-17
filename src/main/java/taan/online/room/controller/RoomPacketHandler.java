@@ -60,7 +60,7 @@ public final class RoomPacketHandler {
 
         if (type == PqGameSessionEnter.TYPE_ID) {
             var request = codec.enter(root);
-            var result = enter.execute(id, request.roomId(), new ProtocolRoomView(output));
+            var result = enter.execute(id, request.roomId(), request.password(), new ProtocolRoomView(output));
 
             if (result.outcome() == EnterRoomOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
                 return ignored();
@@ -74,6 +74,7 @@ public final class RoomPacketHandler {
                 case ALREADY_IN_ROOM -> 3;
                 case NOT_FOUND -> 4;
                 case FULL -> 5;
+                case WRONG_PASSWORD -> 6;
                 case NO_SLOT -> 8;
                 default -> 0;
             };
@@ -87,7 +88,7 @@ public final class RoomPacketHandler {
             var request = codec.create(root);
             var info = request.info();
             var settings = info.details();
-            var command = settings == null ? new CreateRoomCommand(info.state(), 0, null, 0, 0, 0, 0, 0, false, 0)
+            var command = settings == null ? new CreateRoomCommand(info.state(), 0, null, 0, 0, 0, 0, 0, null, 0)
                 : new CreateRoomCommand(
                     info.state(),
                     settings.roomGrade(),
@@ -97,7 +98,7 @@ public final class RoomPacketHandler {
                     settings.rule(),
                     settings.playerCount(),
                     settings.capacity(),
-                    settings.password() != null,
+                    settings.password(),
                     settings.mapId()
                 );
             var result = create.execute(id, command, new ProtocolRoomView(output));

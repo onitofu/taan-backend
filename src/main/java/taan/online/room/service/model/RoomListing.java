@@ -16,7 +16,8 @@ public record RoomListing(
     RoomRule rule,
     int playerCount,
     int capacity,
-    int mapId
+    int mapId,
+    boolean protectedRoom
 ) {
     public RoomListing {
         Objects.requireNonNull(id);

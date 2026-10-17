@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.RecordingRoomOutput;
+import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.protocol.BinaryWriter;
@@ -70,10 +71,10 @@ class RoomPacketHandlerTest {
     void mapsCreateFailuresLeaveOutcomesAndClosedSessionsWithoutReinitializingState() throws Exception {
         try (var scenario = new RoomScenario()) {
             var id = scenario.player(1, 1);
-            for (String fixture : List.of("create-password", "info-without-details")) {
+            for (String fixture : List.of("invalid-password", "info-without-details")) {
                 byte[] request = fixture.equals("info-without-details") ? new BinaryWriter()
                     .unsignedInt(PqGameSessionCreate.TYPE_ID).unsignedInt(0x2e2a05ea).unsignedShort(999)
-                    .unsignedByte(0).bytes(new byte[21]).toByteArray() : root(fixture);
+                    .unsignedByte(0).bytes(new byte[21]).toByteArray() : RoomListingFixtures.create("Room", "");
                 assertEquals(
                     RoomReplyOutcome.CREATE_REJECTED,
                     scenario.handle(id, PqGameSessionCreate.TYPE_ID, request).outcome()
@@ -126,7 +127,7 @@ class RoomPacketHandlerTest {
             var slots = new ArrayList<>(original.slots());
             slots.set(0, new RoomSlot(0, RoomSlotState.OPEN, null));
             slots.set(2, new RoomSlot(2, RoomSlotState.OCCUPIED, owner));
-            var snapshot = new RoomSnapshot(original.id(), original.generation(), 1, settings, id, slots);
+            var snapshot = new RoomSnapshot(original.id(), original.generation(), 1, settings, id, slots, false);
             var result = new RoomSnapshotMapper().map(snapshot);
 
             assertEquals(1, result.info().details().gameType());

@@ -39,10 +39,14 @@ public final class RoomListingFixtures {
     }
 
     public static byte[] create(String title) {
+        return create(title, null);
+    }
+
+    public static byte[] create(String title, String password) {
         var output = new BinaryWriter().unsignedInt(PqGameSessionCreate.TYPE_ID);
         new GameSessionInfoCodec().encode(
             output,
-            new GameSessionInfo(65535, 5, new GameSessionDetails(0, title, 0, 0, 2, 0, 8, null, 1))
+            new GameSessionInfo(65535, 5, new GameSessionDetails(0, title, 0, 0, 2, 0, 8, password, 1))
         );
         return output.bytes(new byte[21]).toByteArray();
     }
@@ -57,7 +61,8 @@ public final class RoomListingFixtures {
             RoomRule.BONUS,
             1,
             8,
-            1
+            1,
+            false
         );
     }
 }
