@@ -212,6 +212,7 @@ class ArchitectureTest {
         "taan.online.character.logging..",
         "taan.online.channel.logging..",
         "taan.online.lobby.logging..",
+        "taan.online.room.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -223,6 +224,7 @@ class ArchitectureTest {
         "taan.online.character.logging..",
         "taan.online.channel.logging..",
         "taan.online.lobby.logging..",
+        "taan.online.room.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -242,6 +244,8 @@ class ArchitectureTest {
     static final ArchRule NETWORK_DEPENDENCIES = noClasses().that().resideInAPackage("taan.online.network..")
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.server..",
+            "taan.online.room..",
+            "taan.online.lobby..",
             "taan.online.account..",
             "taan.online.inventory..",
             "taan.online.channel..",
@@ -256,6 +260,8 @@ class ArchitectureTest {
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.network..",
             "taan.online.server..",
+            "taan.online.room..",
+            "taan.online.lobby..",
             "taan.online.account..",
             "taan.online.inventory..",
             "taan.online.channel..",
@@ -284,6 +290,9 @@ class ArchitectureTest {
             "taan.online.inventory.repository..",
             "taan.online.channel.model..",
             "taan.online.channel.service..",
+            "taan.online.room.model..",
+            "taan.online.room.service..",
+            "taan.online.room.repository..",
             "java.sql..",
             "javax.sql.."
         );
@@ -306,6 +315,7 @@ class ArchitectureTest {
             "taan.online.character.logging..",
             "taan.online.channel.logging..",
             "taan.online.lobby.logging..",
+            "taan.online.room.logging..",
             "taan.online.character.model..",
             "taan.online.inventory.model..",
             "taan.online.account.model..",

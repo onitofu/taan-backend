@@ -5,13 +5,16 @@ import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.previousChannelId;
 import static taan.online.logging.LogField.reason;
+import static taan.online.logging.LogField.recipientSessionId;
 import static taan.online.logging.LogField.sessionId;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import taan.online.channel.logging.ChannelLogEvent;
@@ -22,6 +25,7 @@ import taan.online.channel.model.ChannelGroupDefinition;
 import taan.online.channel.model.ChannelParticipant;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.model.ChannelSnapshot;
+import taan.online.channel.service.model.ChannelMembershipSnapshot;
 import taan.online.channel.service.model.ChannelSubscriptionResult;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.channel.service.model.MoveToOutcome;
@@ -55,6 +59,16 @@ public final class ChannelRegistry {
         var fills = new HashMap<Integer, Integer>();
         directory.channels().forEach(channel -> fills.put(channel.id(), fill(channel)));
         return new ChannelCatalogSnapshot(directory, fills);
+    }
+
+    public synchronized Optional<ChannelMembershipSnapshot> membership(UUID id) {
+        var member = members.get(id);
+
+        if (member == null || !sessions.hasSelectedCharacter(id)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ChannelMembershipSnapshot(member.channelId, member.phase, member.participant));
     }
 
     public synchronized MoveToResult move(UUID sessionId, MoveToCommand command) {
@@ -114,12 +128,7 @@ public final class ChannelRegistry {
         return new MoveToResult(
             outcome,
             command.channelId(),
-            target == null ? null : new ChannelSnapshot(
-                target,
-                fill(
-                    target
-                )
-            )
+            target == null ? null : new ChannelSnapshot(target, fill(target))
         );
     }
 
@@ -177,6 +186,53 @@ public final class ChannelRegistry {
         );
     }
 
+    public synchronized void hideFromLobby(UUID sessionId) {
+        unsubscribe(members.get(sessionId));
+    }
+
+    public void roomChanged(int channelId, int roomId) {
+        notifyRooms(channelId, roomId);
+    }
+
+    public void roomsReplaced(int channelId) {
+        notifyRooms(channelId, null);
+    }
+
+    private void notifyRooms(int channelId, Integer roomId) {
+        var failed = new ArrayList<ChannelPresenceOutput>();
+
+        synchronized (this) {
+            for (var member : List.copyOf(members.values())) {
+                UUID id = member.participant.sessionId();
+
+                if (member.channelId != channelId || member.phase != ChannelPresencePhase.LOBBY
+                    || !sessions.hasSelectedCharacter(id)) {
+                    continue;
+                }
+
+                var output = member.output;
+
+                try {
+                    if (roomId == null) {
+                        output.roomsReplaced();
+                    } else {
+                        output.roomChanged(roomId);
+                    }
+                } catch (RuntimeException failure) {
+                    LOG.failure(
+                        ChannelLogEvent.LOBBY_NOTIFICATION_FAILED,
+                        failure,
+                        channelId(channelId),
+                        recipientSessionId(id)
+                    );
+                    failed.add(output);
+                }
+            }
+        }
+
+        failed.forEach(output -> output.close("LOBBY_NOTIFICATION_FAILED"));
+    }
+
     public synchronized void release(UUID sessionId, String closeReason) {
         var member = members.remove(sessionId);
         unsubscribe(member);
@@ -194,9 +250,7 @@ public final class ChannelRegistry {
 
     private void releaseStaleCharacter(ChannelParticipant participant) {
         var previous = members.values().stream().filter(
-            member -> member.participant.characterId().equals(
-                participant.characterId()
-            )
+            member -> member.participant.characterId().equals(participant.characterId())
                 && !member.participant.sessionId().equals(participant.sessionId())
         )
             .map(member -> member.participant.sessionId()).toList();

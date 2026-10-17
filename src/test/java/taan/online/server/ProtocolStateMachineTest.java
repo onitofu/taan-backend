@@ -70,7 +70,11 @@ class ProtocolStateMachineTest {
         ProtocolEvent.MOVE_INVENTORY_ITEM,
         ProtocolEvent.MOVE_TO,
         ProtocolEvent.LOBBY_ENTER,
-        ProtocolEvent.LOBBY_LEAVE
+        ProtocolEvent.LOBBY_LEAVE,
+        ProtocolEvent.ROOM_CREATE,
+        ProtocolEvent.ROOM_ENTER,
+        ProtocolEvent.ROOM_LEAVE,
+        ProtocolEvent.ROOM_START
     );
 
     @Test
@@ -85,6 +89,9 @@ class ProtocolStateMachineTest {
 
         for (String phase : new String[]{"CHARACTER_SELECTED", "CHANNEL_SELECTED", "LOBBY"}) {
             for (String event : new String[]{
+                "ROOM_CREATE",
+                "ROOM_ENTER",
+                "ROOM_LEAVE",
                 "MOVE_INVENTORY_ITEM",
                 "MOVE_TO",
                 "LOBBY_ENTER",
@@ -103,7 +110,8 @@ class ProtocolStateMachineTest {
                 "SELECT_CHARACTER",
                 "SELECTED_REQUEST_IGNORED",
                 "CHANNEL_REQUEST_IGNORED",
-                "INVENTORY_REQUEST_IGNORED"
+                "INVENTORY_REQUEST_IGNORED",
+                "ROOM_REQUEST_IGNORED"
             }) {
                 expected.put(phase + "/" + event, new String[]{phase, event, "IGNORE", phase});
             }
@@ -112,18 +120,19 @@ class ProtocolStateMachineTest {
                 "KEEP_ALIVE_ACCEPTED",
                 "SELECTED_REQUEST_COMPLETED",
                 "CHANNEL_MOVE_REJECTED",
-                "INVENTORY_REQUEST_COMPLETED"
+                "INVENTORY_REQUEST_COMPLETED",
+                "ROOM_LEAVE_REPLAYED",
+                "ROOM_REQUEST_COMPLETED"
             }) {
                 expected.put(phase + "/" + event, new String[]{phase, event, "CONTINUE", phase});
             }
 
             for (String[] transition : new String[][]{
+                {"ROOM_CREATED", "ROOM"},
+                {"ROOM_LEFT", "CHANNEL_SELECTED"},
                 {"CHANNEL_MOVED", "CHANNEL_SELECTED"},
                 {"LOBBY_ENTERED", "LOBBY"},
-                {
-                    "LOBBY_UNAVAILABLE",
-                    "CHARACTER_SELECTED"
-                },
+                {"LOBBY_UNAVAILABLE", "CHARACTER_SELECTED"},
                 {"LOBBY_LEFT_MEMBER", "CHANNEL_SELECTED"},
                 {"LOBBY_LEFT_UNBOUND", "CHARACTER_SELECTED"}
             }) {
@@ -133,6 +142,43 @@ class ProtocolStateMachineTest {
                 );
             }
         }
+
+        for (String event : new String[]{
+            "KEEP_ALIVE",
+            "UPDATE_CASH",
+            "CLIENT_LOGGING",
+            "LOBBY_LEAVE",
+            "ROOM_CREATE",
+            "ROOM_ENTER",
+            "ROOM_LEAVE",
+            "ROOM_START"
+        }) {
+            expected.put("ROOM/" + event, new String[]{"ROOM", event, "PROCESS", "ROOM"});
+        }
+
+        for (String event : new String[]{
+            "USER_LOGIN",
+            "LOGIN_IGNORED",
+            "SELECT_CHARACTER",
+            "SELECTED_REQUEST_IGNORED",
+            "CHANNEL_REQUEST_IGNORED",
+            "ROOM_REQUEST_IGNORED"
+        }) {
+            expected.put("ROOM/" + event, new String[]{"ROOM", event, "IGNORE", "ROOM"});
+        }
+
+        for (String event : new String[]{
+            "KEEP_ALIVE_ACCEPTED",
+            "SELECTED_REQUEST_COMPLETED",
+            "LOBBY_LEFT_MEMBER",
+            "LOBBY_LEFT_UNBOUND",
+            "ROOM_LEAVE_REPLAYED",
+            "ROOM_REQUEST_COMPLETED"
+        }) {
+            expected.put("ROOM/" + event, new String[]{"ROOM", event, "CONTINUE", "ROOM"});
+        }
+
+        expected.put("ROOM/ROOM_LEFT", new String[]{"ROOM", "ROOM_LEFT", "CONTINUE", "CHANNEL_SELECTED"});
 
         for (var phase : ProtocolPhase.values()) {
             for (var event : ProtocolEvent.values()) {
@@ -194,7 +240,7 @@ class ProtocolStateMachineTest {
                 machine.on(ProtocolEvent.HANDSHAKE_COMPLETED);
                 machine.on(ProtocolEvent.LOGIN_SUCCEEDED);
             }
-            case CHARACTER_SELECTED, CHANNEL_SELECTED, LOBBY -> {
+            case CHARACTER_SELECTED, CHANNEL_SELECTED, LOBBY, ROOM -> {
                 machine.on(ProtocolEvent.HANDSHAKE_COMPLETED);
                 machine.on(ProtocolEvent.LOGIN_SUCCEEDED);
                 machine.on(ProtocolEvent.CHARACTER_SELECTED);
@@ -203,8 +249,12 @@ class ProtocolStateMachineTest {
                     machine.on(ProtocolEvent.CHANNEL_MOVED);
                 }
 
-                if (phase == ProtocolPhase.LOBBY) {
+                if (phase == ProtocolPhase.LOBBY || phase == ProtocolPhase.ROOM) {
                     machine.on(ProtocolEvent.LOBBY_ENTERED);
+                }
+
+                if (phase == ProtocolPhase.ROOM) {
+                    machine.on(ProtocolEvent.ROOM_CREATED);
                 }
             }
             case TERMINATED -> machine.on(ProtocolEvent.CONNECTION_CLOSED);

@@ -4,6 +4,7 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum ChannelLogEvent implements LogEvent {
+    LOBBY_NOTIFICATION_FAILED("channel.lobby_notification.failed", Level.ERROR, "Lobby notification failed"),
     REQUEST_CANCELLED("channel.request.cancelled", Level.DEBUG, "Channel request cancelled"),
     LIST_LOADED("channel.list.loaded", Level.DEBUG, "Channel list loaded"),
     LIST_FAILED("channel.list.failed", Level.ERROR, "Channel list failed"),

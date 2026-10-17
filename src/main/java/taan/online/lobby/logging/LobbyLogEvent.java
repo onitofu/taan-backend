@@ -4,6 +4,7 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum LobbyLogEvent implements LogEvent {
+    ROOM_LIST_QUEUED("lobby.room_list.queued", Level.DEBUG, "Lobby room list queued"),
     ENTERED("lobby.entered", Level.DEBUG, "Lobby entry processed"),
     LEFT("lobby.left", Level.DEBUG, "Lobby leave processed"),
     FAILED("lobby.request.failed", Level.ERROR, "Lobby request failed");

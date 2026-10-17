@@ -6,6 +6,7 @@ import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.lobby.protocol.codec.LobbyRequestCodec;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.lobby.service.LobbyRoomListingAccess;
 import taan.online.lobby.service.model.LobbyResult;
 import taan.online.lobby.view.ProtocolLobbyView;
 import taan.online.protocol.PacketOutput;
@@ -14,11 +15,21 @@ public final class LobbyPacketHandler {
     private final EnterLobbyAction enter;
     private final LeaveLobbyAction leave;
     private final SelectedCharacterAccess sessions;
+    private final LobbyRoomListingAccess rooms;
+    private final int maxFrameBytes;
 
-    public LobbyPacketHandler(EnterLobbyAction enter, LeaveLobbyAction leave, SelectedCharacterAccess sessions) {
+    public LobbyPacketHandler(
+        EnterLobbyAction enter,
+        LeaveLobbyAction leave,
+        SelectedCharacterAccess sessions,
+        LobbyRoomListingAccess rooms,
+        int maxFrameBytes
+    ) {
         this.enter = enter;
         this.leave = leave;
         this.sessions = sessions;
+        this.rooms = rooms;
+        this.maxFrameBytes = maxFrameBytes;
     }
 
     public LobbyHandlingResult handle(UUID id, byte[] root, boolean entering, PacketOutput output) {
@@ -27,7 +38,7 @@ public final class LobbyPacketHandler {
         }
 
         var codec = new LobbyRequestCodec();
-        var view = new ProtocolLobbyView(output);
+        var view = new ProtocolLobbyView(id, rooms, output, maxFrameBytes);
         LobbyResult result;
 
         if (entering) {

@@ -124,6 +124,16 @@
       "slot-open.frame.hex": "3d6437951a854be521cda8f2f8267c0c1cb072964f9a601a1f325370c70547c3",
       "original_file": "slot-open.frame.bin",
       "origin": "SYNTHETIC"
+    },
+    {
+      "start-empty.frame.hex": "dcb2dbde8961d334f9b07ca0a6c5cba0e66258ce92176e4d0096016c3486cf54",
+      "original_file": "PqGameSession_StartGame-empty.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "start-unavailable-notice.frame.hex": "4c06030a72af7f237bd7447608177dba614b4fcdc2e07ce6967d33dab44d5a2f",
+      "original_file": "start-unavailable-notice.frame.bin",
+      "origin": "SYNTHETIC"
     }
   ]
 }

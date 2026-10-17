@@ -8,5 +8,6 @@ public enum ProtocolPhase {
     CHARACTER_SELECTED,
     CHANNEL_SELECTED,
     LOBBY,
+    ROOM,
     TERMINATED
 }

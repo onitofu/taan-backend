@@ -7,7 +7,13 @@ import java.util.concurrent.CompletionStage;
 import taan.online.protocol.PacketOutput;
 
 public final class CollectingPacketOutput implements PacketOutput {
+    public final List<String> closeReasons = new ArrayList<>();
     public final List<List<byte[]>> batches = new ArrayList<>();
+
+    @Override
+    public void close(String reason) {
+        closeReasons.add(reason);
+    }
 
     @Override
     public CompletionStage<Void> send(List<byte[]> roots) {

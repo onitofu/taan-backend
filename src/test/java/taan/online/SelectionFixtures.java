@@ -33,6 +33,8 @@ import taan.online.inventory.model.InventoryKind;
 import taan.online.lobby.controller.LobbyPacketHandler;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.lobby.service.ListLobbyRoomsAction;
+import taan.online.room.service.RoomListingAccess;
 import taan.online.server.LobbyRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
@@ -156,10 +158,7 @@ public final class SelectionFixtures {
     public static byte[] fixture(String name) throws IOException {
         try (var input = SelectionFixtures.class.getResourceAsStream("/selection/" + name)) {
             return HexFormat.of().parseHex(
-                new String(input.readAllBytes(), StandardCharsets.US_ASCII).replaceAll(
-                    "\\s",
-                    ""
-                )
+                new String(input.readAllBytes(), StandardCharsets.US_ASCII).replaceAll("\\s", "")
             );
         }
     }
@@ -194,11 +193,7 @@ public final class SelectionFixtures {
         var channelAccess = new SessionChannelAccess(sessions);
         return new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(
-                new SelectCharacterAction(
-                    access,
-                    characters,
-                    InventoryFixtures.catalog()
-                ),
+                new SelectCharacterAction(access, characters, InventoryFixtures.catalog()),
                 access
             ),
             new GetChannelListPacketHandler(
@@ -236,14 +231,28 @@ public final class SelectionFixtures {
 
     public static LobbyRequestDispatcher lobby(SessionRegistry sessions) {
         var access = new SessionChannelAccess(sessions);
-        var registry = registry(access);
+        return lobby(sessions, registry(access));
+    }
+
+    public static LobbyRequestDispatcher lobby(SessionRegistry sessions, ChannelRegistry registry) {
+        return lobby(sessions, registry, channel -> List.of());
+    }
+
+    public static LobbyRequestDispatcher lobby(
+        SessionRegistry sessions,
+        ChannelRegistry registry,
+        RoomListingAccess rooms
+    ) {
+        var access = new SessionChannelAccess(sessions);
         return new LobbyRequestDispatcher(
-            new MoveToChannelPacketHandler(
-                new MoveToChannelAction(registry),
+            new MoveToChannelPacketHandler(new MoveToChannelAction(registry), access, 2181),
+            new LobbyPacketHandler(
+                new EnterLobbyAction(registry),
+                new LeaveLobbyAction(registry),
                 access,
-                2181
-            ),
-            new LobbyPacketHandler(new EnterLobbyAction(registry), new LeaveLobbyAction(registry), access)
+                new ListLobbyRoomsAction(registry, rooms),
+                16384
+            )
         );
     }
 

@@ -3,6 +3,7 @@ package taan.online.lobby.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import taan.online.ChannelFixtures;
@@ -14,6 +15,7 @@ import taan.online.channel.service.ChannelTestAccess;
 import taan.online.channel.service.MoveToChannelAction;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.lobby.service.ListLobbyRoomsAction;
 
 class LobbyControllerTest {
     @Test
@@ -51,13 +53,11 @@ class LobbyControllerTest {
             var id = access.add(1, 1);
             var registry = SelectionFixtures.registry(access);
             var handler = new LobbyPacketHandler(
-                new EnterLobbyAction(
-                    registry
-                ),
-                new LeaveLobbyAction(
-                    registry
-                ),
-                access
+                new EnterLobbyAction(registry),
+                new LeaveLobbyAction(registry),
+                access,
+                new ListLobbyRoomsAction(registry, channel -> List.of()),
+                16384
             );
             var output = new CollectingPacketOutput();
             var calls = new AtomicInteger();

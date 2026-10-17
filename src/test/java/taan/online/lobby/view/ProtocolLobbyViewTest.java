@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.RoomListingFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
@@ -19,7 +20,7 @@ class ProtocolLobbyViewTest {
     @Test
     void rendersBothGenderIconsInInitialAndIncrementalRosters() {
         var output = new CollectingPacketOutput();
-        var view = new ProtocolLobbyView(output);
+        var view = RoomListingFixtures.emptyView(output);
         var male = new ChannelParticipant(
             UUID.randomUUID(),
             new AccountId(1),

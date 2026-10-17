@@ -56,6 +56,11 @@ import taan.online.protocol.connection.codec.FirstAcceptCodec;
 import taan.online.protocol.connection.packet.PcFirstAccept;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.protocol.connection.packet.PqKeepAlive;
+import taan.online.room.logging.RoomLogEvent;
+import taan.online.room.protocol.packet.PqGameSessionCreate;
+import taan.online.room.protocol.packet.PqGameSessionEnter;
+import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.server.logging.ConnectionLogEvent;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.logging.SessionLogEvent;
@@ -72,10 +77,9 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private final ThreadPoolExecutor executor;
     private final AccountRequestDispatcher accounts;
     private final UserLoginPacketHandler login;
-    private final CharacterRequestDispatcher characters;
-    private final SelectedCharacterRequestDispatcher selected;
+    private final ConnectionRequestDispatcher requests;
+    private final RoomRequestDispatcher rooms;
     private final LobbyRequestDispatcher lobby;
-    private final InventoryRequestDispatcher inventories;
     private final int outputBatches;
     private final int outputBytes;
     private final int maxFrame;
@@ -108,15 +112,15 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         SelectedCharacterRequestDispatcher selected,
         LobbyRequestDispatcher lobby,
         InventoryRequestDispatcher inventories,
+        RoomRequestDispatcher rooms,
         int outputBatches,
         int outputBytes,
         int maxFrame
     ) {
         this.executor = executor;
-        this.selected = selected;
+        this.rooms = rooms;
         accounts = new AccountRequestDispatcher(check, create, login, clock);
         this.lobby = lobby;
-        this.inventories = inventories;
         this.outputBatches = outputBatches;
         this.outputBytes = outputBytes;
         this.maxFrame = maxFrame;
@@ -125,7 +129,14 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         this.timeoutSeconds = timeoutSeconds;
         this.login = login;
         this.idleTimeoutSeconds = idleTimeoutSeconds;
-        characters = new CharacterRequestDispatcher(confirmName, createCharacter, deleteCharacter);
+        requests = new ConnectionRequestDispatcher(
+            accounts,
+            new CharacterRequestDispatcher(confirmName, createCharacter, deleteCharacter),
+            selected,
+            lobby,
+            inventories,
+            rooms
+        );
     }
 
     @Override
@@ -164,7 +175,9 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 PqFirstPacket.TYPE_ID, PqUserLogin.TYPE_ID, PqKeepAlive.TYPE_ID,
                 PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID, PqSelectCharacter.TYPE_ID,
                 PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID,
-                PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID, PqMoveInventoryItem.TYPE_ID -> { }
+                PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID, PqMoveInventoryItem.TYPE_ID,
+                PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID,
+                PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID -> { }
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         }
 
@@ -230,11 +243,21 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             sessionId.toString()
         )) {
             try {
-                completion = dispatch(request);
+                completion = requests.dispatch(sessionId, request, output);
             } catch (MalformedPacketException failure) {
                 onEventLoop(context, () -> exceptionCaught(context, failure));
                 return;
             } catch (RuntimeException failure) {
+                if (RoomRequestDispatcher.accepts(request.type())) {
+                    LOG.failure(
+                        RoomRequestDispatcher.failureEvent(request.type()),
+                        failure,
+                        durationMs(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
+                    );
+                    onEventLoop(context, () -> close(context, "ROOM_OPERATION_FAILED"));
+                    return;
+                }
+
                 if (InventoryRequestDispatcher.accepts(request.type())) {
                     LOG.failure(
                         InventoryLogEvent.MOVE_FAILED,
@@ -282,26 +305,6 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         onEventLoop(context, () -> complete(context, result));
     }
 
-    private RequestCompletion dispatch(PendingRequest request) {
-        if (InventoryRequestDispatcher.accepts(request.type())) {
-            return inventories.dispatch(sessionId, request.root(), output);
-        }
-
-        if (LobbyRequestDispatcher.accepts(request.type())) {
-            return lobby.dispatch(request.type(), sessionId, request.root(), output);
-        }
-
-        if (SelectedCharacterRequestDispatcher.accepts(request.type())) {
-            return selected.dispatch(request.type(), sessionId, request.root(), output);
-        }
-
-        if (CharacterRequestDispatcher.accepts(request.type())) {
-            return characters.dispatch(request.type(), sessionId, request.root(), output);
-        }
-
-        return accounts.dispatch(request, output);
-    }
-
     private void onEventLoop(ChannelHandlerContext context, Runnable callback) {
         try {
             context.executor().execute(LogContext.propagate(callback));
@@ -339,6 +342,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             closeReason = completion.event() == ProtocolEvent.LOGIN_REJECTED
                 ? "LOGIN_REJECTED" : "REGISTRATION_COMPLETED";
             login.close(closeReason);
+            rooms.close(sessionId, closeReason);
             lobby.close(sessionId, closeReason);
         }
 
@@ -415,6 +419,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         }
 
         login.close(reason);
+        rooms.close(sessionId, reason);
         lobby.close(sessionId, reason);
         cancelWork(reason);
         pending.clear();
@@ -442,6 +447,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         phase = ConnectionPhase.CLOSED;
         protocol.on(ProtocolEvent.CONNECTION_CLOSED);
         login.close(closeReason);
+        rooms.close(sessionId, closeReason);
         lobby.close(sessionId, closeReason);
         if (output != null) {
             output.close();
@@ -468,6 +474,9 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             LogEvent event = switch (pending.peekFirst().type()) {
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
+                case PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID,
+                    PqGameSessionLeave.TYPE_ID, PqGameSessionStartGame.TYPE_ID ->
+                    RoomLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,
                     PqSelectCharacter.TYPE_ID, PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID ->
                     CharacterLogEvent.REQUEST_CANCELLED;
@@ -475,12 +484,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                     ChannelLogEvent.REQUEST_CANCELLED;
                 default -> AccountLogEvent.REQUEST_CANCELLED;
             };
-            LOG.log(
-                event,
-                connectionId(id.value()),
-                operationId(task.operationId()),
-                reason(reason)
-            );
+            LOG.log(event, connectionId(id.value()), operationId(task.operationId()), reason(reason));
         }
     }
 }

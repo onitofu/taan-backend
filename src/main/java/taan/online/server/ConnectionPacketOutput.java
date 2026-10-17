@@ -72,6 +72,11 @@ final class ConnectionPacketOutput implements PacketOutput {
         return batch.delivery();
     }
 
+    @Override
+    public void close(String reason) {
+        schedule(() -> closer.accept(reason));
+    }
+
     synchronized void close() {
         phase = OutputPhase.CLOSED;
         bytes = 0;

@@ -57,12 +57,22 @@ final class ProtocolStateMachine {
         selectedTransitions(ProtocolPhase.CHANNEL_SELECTED),
         ProtocolPhase.LOBBY,
         selectedTransitions(ProtocolPhase.LOBBY),
+        ProtocolPhase.ROOM,
+        roomTransitions(),
         ProtocolPhase.TERMINATED,
         Map.of()
     );
 
     private static Map<ProtocolEvent, ProtocolPhase> selectedTransitions(ProtocolPhase phase) {
         return Map.ofEntries(
+            entry(ProtocolEvent.ROOM_CREATE, phase),
+            entry(ProtocolEvent.ROOM_ENTER, phase),
+            entry(ProtocolEvent.ROOM_LEAVE, phase),
+            entry(ProtocolEvent.ROOM_CREATED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_LEFT, ProtocolPhase.CHANNEL_SELECTED),
+            entry(ProtocolEvent.ROOM_LEAVE_REPLAYED, phase),
+            entry(ProtocolEvent.ROOM_REQUEST_COMPLETED, phase),
+            entry(ProtocolEvent.ROOM_REQUEST_IGNORED, phase),
             entry(ProtocolEvent.USER_LOGIN, phase),
             entry(ProtocolEvent.LOGIN_IGNORED, phase),
             entry(ProtocolEvent.SELECT_CHARACTER, phase),
@@ -78,26 +88,40 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, phase),
             entry(ProtocolEvent.MOVE_TO, phase),
             entry(ProtocolEvent.LOBBY_ENTER, phase),
-            entry(
-                ProtocolEvent.LOBBY_LEAVE,
-                phase
-            ),
+            entry(ProtocolEvent.LOBBY_LEAVE, phase),
             entry(ProtocolEvent.CHANNEL_MOVED, ProtocolPhase.CHANNEL_SELECTED),
-            entry(
-                ProtocolEvent.CHANNEL_MOVE_REJECTED,
-                phase
-            ),
+            entry(ProtocolEvent.CHANNEL_MOVE_REJECTED, phase),
             entry(ProtocolEvent.LOBBY_ENTERED, ProtocolPhase.LOBBY),
-            entry(
-                ProtocolEvent.LOBBY_UNAVAILABLE,
-                ProtocolPhase.CHARACTER_SELECTED
-            ),
+            entry(ProtocolEvent.LOBBY_UNAVAILABLE, ProtocolPhase.CHARACTER_SELECTED),
             entry(ProtocolEvent.LOBBY_LEFT_MEMBER, ProtocolPhase.CHANNEL_SELECTED),
             entry(ProtocolEvent.LOBBY_LEFT_UNBOUND, ProtocolPhase.CHARACTER_SELECTED),
-            entry(
-                ProtocolEvent.CHANNEL_REQUEST_IGNORED,
-                phase
-            )
+            entry(ProtocolEvent.CHANNEL_REQUEST_IGNORED, phase)
+        );
+    }
+
+    private static Map<ProtocolEvent, ProtocolPhase> roomTransitions() {
+        return Map.ofEntries(
+            entry(ProtocolEvent.USER_LOGIN, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.LOGIN_IGNORED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.SELECT_CHARACTER, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.KEEP_ALIVE, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.UPDATE_CASH, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.CLIENT_LOGGING, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.SELECTED_REQUEST_COMPLETED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.LOBBY_LEAVE, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.LOBBY_LEFT_MEMBER, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.LOBBY_LEFT_UNBOUND, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.CHANNEL_REQUEST_IGNORED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_CREATE, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_ENTER, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_LEAVE, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_START, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_LEFT, ProtocolPhase.CHANNEL_SELECTED),
+            entry(ProtocolEvent.ROOM_LEAVE_REPLAYED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_REQUEST_COMPLETED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_REQUEST_IGNORED, ProtocolPhase.ROOM)
         );
     }
 
@@ -133,9 +157,10 @@ final class ProtocolStateMachine {
             case CHARACTER_SELECTION_REJECTED -> ProtocolDecision.CLOSE_WITHOUT_REPLY;
             case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
                 CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
-                CLIENT_LOGGING, MOVE_INVENTORY_ITEM, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE -> ProtocolDecision.PROCESS;
+                CLIENT_LOGGING, MOVE_INVENTORY_ITEM, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE,
+                ROOM_CREATE, ROOM_ENTER, ROOM_LEAVE, ROOM_START -> ProtocolDecision.PROCESS;
             case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED,
-                INVENTORY_REQUEST_IGNORED ->
+                INVENTORY_REQUEST_IGNORED, ROOM_REQUEST_IGNORED ->
                 ProtocolDecision.IGNORE;
             case REGISTRATION_CREATED, LOGIN_REJECTED -> ProtocolDecision.CLOSE_AFTER_REPLY;
             default -> ProtocolDecision.CONTINUE;
