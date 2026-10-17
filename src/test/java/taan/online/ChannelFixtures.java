@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import taan.online.lobby.protocol.packet.UserSimpleInfo;
 
 public final class ChannelFixtures {
     private ChannelFixtures() {
@@ -49,6 +50,10 @@ public final class ChannelFixtures {
     }
 
     public static List<Long> users(byte[] root) {
+        return roster(root).stream().map(UserSimpleInfo::characterId).toList();
+    }
+
+    public static List<UserSimpleInfo> roster(byte[] root) {
         var input = ByteBuffer.wrap(root).order(ByteOrder.LITTLE_ENDIAN);
         input.getInt();
         return users(input);
@@ -70,19 +75,21 @@ public final class ChannelFixtures {
         return ids;
     }
 
-    private static List<Long> users(ByteBuffer input) {
+    private static List<UserSimpleInfo> users(ByteBuffer input) {
         int count = input.getInt();
-        var ids = new ArrayList<Long>();
+        var users = new ArrayList<UserSimpleInfo>();
 
         for (int index = 0; index < count; index++) {
             assertEquals(0x29b00595, input.getInt());
-            ids.add(Integer.toUnsignedLong(input.getInt()));
+            long id = Integer.toUnsignedLong(input.getInt());
             int length = input.getInt();
-            input.position(input.position() + length * 2);
-            input.getShort();
-            assertEquals(0, input.get());
+            var name = new byte[length * 2];
+            input.get(name);
+            int level = Short.toUnsignedInt(input.getShort());
+            int genderIcon = Byte.toUnsignedInt(input.get());
+            users.add(new UserSimpleInfo(id, new String(name, StandardCharsets.UTF_16LE), level, genderIcon));
         }
 
-        return ids;
+        return users;
     }
 }

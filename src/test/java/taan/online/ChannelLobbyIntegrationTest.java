@@ -11,6 +11,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,9 +20,12 @@ import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.bootstrap.ApplicationConfig;
 import taan.online.bootstrap.InvalidConfigurationException;
+import taan.online.lobby.protocol.packet.UserSimpleInfo;
 
 class ChannelLobbyIntegrationTest {
     private static CharacterTestDatabase database;
+
+    private Map<Long, Integer> expectedGenderIcons;
 
     @BeforeAll
     static void start() {
@@ -48,9 +52,10 @@ class ChannelLobbyIntegrationTest {
     @Test
     void maintainsLiveRostersAcrossTwoClientsSwitchesLeaveAndReconnectOnTheSameTcp() throws Exception {
         var a = database.account("a@example.test", AccountGender.MALE);
-        var b = database.account("b@example.test", AccountGender.MALE);
+        var b = database.account("b@example.test", AccountGender.FEMALE);
         long first = database.create(a.id(), "HeroA", AccountGender.MALE).catalog().getFirst().id().value();
-        long second = database.create(b.id(), "HeroB", AccountGender.MALE).catalog().getFirst().id().value();
+        long second = database.create(b.id(), "HeroB", AccountGender.FEMALE).catalog().getFirst().id().value();
+        expectedGenderIcons = Map.of(first, 1, second, 2);
         var config = database.configuration();
 
         try (var application = new Application(config)) {
@@ -74,7 +79,7 @@ class ChannelLobbyIntegrationTest {
                 assertArrayEquals(SelectionFixtures.cash(0, 0), clientB.read());
 
                 assertEquals(List.of(first, second), enter(clientB, 1, 1));
-                assertEquals(List.of(second), ChannelFixtures.users(clientA.read()));
+                assertEquals(List.of(second), users(clientA.read()));
 
                 clientB.send(ChannelFixtures.enter(0));
 
@@ -87,7 +92,7 @@ class ChannelLobbyIntegrationTest {
                 assertEquals(List.of(first), ChannelFixtures.removed(clientB.read()));
                 assertEquals(List.of(first), enter(clientA, 2, 0));
                 assertEquals(List.of(first, second), enter(clientB, 2, 0));
-                assertEquals(List.of(second), ChannelFixtures.users(clientA.read()));
+                assertEquals(List.of(second), users(clientA.read()));
 
                 clientB.disconnect();
 
@@ -97,7 +102,7 @@ class ChannelLobbyIntegrationTest {
                     select(reconnected, b.login().value(), second);
 
                     assertEquals(List.of(first, second), enter(reconnected, 2, 1));
-                    assertEquals(List.of(second), ChannelFixtures.users(clientA.read()));
+                    assertEquals(List.of(second), users(clientA.read()));
 
                     reconnected.disconnect();
 
@@ -130,6 +135,7 @@ class ChannelLobbyIntegrationTest {
         var b = database.account("b@example.test", AccountGender.MALE);
         long first = database.create(a.id(), "HeroA", AccountGender.MALE).catalog().getFirst().id().value();
         long second = database.create(b.id(), "HeroB", AccountGender.MALE).catalog().getFirst().id().value();
+        expectedGenderIcons = Map.of(first, 1, second, 1);
         database.execute("UPDATE characters SET level = 2 WHERE id = " + second);
         var config = database.configuration();
 
@@ -196,6 +202,7 @@ class ChannelLobbyIntegrationTest {
     void appliesDatabaseEditsOnlyAfterRestartAndChecksSnapshotBudgetsBeforeListening() throws Exception {
         var owner = database.account("a@example.test", AccountGender.MALE);
         long id = database.create(owner.id(), "HeroA", AccountGender.MALE).catalog().getFirst().id().value();
+        expectedGenderIcons = Map.of(id, 1);
         var config = database.configuration();
         byte[] catalog;
 
@@ -272,6 +279,12 @@ class ChannelLobbyIntegrationTest {
         byte[] users = client.read();
 
         assertEquals(0x501d07d9, ChannelFixtures.type(users));
-        return ChannelFixtures.users(users);
+        return users(users);
+    }
+
+    private List<Long> users(byte[] root) {
+        var roster = ChannelFixtures.roster(root);
+        roster.forEach(user -> assertEquals(expectedGenderIcons.get(user.characterId()), user.genderIcon()));
+        return roster.stream().map(UserSimpleInfo::characterId).toList();
     }
 }

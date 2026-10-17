@@ -144,6 +144,7 @@ class ChannelArchitectureTest {
         .resideInAPackage("taan.online.lobby.view..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
+            "taan.online.account.model..",
             "taan.online.channel.service..",
             "taan.online.channel.model..",
             "taan.online.character.model..",

@@ -42,7 +42,7 @@ public final class LobbyResponseCodec {
 
         for (var user : users) {
             output.unsignedInt(UserSimpleInfo.TYPE_ID).unsignedInt(user.characterId()).wideString(user.name())
-                .unsignedShort(user.level()).unsignedByte(user.flag());
+                .unsignedShort(user.level()).unsignedByte(user.genderIcon());
         }
     }
 }

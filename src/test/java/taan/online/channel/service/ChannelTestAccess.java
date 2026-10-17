@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
 import taan.online.character.model.CharacterId;
@@ -25,7 +26,8 @@ public final class ChannelTestAccess implements SelectedCharacterAccess {
             new AccountId(id),
             new CharacterId(id),
             new CharacterName("Hero" + id),
-            level
+            level,
+            AccountGender.MALE
         );
     }
 
