@@ -48,7 +48,12 @@ public final class SessionRegistry {
             return false;
         }
 
-        session.selectedCharacter = new SelectedCharacterProfile(character.id(), character.name(), character.level());
+        session.selectedCharacter = new SelectedCharacterProfile(
+            character.id(),
+            character.name(),
+            character.level(),
+            character.gender()
+        );
         session.phase = SessionPhase.CHARACTER_SELECTED;
         return true;
     }
@@ -74,7 +79,8 @@ public final class SessionRegistry {
                 session.principal.accountId(),
                 character.id(),
                 character.name(),
-                character.level()
+                character.level(),
+                character.gender()
             )
         );
     }

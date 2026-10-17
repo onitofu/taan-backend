@@ -15,6 +15,7 @@ import taan.online.protocol.MalformedPacketException;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
 import taan.online.session.model.AuthenticatedPrincipal;
+import taan.online.session.model.SelectedCharacterProfile;
 import taan.online.session.model.SessionId;
 import taan.online.session.model.SessionPhase;
 
@@ -25,7 +26,7 @@ class SelectedSessionTest {
         var missing = new SessionId(UUID.randomUUID());
         var anonymous = registry.open();
         var character = CharacterFixtures.character(1001, new AccountId(1), AccountGender.FEMALE, "Luma");
-        var principal = new AuthenticatedPrincipal(new AccountId(1), AccountGender.FEMALE);
+        var principal = new AuthenticatedPrincipal(new AccountId(1), AccountGender.MALE);
 
         assertFalse(registry.trySelect(missing, character));
         assertFalse(registry.trySelect(anonymous, character));
@@ -59,6 +60,11 @@ class SelectedSessionTest {
         assertTrue(channels.hasSelectedCharacter(anonymous.value()));
         assertTrue(access.authenticatedAccount(anonymous.value()).isEmpty());
         assertEquals(character.id(), access.selectedCharacter(anonymous.value()).orElseThrow());
+        assertEquals(AccountGender.FEMALE, channels.selectedCharacter(anonymous.value()).orElseThrow().gender());
+        assertThrows(
+            NullPointerException.class,
+            () -> new SelectedCharacterProfile(character.id(), character.name(), character.level(), null)
+        );
         assertFalse(
             registry.trySelect(
                 anonymous,

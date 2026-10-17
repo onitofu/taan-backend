@@ -65,7 +65,10 @@ public final class ProtocolLobbyView implements ChannelPresenceOutput {
                 user.characterId().value(),
                 user.name().value(),
                 user.level(),
-                0
+                switch (user.gender()) {
+                    case MALE -> 1;
+                    case FEMALE -> 2;
+                }
             )
         ).toList();
     }
