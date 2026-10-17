@@ -42,19 +42,12 @@ class ChannelWireTest {
 
             assertArrayEquals(
                 fixture(name),
-                new MoveToResponseCodec().encode(
-                    new PrChannelMoveTo(result, 7, 2181, info)
-                )
+                new MoveToResponseCodec().encode(new PrChannelMoveTo(result, 7, 2181, info))
             );
         }
 
         var disabled = new MoveToResponseCodec().encode(
-            new PrChannelMoveTo(
-                103,
-                7,
-                2181,
-                new ChannelInfo("Local", 7, 2181, 100, 1, 109, true)
-            )
+            new PrChannelMoveTo(103, 7, 2181, new ChannelInfo("Local", 7, 2181, 100, 1, 109, true))
         );
 
         assertEquals(1, disabled[disabled.length - 1]);
@@ -70,46 +63,26 @@ class ChannelWireTest {
 
         assertArrayEquals(fixture("lobby-enter-response-0"), codec.enter(new PrLobbyEnter(1, 0)));
         assertArrayEquals(fixture("lobby-enter-response-4"), codec.enter(new PrLobbyEnter(1, 4)));
-        assertArrayEquals(fixture("PcLobby_InitRoomList-empty"), codec.rooms(new PcLobbyInitRoomList()));
+        assertArrayEquals(fixture("PcLobby_InitRoomList-empty"), codec.rooms(new PcLobbyInitRoomList(List.of())));
         assertArrayEquals(
             fixture("PcLobby_InitUserList-two"),
             codec.users(
                 new PcLobbyInitUserList(
-                    List.of(
-                        new UserSimpleInfo(1001, "HeroA", 1, 0),
-                        new UserSimpleInfo(1002, "Герой😀", 109, 0)
-                    )
+                    List.of(new UserSimpleInfo(1001, "HeroA", 1, 0), new UserSimpleInfo(1002, "Герой😀", 109, 0))
                 )
             )
         );
         assertArrayEquals(
             fixture("PcLobby_UpdateUserList-add"),
-            codec.update(
-                new PcLobbyUpdateUserList(
-                    List.of(new UserSimpleInfo(1002, "HeroB", 1, 0)),
-                    List.of()
-                )
-            )
+            codec.update(new PcLobbyUpdateUserList(List.of(new UserSimpleInfo(1002, "HeroB", 1, 0)), List.of()))
         );
         assertArrayEquals(
             fixture("PcLobby_UpdateUserList-remove"),
-            codec.update(
-                new PcLobbyUpdateUserList(
-                    List.of(),
-                    List.of(
-                        1002L
-                    )
-                )
-            )
+            codec.update(new PcLobbyUpdateUserList(List.of(), List.of(1002L)))
         );
         assertArrayEquals(
             fixture("PcLobby_UpdateUserList-replace"),
-            codec.update(
-                new PcLobbyUpdateUserList(
-                    List.of(new UserSimpleInfo(1001, "HeroA", 2, 0)),
-                    List.of(1001L)
-                )
-            )
+            codec.update(new PcLobbyUpdateUserList(List.of(new UserSimpleInfo(1001, "HeroA", 2, 0)), List.of(1001L)))
         );
         assertArrayEquals(fixture("lobby-leave-response"), codec.leave(new PrLobbyLeave()));
 

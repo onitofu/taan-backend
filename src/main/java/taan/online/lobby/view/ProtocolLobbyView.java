@@ -27,7 +27,7 @@ public final class ProtocolLobbyView implements ChannelPresenceOutput {
         return output.send(
             List.of(
                 codec.enter(new PrLobbyEnter(population, 0)),
-                codec.rooms(new PcLobbyInitRoomList()),
+                codec.rooms(new PcLobbyInitRoomList(List.of())),
                 codec.users(new PcLobbyInitUserList(map(users)))
             )
         );
@@ -37,14 +37,7 @@ public final class ProtocolLobbyView implements ChannelPresenceOutput {
     public CompletionStage<Void> update(List<ChannelParticipant> added, List<CharacterId> removed) {
         return output.send(
             List.of(
-                codec.update(
-                    new PcLobbyUpdateUserList(
-                        map(added),
-                        removed.stream().map(
-                            CharacterId::value
-                        ).toList()
-                    )
-                )
+                codec.update(new PcLobbyUpdateUserList(map(added), removed.stream().map(CharacterId::value).toList()))
             )
         );
     }

@@ -16,7 +16,7 @@ public final class LobbyResponseCodec {
     }
 
     public byte[] rooms(PcLobbyInitRoomList response) {
-        return new BinaryWriter().unsignedInt(PcLobbyInitRoomList.TYPE_ID).unsignedInt(0).toByteArray();
+        return new LobbyRoomListCodec().encode(response);
     }
 
     public byte[] users(PcLobbyInitUserList response) {
