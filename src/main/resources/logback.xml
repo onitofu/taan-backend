@@ -1,0 +1,11 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date{yyyy-MM-dd'T'HH:mm:ss.SSS'Z',UTC} %-5level %logger %mdc %kvp %msg%n%ex</pattern>
+        </encoder>
+    </appender>
+    <logger name="taan.online" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <root level="OFF"/>
+</configuration>

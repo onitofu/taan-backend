@@ -1,0 +1,181 @@
+package taan.online;
+
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
+
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.junit.AnalyzeClasses;
+import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchRule;
+
+@AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
+class ArchitectureTest {
+    @ArchTest
+    static final ArchRule ACCOUNT_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.account.model..");
+
+    @ArchTest
+    static final ArchRule ACCOUNT_SERVICE_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.service..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.logging..",
+            "taan.online.account.logging..",
+            "taan.online.account.model..",
+            "taan.online.account.service..",
+            "taan.online.account.repository"
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_SERVICE_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.service.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.account.model..",
+            "taan.online.account.service.model.."
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_REPOSITORY_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.repository")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.account.model..",
+            "taan.online.account.repository"
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_CORE_IO_DEPENDENCIES = noClasses().that().resideInAnyPackage(
+        "taan.online.account.model..",
+        "taan.online.account.service..",
+        "taan.online.account.repository"
+    ).should().dependOnClassesThat().resideInAnyPackage(
+        "java.sql..",
+        "javax.sql..",
+        "java.net..",
+        "java.io..",
+        "java.nio.channels..",
+        "java.nio.file.."
+    );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_JDBC_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.repository.jdbc..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "javax.sql..",
+            "taan.online.account.model..",
+            "taan.online.account.repository",
+            "taan.online.account.repository.jdbc..",
+            "taan.online.logging.."
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_CONTROLLER_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.controller..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.logging..",
+            "taan.online.account.logging..",
+            "taan.online.account.model..",
+            "taan.online.account.controller..",
+            "taan.online.account.service..",
+            "taan.online.account.protocol.packet.."
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_PACKET_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.protocol.packet..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.account.protocol.packet..");
+
+    @ArchTest
+    static final ArchRule ACCOUNT_CODEC_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.protocol.codec..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.account.protocol..",
+            "taan.online.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule ACCOUNT_SECURITY_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.account.security..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "com.password4j..",
+            "taan.online.account.model..",
+            "taan.online.account.service..",
+            "taan.online.account.security.."
+        );
+
+    @ArchTest
+    static final ArchRule LOG_CATALOG_DEPENDENCIES = classes().that().resideInAnyPackage(
+        "taan.online.account.logging..",
+        "taan.online.bootstrap.logging..",
+        "taan.online.server.logging.."
+    ).should().onlyDependOnClassesThat().resideInAnyPackage(
+        "java..",
+        "org.slf4j.event..",
+        "taan.online.logging",
+        "taan.online.account.logging..",
+        "taan.online.bootstrap.logging..",
+        "taan.online.server.logging.."
+    );
+
+    @ArchTest
+    static final ArchRule SHARED_LOGGING_DEPENDENCIES = classes().that().resideInAPackage("taan.online.logging..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "org.slf4j..", "taan.online.logging..");
+
+    @ArchTest
+    static final ArchRule LOGGING_BACKEND_DEPENDENCIES = noClasses().that().resideOutsideOfPackages(
+        "taan.online.logging..",
+        "taan.online.bootstrap.."
+    ).should().dependOnClassesThat().resideInAnyPackage("org.slf4j", "org.slf4j.spi..", "ch.qos.logback..");
+
+    @ArchTest
+    static final ArchRule NETWORK_DEPENDENCIES = noClasses().that().resideInAPackage("taan.online.network..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "taan.online.server..",
+            "taan.online.account..",
+            "taan.online.persistence..",
+            "taan.online.bootstrap.."
+        );
+
+    @ArchTest
+    static final ArchRule PROTOCOL_DEPENDENCIES = noClasses().that().resideInAPackage("taan.online.protocol..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "taan.online.network..",
+            "taan.online.server..",
+            "taan.online.account..",
+            "taan.online.persistence..",
+            "taan.online.bootstrap..",
+            "io.netty.."
+        );
+
+    @ArchTest
+    static final ArchRule SERVER_DEPENDENCIES = noClasses().that().resideInAPackage("taan.online.server..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "taan.online.persistence..",
+            "taan.online.bootstrap..",
+            "taan.online.account.model..",
+            "taan.online.account.service..",
+            "taan.online.account.repository..",
+            "taan.online.account.security..",
+            "java.sql..",
+            "javax.sql.."
+        );
+
+    @ArchTest
+    static final ArchRule DOMAIN_WIRE_CONVERSIONS = noMethods().that().areDeclaredInClassesThat()
+        .resideInAPackage("taan.online.account.model..").should().haveNameMatching("wireValue|fromWire");
+
+    @ArchTest
+    static final ArchRule MODULE_CYCLES = slices().matching("taan.online.(*)..").should().beFreeOfCycles();
+
+    @ArchTest
+    static final ArchRule ACCOUNT_LAYER_CYCLES = slices().matching("taan.online.account.(*)..")
+        .should().beFreeOfCycles();
+}
