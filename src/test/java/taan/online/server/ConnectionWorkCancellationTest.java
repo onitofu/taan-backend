@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -16,9 +17,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import taan.online.TestFixtures;
-import taan.online.SelectionFixtures;
 import taan.online.CharacterFixtures;
+import taan.online.SelectionFixtures;
+import taan.online.TestCredentialHasher;
+import taan.online.TestFixtures;
+import taan.online.account.controller.CheckAccountPacketHandler;
+import taan.online.account.controller.CreateAccountPacketHandler;
+import taan.online.account.model.CredentialVerifier;
+import taan.online.account.service.CheckAccountAction;
+import taan.online.account.service.RegisterAccountAction;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
 import taan.online.character.controller.DeleteCharacterPacketHandler;
@@ -27,18 +34,11 @@ import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
-import taan.online.session.service.SessionCharacterAccess;
-import taan.online.TestCredentialHasher;
-import taan.online.account.controller.CheckAccountPacketHandler;
-import taan.online.account.controller.CreateAccountPacketHandler;
-import taan.online.account.model.CredentialVerifier;
-import taan.online.account.service.CheckAccountAction;
-import taan.online.account.service.RegisterAccountAction;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
-import java.time.Clock;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
 class ConnectionWorkCancellationTest {
@@ -200,7 +200,11 @@ class ConnectionWorkCancellationTest {
                 access
             ),
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
-            SelectionFixtures.dispatcher(sessions, characters)
+            SelectionFixtures.dispatcher(sessions, characters),
+            SelectionFixtures.lobby(sessions),
+            64,
+            1048576,
+            16384
         );
         var channel = new EmbeddedChannel(new FrameEncoder(), handler);
         ByteBuf greeting = channel.readOutbound();

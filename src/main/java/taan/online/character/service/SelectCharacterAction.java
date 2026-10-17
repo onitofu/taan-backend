@@ -62,7 +62,7 @@ public final class SelectCharacterAction {
 
         CharacterId selectedId = result.character().id();
 
-        if (!sessions.trySelect(sessionId, selectedId)) {
+        if (!sessions.trySelect(sessionId, result.character())) {
             return ignored();
         }
 

@@ -4,19 +4,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.nio.charset.StandardCharsets;
-import java.util.HexFormat;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import taan.online.account.model.AccountGender;
 import taan.online.channel.controller.GetChannelListPacketHandler;
+import taan.online.channel.controller.MoveToChannelPacketHandler;
 import taan.online.channel.model.ChannelDefinition;
 import taan.online.channel.model.ChannelDirectory;
+import taan.online.channel.model.ChannelGroupDefinition;
+import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.GetChannelListAction;
+import taan.online.channel.service.MoveToChannelAction;
+import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.repository.CharacterRepository;
 import taan.online.character.service.SelectCharacterAction;
@@ -25,6 +30,10 @@ import taan.online.inventory.model.InventoryId;
 import taan.online.inventory.model.InventoryItem;
 import taan.online.inventory.model.InventoryItemId;
 import taan.online.inventory.model.InventoryKind;
+import taan.online.lobby.controller.LobbyPacketHandler;
+import taan.online.lobby.service.EnterLobbyAction;
+import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.server.LobbyRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
@@ -61,7 +70,7 @@ public final class SelectionFixtures {
 
             assertEquals(Integer.toString(id), attributes.get("id"));
             assertEquals(id == 1 ? "Moon" : "Terra", attributes.get("name"));
-            assertEquals("1", attributes.get("disable"));
+            assertEquals("0", attributes.get("disable"));
             assertEquals(Integer.toString(port), attributes.get("port"));
             assertEquals("127.0.0.1", attributes.get("ip"));
             assertEquals(0, input.getInt());
@@ -185,21 +194,54 @@ public final class SelectionFixtures {
         var channelAccess = new SessionChannelAccess(sessions);
         return new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
-            new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, directory()), channelAccess),
+            new GetChannelListPacketHandler(
+                new GetChannelListAction(channelAccess, registry(channelAccess)),
+                channelAccess
+            ),
             new CashRefreshPacketHandler(sessions),
-            new ClientLoggingPacketHandler(sessions)
+            new ClientLoggingPacketHandler(sessions),
+            3600
         );
     }
 
     public static ChannelDirectory directory() {
         return new ChannelDirectory(
-            "Solar",
-            2181,
             List.of(
-                new ChannelDefinition(1, "Moon"),
-                new ChannelDefinition(2, "Terra")
-            )
+                new ChannelGroupDefinition(
+                    1,
+                    "Solar",
+                    0,
+                    List.of(
+                        new ChannelDefinition(1, "Moon", true, 1, 109, 100),
+                        new ChannelDefinition(2, "Terra", true, 1, 109, 100)
+                    )
+                )
+            ),
+            2181
         );
+    }
+
+    public static ChannelRegistry registry(SelectedCharacterAccess access) {
+        var registry = new ChannelRegistry(access, 2181);
+        registry.initialize(directory().groups());
+        return registry;
+    }
+
+    public static LobbyRequestDispatcher lobby(SessionRegistry sessions) {
+        var access = new SessionChannelAccess(sessions);
+        var registry = registry(access);
+        return new LobbyRequestDispatcher(
+            new MoveToChannelPacketHandler(
+                new MoveToChannelAction(registry),
+                access,
+                2181
+            ),
+            new LobbyPacketHandler(new EnterLobbyAction(registry), new LeaveLobbyAction(registry), access)
+        );
+    }
+
+    public static void assertPlayableTime(byte[] root) {
+        assertEquals("e5070452000000000000000000100e0000100e00000000803f", HexFormat.of().formatHex(root));
     }
 
     public static byte[] channels() {

@@ -66,7 +66,10 @@ class ProtocolStateMachineTest {
         ProtocolEvent.SELECT_CHARACTER,
         ProtocolEvent.GET_CHANNEL_LIST,
         ProtocolEvent.UPDATE_CASH,
-        ProtocolEvent.CLIENT_LOGGING
+        ProtocolEvent.CLIENT_LOGGING,
+        ProtocolEvent.MOVE_TO,
+        ProtocolEvent.LOBBY_ENTER,
+        ProtocolEvent.LOBBY_LEAVE
     );
 
     @Test
@@ -78,6 +81,54 @@ class ProtocolStateMachineTest {
                 expected.put(values[0] + "/" + values[1], values);
             }
         );
+
+        for (String phase : new String[]{"CHARACTER_SELECTED", "CHANNEL_SELECTED", "LOBBY"}) {
+            for (String event : new String[]{
+                "MOVE_TO",
+                "LOBBY_ENTER",
+                "LOBBY_LEAVE",
+                "GET_CHANNEL_LIST",
+                "UPDATE_CASH",
+                "CLIENT_LOGGING",
+                "KEEP_ALIVE"
+            }) {
+                expected.put(phase + "/" + event, new String[]{phase, event, "PROCESS", phase});
+            }
+
+            for (String event : new String[]{
+                "USER_LOGIN",
+                "LOGIN_IGNORED",
+                "SELECT_CHARACTER",
+                "SELECTED_REQUEST_IGNORED",
+                "CHANNEL_REQUEST_IGNORED"
+            }) {
+                expected.put(phase + "/" + event, new String[]{phase, event, "IGNORE", phase});
+            }
+
+            for (String event : new String[]{
+                "KEEP_ALIVE_ACCEPTED",
+                "SELECTED_REQUEST_COMPLETED",
+                "CHANNEL_MOVE_REJECTED"
+            }) {
+                expected.put(phase + "/" + event, new String[]{phase, event, "CONTINUE", phase});
+            }
+
+            for (String[] transition : new String[][]{
+                {"CHANNEL_MOVED", "CHANNEL_SELECTED"},
+                {"LOBBY_ENTERED", "LOBBY"},
+                {
+                    "LOBBY_UNAVAILABLE",
+                    "CHARACTER_SELECTED"
+                },
+                {"LOBBY_LEFT_MEMBER", "CHANNEL_SELECTED"},
+                {"LOBBY_LEFT_UNBOUND", "CHARACTER_SELECTED"}
+            }) {
+                expected.put(
+                    phase + "/" + transition[0],
+                    new String[]{phase, transition[0], "CONTINUE", transition[1]}
+                );
+            }
+        }
 
         for (var phase : ProtocolPhase.values()) {
             for (var event : ProtocolEvent.values()) {
@@ -139,10 +190,18 @@ class ProtocolStateMachineTest {
                 machine.on(ProtocolEvent.HANDSHAKE_COMPLETED);
                 machine.on(ProtocolEvent.LOGIN_SUCCEEDED);
             }
-            case CHARACTER_SELECTED -> {
+            case CHARACTER_SELECTED, CHANNEL_SELECTED, LOBBY -> {
                 machine.on(ProtocolEvent.HANDSHAKE_COMPLETED);
                 machine.on(ProtocolEvent.LOGIN_SUCCEEDED);
                 machine.on(ProtocolEvent.CHARACTER_SELECTED);
+
+                if (phase != ProtocolPhase.CHARACTER_SELECTED) {
+                    machine.on(ProtocolEvent.CHANNEL_MOVED);
+                }
+
+                if (phase == ProtocolPhase.LOBBY) {
+                    machine.on(ProtocolEvent.LOBBY_ENTERED);
+                }
             }
             case TERMINATED -> machine.on(ProtocolEvent.CONNECTION_CLOSED);
             default -> throw new AssertionError(phase);

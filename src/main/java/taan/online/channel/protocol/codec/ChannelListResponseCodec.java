@@ -9,30 +9,41 @@ import taan.online.protocol.SBufferEncoder;
 public final class ChannelListResponseCodec {
     public byte[] encode(PrGetChannelList response) {
         var tree = new BinaryWriter();
-        node(tree, "content", List.of(), 1);
-        node(
-            tree,
-            "server",
-            List.of(Map.entry("name", response.groupName()), Map.entry("type", "0")),
-            response.channels().size()
-        );
+        node(tree, "content", List.of(), response.groups().size());
 
-        for (var channel : response.channels()) {
+        for (var group : response.groups()) {
             node(
                 tree,
-                "channel",
+                "server",
                 List.of(
-                    Map.entry("id", Integer.toString(channel.id())),
-                    Map.entry("name", channel.name()),
-                    Map.entry("ip", "127.0.0.1"),
-                    Map.entry("port", Integer.toString(response.port())),
-                    Map.entry("minLevel", "0"),
-                    Map.entry("maxLevel", "65535"),
-                    Map.entry("fill", "0"),
-                    Map.entry("disable", "1")
+                    Map.entry("name", group.name()),
+                    Map.entry(
+                        "type",
+                        Integer.toString(
+                            group.type()
+                        )
+                    )
                 ),
-                0
+                group.channels().size()
             );
+
+            for (var channel : group.channels()) {
+                node(
+                    tree,
+                    "channel",
+                    List.of(
+                        Map.entry("id", Integer.toString(channel.id())),
+                        Map.entry("name", channel.name()),
+                        Map.entry("ip", "127.0.0.1"),
+                        Map.entry("port", Integer.toString(response.port())),
+                        Map.entry("minLevel", Integer.toString(channel.minLevel())),
+                        Map.entry("maxLevel", Integer.toString(channel.maxLevel())),
+                        Map.entry("fill", Integer.toString(channel.fill())),
+                        Map.entry("disable", channel.enabled() ? "0" : "1")
+                    ),
+                    0
+                );
+            }
         }
 
         byte[] envelope = new SBufferEncoder().encode(tree.toByteArray());

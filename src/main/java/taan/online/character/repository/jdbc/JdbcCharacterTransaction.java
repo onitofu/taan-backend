@@ -2,19 +2,17 @@ package taan.online.character.repository.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.OffsetDateTime;
 import java.util.List;
-import taan.online.inventory.model.CharacterInventory;
-import taan.online.inventory.model.StarterEquipment;
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import java.util.Optional;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
-import taan.online.character.model.CharacterAppearance;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
 import taan.online.character.repository.CharacterTransaction;
+import taan.online.inventory.model.CharacterInventory;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 
 final class JdbcCharacterTransaction implements CharacterTransaction {
     private final Connection connection;
@@ -61,14 +59,10 @@ final class JdbcCharacterTransaction implements CharacterTransaction {
     }
 
     @Override
-    public Optional<GameCharacter> tryInsert(
-        CharacterName name,
-        CharacterAppearance appearance,
-        StarterEquipment starter
-    ) {
+    public Optional<CharacterId> tryInsert(CharacterName name, StarterEquipment starter) {
         String sql = "INSERT INTO characters (account_id, name) VALUES (?, ?) "
-            + "ON CONFLICT (name) WHERE deleted_at IS NULL DO NOTHING RETURNING id, level, created_at";
-        Optional<GameCharacter> created;
+            + "ON CONFLICT (name) WHERE deleted_at IS NULL DO NOTHING RETURNING id";
+        Optional<CharacterId> created;
 
         try (var statement = connection.prepareStatement(sql)) {
             statement.setQueryTimeout(timeout);
@@ -76,26 +70,11 @@ final class JdbcCharacterTransaction implements CharacterTransaction {
             statement.setString(2, name.value());
 
             try (var rows = statement.executeQuery()) {
-                if (rows.next()) {
-                    created = Optional.of(
-                        new GameCharacter(
-                            new CharacterId(rows.getLong("id")),
-                            owner,
-                            name,
-                            rows.getInt("level"),
-                            gender,
-                            appearance,
-                            rows.getObject("created_at", OffsetDateTime.class).toInstant()
-                        )
-                    );
-                } else {
-                    created = Optional.empty();
-                }
+                created = rows.next() ? Optional.of(new CharacterId(rows.getLong("id"))) : Optional.empty();
             }
 
             if (created.isPresent()) {
-                insertAppearance(created.orElseThrow());
-                inventoryRepository.create(connection, created.orElseThrow().id().value(), starter);
+                inventoryRepository.create(connection, created.orElseThrow().value(), starter);
             }
         } catch (SQLException failure) {
             throw new CharacterPersistenceException("tryInsert", failure);
@@ -155,27 +134,6 @@ final class JdbcCharacterTransaction implements CharacterTransaction {
             }
         } catch (SQLException failure) {
             throw new CharacterPersistenceException("close", failure);
-        }
-    }
-
-    private void insertAppearance(GameCharacter character) throws SQLException {
-        String sql = "INSERT INTO character_appearance_parts "
-            + "(character_id, slot, item_id, parameter0, parameter1, parameter2) VALUES (?, ?, ?, ?, ?, ?)";
-
-        try (var statement = connection.prepareStatement(sql)) {
-            statement.setQueryTimeout(timeout);
-
-            for (var part : character.appearance().parts()) {
-                statement.setLong(1, character.id().value());
-                statement.setShort(2, (short) part.slot());
-                statement.setLong(3, part.itemId());
-                statement.setInt(4, part.parameter0());
-                statement.setInt(5, part.parameter1());
-                statement.setInt(6, part.parameter2());
-                statement.addBatch();
-            }
-
-            statement.executeBatch();
         }
     }
 }

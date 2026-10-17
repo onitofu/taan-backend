@@ -3,8 +3,9 @@ package taan.online.session.service;
 import java.util.Optional;
 import java.util.UUID;
 import taan.online.account.model.AccountId;
-import taan.online.character.service.CharacterSelectionAccess;
 import taan.online.character.model.CharacterId;
+import taan.online.character.model.GameCharacter;
+import taan.online.character.service.CharacterSelectionAccess;
 import taan.online.session.model.AuthenticatedPrincipal;
 import taan.online.session.model.SessionId;
 
@@ -16,8 +17,8 @@ public final class SessionCharacterAccess implements CharacterSelectionAccess {
     }
 
     @Override
-    public boolean trySelect(UUID sessionId, CharacterId characterId) {
-        return sessions.trySelect(new SessionId(sessionId), characterId);
+    public boolean trySelect(UUID sessionId, GameCharacter character) {
+        return sessions.trySelect(new SessionId(sessionId), character);
     }
 
     @Override

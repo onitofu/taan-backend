@@ -6,30 +6,30 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.netty.buffer.ByteBuf;
-import taan.online.session.protocol.codec.UpdateCashCodec;
 import java.sql.SQLException;
 import java.time.Clock;
-import taan.online.channel.controller.GetChannelListPacketHandler;
-import taan.online.channel.service.GetChannelListAction;
-import taan.online.channel.service.SelectedCharacterAccess;
-import taan.online.character.controller.SelectCharacterPacketHandler;
-import taan.online.character.service.SelectCharacterAction;
-import taan.online.character.repository.TestCharacterRepository;
-import taan.online.session.service.SessionRegistry;
-import taan.online.session.service.SessionCharacterAccess;
-import taan.online.session.controller.CashRefreshPacketHandler;
-import taan.online.session.controller.ClientLoggingPacketHandler;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.LogCapture;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
-import taan.online.LogCapture;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.channel.controller.GetChannelListPacketHandler;
 import taan.online.channel.logging.ChannelLogEvent;
+import taan.online.channel.service.GetChannelListAction;
+import taan.online.channel.service.SelectedCharacterAccess;
+import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.logging.CharacterLogEvent;
+import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.repository.jdbc.CharacterPersistenceException;
+import taan.online.character.service.SelectCharacterAction;
+import taan.online.session.controller.CashRefreshPacketHandler;
+import taan.online.session.controller.ClientLoggingPacketHandler;
+import taan.online.session.protocol.codec.UpdateCashCodec;
+import taan.online.session.service.SessionCharacterAccess;
+import taan.online.session.service.SessionRegistry;
 
 class SelectionConnectionTest {
     @Test
@@ -43,6 +43,7 @@ class SelectionConnectionTest {
 
             harness.run();
             SelectionFixtures.assertSelection(read(harness), 1001, AccountGender.FEMALE);
+            SelectionFixtures.assertPlayableTime(read(harness));
 
             assertEquals(1, harness.jobs().size());
 
@@ -127,6 +128,7 @@ class SelectionConnectionTest {
                         harness.channel().writeInbound(CharacterFixtures.select(1001));
                         harness.run();
                         read(harness);
+                        SelectionFixtures.assertPlayableTime(read(harness));
                     }
 
                     byte[] root = List.of(
@@ -187,9 +189,13 @@ class SelectionConnectionTest {
         };
         var dispatcher = new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
-            new GetChannelListPacketHandler(new GetChannelListAction(broken, SelectionFixtures.directory()), broken),
+            new GetChannelListPacketHandler(
+                new GetChannelListAction(broken, SelectionFixtures.registry(broken)),
+                broken
+            ),
             new CashRefreshPacketHandler(sessions),
-            new ClientLoggingPacketHandler(sessions)
+            new ClientLoggingPacketHandler(sessions),
+            3600
         );
 
         try (var harness = new ConnectionContextTestHarness(8, sessions, true, Clock.systemUTC(), dispatcher);
@@ -198,6 +204,7 @@ class SelectionConnectionTest {
             harness.channel().writeInbound(CharacterFixtures.select(1001));
             harness.run();
             read(harness);
+            SelectionFixtures.assertPlayableTime(read(harness));
             harness.channel().writeInbound(SelectionFixtures.channels());
             harness.run();
 

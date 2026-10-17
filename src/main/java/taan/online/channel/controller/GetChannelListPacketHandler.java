@@ -3,7 +3,6 @@ package taan.online.channel.controller;
 import java.util.Optional;
 import java.util.UUID;
 import taan.online.channel.protocol.codec.ChannelListRequestCodec;
-import taan.online.channel.protocol.packet.ChannelEntry;
 import taan.online.channel.protocol.packet.PrGetChannelList;
 import taan.online.channel.service.GetChannelListAction;
 import taan.online.channel.service.SelectedCharacterAccess;
@@ -23,12 +22,7 @@ public final class GetChannelListPacketHandler {
         }
 
         new ChannelListRequestCodec().decode(root);
-        return action.execute(sessionId).filter(ignored -> sessions.hasSelectedCharacter(sessionId)).map(
-            directory -> new PrGetChannelList(
-                directory.groupName(),
-                directory.port(),
-                directory.channels().stream().map(channel -> new ChannelEntry(channel.id(), channel.name())).toList()
-            )
-        );
+        return action.execute(sessionId).filter(ignored -> sessions.hasSelectedCharacter(sessionId))
+            .map(snapshot -> new ChannelCatalogMapper().map(snapshot));
     }
 }

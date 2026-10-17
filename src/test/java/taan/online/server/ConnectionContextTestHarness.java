@@ -5,14 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.time.Clock;
 import java.time.Duration;
-import taan.online.account.model.AccountGender;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
-import taan.online.TestFixtures;
+import taan.online.CharacterFixtures;
 import taan.online.SelectionFixtures;
+import taan.online.TestCredentialHasher;
+import taan.online.TestFixtures;
+import taan.online.account.controller.CheckAccountPacketHandler;
+import taan.online.account.controller.CreateAccountPacketHandler;
+import taan.online.account.model.AccountGender;
+import taan.online.account.model.CredentialVerifier;
+import taan.online.account.service.CheckAccountAction;
+import taan.online.account.service.RegisterAccountAction;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
 import taan.online.character.controller.DeleteCharacterPacketHandler;
@@ -21,19 +29,11 @@ import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
-import taan.online.CharacterFixtures;
-import taan.online.session.service.SessionCharacterAccess;
-import taan.online.TestCredentialHasher;
-import taan.online.account.controller.CheckAccountPacketHandler;
-import taan.online.account.controller.CreateAccountPacketHandler;
-import taan.online.account.model.CredentialVerifier;
-import taan.online.account.service.CheckAccountAction;
-import taan.online.account.service.RegisterAccountAction;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
-import java.time.Clock;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
 final class ConnectionContextTestHarness implements AutoCloseable {
@@ -69,6 +69,17 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         boolean activate,
         Clock clock,
         SelectedCharacterRequestDispatcher selectedOverride
+    ) {
+        this(capacity, sessions, activate, clock, selectedOverride, null);
+    }
+
+    ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        boolean activate,
+        Clock clock,
+        SelectedCharacterRequestDispatcher selectedOverride,
+        LobbyRequestDispatcher lobbyOverride
     ) {
         var warnings = new WarningLogLimiter(
             LoggerFactory.getLogger(ConnectionContext.class),
@@ -111,7 +122,11 @@ final class ConnectionContextTestHarness implements AutoCloseable {
                 access
             ),
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
-            selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride
+            selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride,
+            lobbyOverride == null ? SelectionFixtures.lobby(sessions) : lobbyOverride,
+            64,
+            1048576,
+            16384
         );
         channel = new EmbeddedChannel(new FrameEncoder());
         channel.pipeline().addLast(handler);
@@ -119,6 +134,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
 
         if (activate) {
             handler.channelActive(context);
+            channel.runPendingTasks();
             ByteBuf greeting = channel.readOutbound();
 
             assertEquals(21, greeting.readIntLE());

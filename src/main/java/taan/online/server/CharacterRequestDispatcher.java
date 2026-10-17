@@ -9,8 +9,9 @@ import taan.online.character.protocol.codec.ConfirmNameResponseCodec;
 import taan.online.character.protocol.codec.CreateCharacterResponseCodec;
 import taan.online.character.protocol.codec.DeleteCharacterResponseCodec;
 import taan.online.character.protocol.packet.PqConfirmName;
-import taan.online.character.protocol.packet.PqNewCharacter;
 import taan.online.character.protocol.packet.PqDelCharacter;
+import taan.online.character.protocol.packet.PqNewCharacter;
+import taan.online.protocol.PacketOutput;
 
 final class CharacterRequestDispatcher {
     private final ConfirmNamePacketHandler confirm;
@@ -28,31 +29,34 @@ final class CharacterRequestDispatcher {
         this.delete = delete;
     }
 
-    RequestCompletion dispatch(int type, UUID sessionId, byte[] root) {
+    RequestCompletion dispatch(int type, UUID sessionId, byte[] root, PacketOutput output) {
         if (type == PqConfirmName.TYPE_ID) {
             return confirm.handle(sessionId, root).map(
-                reply -> new RequestCompletion(
+                reply -> RequestCompletion.reply(
+                    output,
                     ProtocolEvent.NAME_CHECK_COMPLETED,
                     new ConfirmNameResponseCodec().encode(reply)
                 )
-            ).orElseGet(() -> new RequestCompletion(ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
+            ).orElseGet(() -> RequestCompletion.reply(output, ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
         }
 
         if (type == PqDelCharacter.TYPE_ID) {
             return delete.handle(sessionId, root).map(
-                reply -> new RequestCompletion(
+                reply -> RequestCompletion.reply(
+                    output,
                     reply.result() == 0 ? ProtocolEvent.CHARACTER_DELETED : ProtocolEvent.CHARACTER_REJECTED,
                     new DeleteCharacterResponseCodec().encode(reply)
                 )
-            ).orElseGet(() -> new RequestCompletion(ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
+            ).orElseGet(() -> RequestCompletion.reply(output, ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
         }
 
         return create.handle(sessionId, root).map(
-            reply -> new RequestCompletion(
+            reply -> RequestCompletion.reply(
+                output,
                 reply.result() == 0 ? ProtocolEvent.CHARACTER_CREATED : ProtocolEvent.CHARACTER_REJECTED,
                 new CreateCharacterResponseCodec().encode(reply)
             )
-        ).orElseGet(() -> new RequestCompletion(ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
+        ).orElseGet(() -> RequestCompletion.reply(output, ProtocolEvent.CHARACTER_REQUEST_IGNORED, null));
     }
 
     static boolean accepts(int type) {

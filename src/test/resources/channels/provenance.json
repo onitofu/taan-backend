@@ -1,0 +1,104 @@
+{
+  "fixtures": [
+    {
+      "020-PqChannel_MoveTo.root.hex": "b675a75aba995f11dc70a195cbf7377349c5dcd03cc57b2a816a6dc3a0042660",
+      "original_file": "020-PqChannel_MoveTo.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcLobby_InitRoomList-empty.root.hex": "f471cbc88e62abf708a162f7a599d6baa5075180b8a9bc3ac6b51f20ff76a1a7",
+      "original_file": "PcLobby_InitRoomList-empty.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcLobby_InitUserList-two.root.hex": "93f3c540d7a56fedaf39f348f31f0751c19628e636b001541b29152e9a2af166",
+      "original_file": "PcLobby_InitUserList-two.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcLobby_UpdateUserList-add.root.hex": "90ec30a6fd13c8439258860e64cb9f209ee04b4e5f19df759017409d10243147",
+      "original_file": "PcLobby_UpdateUserList-add.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcLobby_UpdateUserList-remove.root.hex": "ddd6c7948c1d3a07862f4486caa1055a0ee4b676638064970f29f3ba834dbd39",
+      "original_file": "PcLobby_UpdateUserList-remove.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcLobby_UpdateUserList-replace.root.hex": "1ebdb3902ea9e2d9e37d1ff17df5c91833477e2f9ac3a81a2551720085fd648c",
+      "original_file": "PcLobby_UpdateUserList-replace.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcNotifyPlayableTime-one-hour.packet.hex": "5a86209a710a89507721d642173488e7cc12096bbef31dc2eeb7875163948c63",
+      "original_file": "PcNotifyPlayableTime-one-hour.packet.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-enter-request-0.root.hex": "ae612157898daeb774e6216ce1f4023ef7e37e2e2b81b55c0d0412d42c6b08af",
+      "original_file": "lobby-enter-request-0.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-enter-request-1.root.hex": "9920b19cec80b2bac3e42c4b483722bf6b6751c5861c2e8ac7fb461fe3e877c1",
+      "original_file": "lobby-enter-request-1.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-enter-response-0.root.hex": "2fff4577e898977a5eec2ebeaaaadd790d8b6050f594cfdf7ba8efee79bf7c61",
+      "original_file": "lobby-enter-response-0.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-enter-response-4.root.hex": "4863cbedce08e0b0432aefa17ac5842d10440bcca67affe9950700056e45dc97",
+      "original_file": "lobby-enter-response-4.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-leave-request.root.hex": "86bf2b44b092a3f7f53c5d63e84ac6d0118ed715302a8f3cbeebace6aceab8b0",
+      "original_file": "lobby-leave-request.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "lobby-leave-response.root.hex": "84cc699bb85ac10411b18aadb0f87afc21ba5c9cf63ff1c44a4c07ce0e71a01b",
+      "original_file": "lobby-leave-response.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-failure-100.root.hex": "0f1a3f83f402e54fcbc80e570e17697c60743f6f2adf0bddda1b28238a40637f",
+      "original_file": "move-to-failure-100.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-failure-101.root.hex": "ea075800b8d3639fa7238ed2bc5b6a8396312e640cd150153047d9d9bde7bbba",
+      "original_file": "move-to-failure-101.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-failure-102.root.hex": "1c6d78c068b04e52664ea2854826e7018f7312ba893df6d4eb36b639e7071650",
+      "original_file": "move-to-failure-102.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-failure-103.root.hex": "da4f11711594a2fa74d2d664c7d99ce3e5dd3b388bba4eb51b05421bf1a24ac0",
+      "original_file": "move-to-failure-103.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-failure-255.root.hex": "148940cf2b179b47d25209e0e6506b3ae25dbb644c08c52a75a13b38e009666b",
+      "original_file": "move-to-failure-255.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-request-normal.root.hex": "0f496e73631c894758b4a5dea02c8f46144a3e2b4627f4d0bd9df7540149813c",
+      "original_file": "move-to-request-normal.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-to-success-0.root.hex": "184e0d3aaafd2f5d5f579181840fa5d3f4270b78bc8200ceb18b2a71a3959248",
+      "original_file": "move-to-success-0.root.hex",
+      "origin": "UNKNOWN"
+    }
+  ]
+}

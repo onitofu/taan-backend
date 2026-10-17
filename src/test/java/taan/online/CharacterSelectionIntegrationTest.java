@@ -62,6 +62,7 @@ class CharacterSelectionIntegrationTest {
                     selected = client.read();
 
                     assertEquals(4, SelectionFixtures.assertSelection(selected, id, gender).size());
+                    SelectionFixtures.assertPlayableTime(client.read());
                     SelectionFixtures.assertChannels(client.read(), config.port());
 
                     client.sendTogether(SelectionFixtures.logging(id), SelectionFixtures.cash(0xffff_ffffL, 0));
@@ -80,6 +81,7 @@ class CharacterSelectionIntegrationTest {
                     client.sendFragmented(CharacterFixtures.select(id));
 
                     assertArrayEquals(selected, client.read());
+                    SelectionFixtures.assertPlayableTime(client.read());
 
                     client.disconnect();
                 }
@@ -93,6 +95,7 @@ class CharacterSelectionIntegrationTest {
                     client.send(CharacterFixtures.select(id));
 
                     assertArrayEquals(selected, client.read());
+                    SelectionFixtures.assertPlayableTime(client.read());
 
                     client.disconnect();
                 }
@@ -137,6 +140,7 @@ class CharacterSelectionIntegrationTest {
                 client.send(CharacterFixtures.select(own));
 
                 SelectionFixtures.assertSelection(client.read(), own, AccountGender.FEMALE);
+                SelectionFixtures.assertPlayableTime(client.read());
 
                 client.send(CharacterFixtures.delete(own, 0));
                 client.awaitClosure();
@@ -177,7 +181,6 @@ class CharacterSelectionIntegrationTest {
             )
         );
         assertEquals(0, database.scalar("SELECT count(*) FROM characters"));
-        assertEquals(0, database.scalar("SELECT count(*) FROM character_appearance_parts"));
         assertEquals(0, database.scalar("SELECT count(*) FROM inventories"));
         assertEquals(0, database.scalar("SELECT count(*) FROM inventory_items"));
 
@@ -220,7 +223,10 @@ class CharacterSelectionIntegrationTest {
                 statement.execute("UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE name = 'OldHero'");
                 statement.execute(
                     "INSERT INTO character_appearance_parts "
-                        + "SELECT c.id, slot, CASE WHEN slot IN (1, 3, 5, 8) THEN 100 + slot ELSE 0 END, 1, 2, 3 "
+                        + "SELECT c.id, slot, CASE WHEN slot IN (1, 3, 5, 8) THEN 100 + slot ELSE 0 END, "
+                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 1 ELSE 0 END, "
+                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 2 ELSE 0 END, "
+                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 3 ELSE 0 END "
                         + "FROM characters c CROSS JOIN generate_series(0, " + (complete ? 15 : 14) + ") slot"
                 );
             }

@@ -1,17 +1,19 @@
 package taan.online.character.repository;
 
 import java.time.Instant;
-import taan.online.inventory.model.CharacterInventory;
-import taan.online.inventory.model.StarterEquipment;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.AppearancePart;
 import taan.online.character.model.CharacterAppearance;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
+import taan.online.inventory.model.CharacterInventory;
+import taan.online.inventory.model.StarterEquipment;
 
 final class TestCharacterTransaction implements CharacterTransaction {
     private final TestCharacterRepository repository;
@@ -36,11 +38,7 @@ final class TestCharacterTransaction implements CharacterTransaction {
     }
 
     @Override
-    public Optional<GameCharacter> tryInsert(
-        CharacterName name,
-        CharacterAppearance appearance,
-        StarterEquipment starter
-    ) {
+    public Optional<CharacterId> tryInsert(CharacterName name, StarterEquipment starter) {
         repository.inserts++;
         repository.onInsert.run();
         repository.fail();
@@ -55,10 +53,23 @@ final class TestCharacterTransaction implements CharacterTransaction {
             name,
             1,
             repository.gender,
-            appearance,
+            new CharacterAppearance(
+                IntStream.range(0, 16).mapToObj(
+                    slot -> starter.items().stream().filter(item -> item.slot() == slot)
+                        .map(
+                            item -> new AppearancePart(
+                                slot,
+                                item.itemId(),
+                                item.parameter0(),
+                                item.parameter1(),
+                                item.parameter2()
+                            )
+                        ).findFirst().orElse(new AppearancePart(slot, 0, 0, 0, 0))
+                ).toList()
+            ),
             Instant.EPOCH
         );
-        return Optional.of(pending);
+        return Optional.of(pending.id());
     }
 
     @Override

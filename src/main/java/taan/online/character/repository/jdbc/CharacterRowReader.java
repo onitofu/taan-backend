@@ -14,10 +14,11 @@ final class CharacterRowReader {
     static List<GameCharacter> read(Connection connection, AccountId owner, int timeout) throws SQLException {
         String sql = """
             SELECT c.id, c.account_id, c.name, c.level, c.created_at, a.gender,
-                   p.slot, p.item_id, p.parameter0, p.parameter1, p.parameter2
+                   i.id AS equipment_id, p.slot, p.item_id, p.parameter0, p.parameter1, p.parameter2
             FROM characters c
             JOIN accounts a ON a.id = c.account_id
-            LEFT JOIN character_appearance_parts p ON p.character_id = c.id
+            LEFT JOIN inventories i ON i.character_id = c.id AND i.kind = 'EQUIPMENT'
+            LEFT JOIN inventory_items p ON p.inventory_id = i.id
             WHERE c.account_id = ? AND c.deleted_at IS NULL
             ORDER BY c.id, p.slot
             """;

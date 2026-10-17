@@ -1,8 +1,12 @@
 package taan.online.server;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import taan.online.protocol.PacketOutput;
 
-record RequestCompletion(ProtocolEvent event, byte[] response) {
+record RequestCompletion(ProtocolEvent event, CompletionStage<Void> delivery) {
     RequestCompletion {
         Objects.requireNonNull(event);
 
@@ -10,11 +14,14 @@ record RequestCompletion(ProtocolEvent event, byte[] response) {
             throw new IllegalArgumentException("A request completion requires an outcome event");
         }
 
-        response = response == null ? null : response.clone();
+        delivery = delivery == null ? CompletableFuture.completedFuture(null) : delivery;
     }
 
-    @Override
-    public byte[] response() {
-        return response == null ? null : response.clone();
+    static RequestCompletion reply(PacketOutput output, ProtocolEvent event, byte[] response) {
+        return new RequestCompletion(event, response == null ? null : output.send(List.of(response)));
+    }
+
+    static RequestCompletion batch(PacketOutput output, ProtocolEvent event, List<byte[]> responses) {
+        return new RequestCompletion(event, output.send(responses));
     }
 }

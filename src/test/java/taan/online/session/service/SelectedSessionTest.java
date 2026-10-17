@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import taan.online.CharacterFixtures;
 import taan.online.SelectionFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
-import taan.online.character.model.CharacterId;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
@@ -24,7 +24,7 @@ class SelectedSessionTest {
         var registry = new SessionRegistry();
         var missing = new SessionId(UUID.randomUUID());
         var anonymous = registry.open();
-        var character = new CharacterId(1001);
+        var character = CharacterFixtures.character(1001, new AccountId(1), AccountGender.FEMALE, "Luma");
         var principal = new AuthenticatedPrincipal(new AccountId(1), AccountGender.FEMALE);
 
         assertFalse(registry.trySelect(missing, character));
@@ -42,18 +42,50 @@ class SelectedSessionTest {
         var channels = new SessionChannelAccess(registry);
 
         assertFalse(channels.hasSelectedCharacter(anonymous.value()));
+        assertFalse(
+            registry.trySelect(
+                anonymous,
+                CharacterFixtures.character(
+                    9,
+                    new AccountId(2),
+                    AccountGender.MALE,
+                    "MaleHero"
+                )
+            )
+        );
+        assertTrue(registry.channelParticipant(missing).isEmpty());
         assertTrue(access.trySelect(anonymous.value(), character));
         assertEquals(SessionPhase.CHARACTER_SELECTED, registry.phase(anonymous));
         assertTrue(channels.hasSelectedCharacter(anonymous.value()));
         assertTrue(access.authenticatedAccount(anonymous.value()).isEmpty());
-        assertEquals(character, access.selectedCharacter(anonymous.value()).orElseThrow());
-        assertFalse(registry.trySelect(anonymous, new CharacterId(1002)));
+        assertEquals(character.id(), access.selectedCharacter(anonymous.value()).orElseThrow());
+        assertFalse(
+            registry.trySelect(
+                anonymous,
+                CharacterFixtures.character(
+                    1002,
+                    new AccountId(1),
+                    AccountGender.FEMALE,
+                    "Luma"
+                )
+            )
+        );
 
         registry.close(anonymous);
         var reconnected = registry.open();
         registry.tryClaim(reconnected, principal);
 
-        assertTrue(registry.trySelect(reconnected, new CharacterId(1002)));
+        assertTrue(
+            registry.trySelect(
+                reconnected,
+                CharacterFixtures.character(
+                    1002,
+                    new AccountId(1),
+                    AccountGender.FEMALE,
+                    "Luma"
+                )
+            )
+        );
         assertTrue(registry.close(anonymous).isEmpty());
         assertEquals(1002, registry.selectedCharacter(reconnected).orElseThrow().value());
         assertFalse(channels.hasSelectedCharacter(anonymous.value()));
@@ -70,7 +102,7 @@ class SelectedSessionTest {
         assertFalse(logging.handle(id.value(), new byte[0]));
 
         registry.tryClaim(id, new AuthenticatedPrincipal(new AccountId(1), AccountGender.MALE));
-        registry.trySelect(id, new CharacterId(1001));
+        registry.trySelect(id, CharacterFixtures.character(1001, new AccountId(1), AccountGender.MALE, "MaleHero"));
         var response = cash.handle(id.value(), SelectionFixtures.cash(123456, 0)).orElseThrow();
 
         assertEquals(0, response.balance());
