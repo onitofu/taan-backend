@@ -75,7 +75,8 @@ class ProtocolStateMachineTest {
         ProtocolEvent.ROOM_ENTER,
         ProtocolEvent.ROOM_QUICK_JOIN,
         ProtocolEvent.ROOM_LEAVE,
-        ProtocolEvent.ROOM_START
+        ProtocolEvent.ROOM_START,
+        ProtocolEvent.ROOM_SLOT_AVAILABILITY
     );
 
     @Test
@@ -155,7 +156,8 @@ class ProtocolStateMachineTest {
             "ROOM_ENTER",
             "ROOM_QUICK_JOIN",
             "ROOM_LEAVE",
-            "ROOM_START"
+            "ROOM_START",
+            "ROOM_SLOT_AVAILABILITY"
         }) {
             expected.put("ROOM/" + event, new String[]{"ROOM", event, "PROCESS", "ROOM"});
         }

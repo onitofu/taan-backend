@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import taan.online.protocol.PacketOutput;
+import taan.online.room.model.RoomSlotState;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 import taan.online.room.service.RoomPresenceOutput;
@@ -37,6 +39,16 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
         }
 
         return output.send(batch);
+    }
+
+    @Override
+    public CompletionStage<Void> slotAvailability(int slotIndex, RoomSlotState state) {
+        int selector = switch (state) {
+            case OPEN -> 1;
+            case CLOSED -> 0;
+            case OCCUPIED -> throw new IllegalArgumentException("Occupied slot is not an availability state");
+        };
+        return output.send(List.of(codec.encode(new PcGameSessionOpenCloseSlot(selector, slotIndex))));
     }
 
     @Override

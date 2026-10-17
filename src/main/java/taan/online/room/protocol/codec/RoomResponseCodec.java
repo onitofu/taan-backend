@@ -7,6 +7,7 @@ import taan.online.protocol.BinaryWriter;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.protocol.packet.GameSlotInfo;
 import taan.online.room.protocol.packet.PcGameSessionInit;
+import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
@@ -15,6 +16,27 @@ import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionOpenCloseSlot response) {
+        validateAvailability(response);
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionOpenCloseSlot.TYPE_ID))
+            .unsignedByte(response.selector()).unsignedByte(response.slotIndex()).toByteArray();
+    }
+
+    public PcGameSessionOpenCloseSlot slotAvailability(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionOpenCloseSlot.TYPE_ID);
+        var response = new PcGameSessionOpenCloseSlot(input.unsignedByte(), input.unsignedByte());
+        input.finish();
+        validateAvailability(response);
+        return response;
+    }
+
+    private void validateAvailability(PcGameSessionOpenCloseSlot response) {
+        if (response.selector() < 0 || response.selector() > 1
+            || response.slotIndex() < 0 || response.slotIndex() > 7) {
+            throw new MalformedPacketException("INVALID_ROOM_SLOT_AVAILABILITY");
+        }
+    }
+
     public byte[] encode(PrGameSessionQuickJoinFail response) {
         return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PrGameSessionQuickJoinFail.TYPE_ID)).toByteArray();
     }

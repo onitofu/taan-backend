@@ -4,6 +4,10 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    SLOT_OPENED("room.slot.opened", Level.DEBUG, "Room slot opening accepted"),
+    SLOT_CLOSED("room.slot.closed", Level.DEBUG, "Room slot closing accepted"),
+    SLOT_AVAILABILITY_REJECTED("room.slot.availability.rejected", Level.DEBUG, "Room slot availability rejected"),
+    SLOT_AVAILABILITY_FAILED("room.slot.availability.failed", Level.ERROR, "Room slot availability failed"),
     QUICK_JOIN_REJECTED("room.quick_join.rejected", Level.DEBUG, "Quick join rejected"),
     QUICK_JOIN_FAILED("room.quick_join.failed", Level.ERROR, "Quick join failed"),
     ENTRY_SUCCEEDED("room.entry.succeeded", Level.INFO, "Room entered"),

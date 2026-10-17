@@ -143,6 +143,25 @@ public final class Room {
         );
     }
 
+    public boolean setSlotAvailability(int index, RoomSlotState desiredState) {
+        if (index < 0 || index >= slots.size() || desiredState == null || desiredState == RoomSlotState.OCCUPIED) {
+            throw new IllegalArgumentException("Invalid room slot availability");
+        }
+
+        var previous = slots.get(index);
+
+        if (state != RoomState.WAITING || previous.participant() != null) {
+            throw new IllegalStateException("Room slot availability cannot be changed");
+        }
+
+        if (previous.state() == desiredState) {
+            return false;
+        }
+
+        slots.set(index, new RoomSlot(index, desiredState, null));
+        return true;
+    }
+
     public Optional<RoomSlot> leave(UUID sessionId) {
         var previous = slots.stream().filter(slot -> slot.participant() != null)
             .filter(slot -> slot.participant().sessionId().equals(sessionId)).findFirst();
