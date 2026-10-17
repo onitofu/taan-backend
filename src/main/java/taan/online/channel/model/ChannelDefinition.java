@@ -1,12 +1,9 @@
 package taan.online.channel.model;
 
-import java.util.Objects;
-
-public record ChannelDefinition(int id, String name) {
+public record ChannelDefinition(int id, String name, boolean enabled, int minLevel, int maxLevel, int capacity) {
     public ChannelDefinition {
-        Objects.requireNonNull(name);
-
-        if (id < 1 || id > 65534 || name.isBlank()) {
+        if (id < 1 || id > 65534 || name.isBlank() || name.codePointCount(0, name.length()) > 64
+            || minLevel < 1 || maxLevel > 109 || minLevel > maxLevel || capacity < 1) {
             throw new IllegalArgumentException("Invalid channel definition");
         }
     }

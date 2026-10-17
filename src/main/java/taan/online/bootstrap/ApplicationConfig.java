@@ -28,9 +28,9 @@ public record ApplicationConfig(
     String logLevel,
     int logWarnBurst,
     int logWarnIntervalSeconds,
-    String channelGroupName,
-    String channelOneName,
-    String channelTwoName
+    int outputBatches,
+    int outputBytes,
+    int playableTimeSeconds
 ) {
     public static ApplicationConfig fromEnvironment(Map<String, String> environment) {
         String level = required(environment, "LOG_LEVEL");
@@ -64,9 +64,9 @@ public record ApplicationConfig(
             level,
             positive(environment, "LOG_WARN_BURST"),
             positive(environment, "LOG_WARN_INTERVAL_SECONDS"),
-            required(environment, "CHANNEL_GROUP_NAME"),
-            required(environment, "CHANNEL_1_NAME"),
-            required(environment, "CHANNEL_2_NAME")
+            positive(environment, "BACKEND_MAX_PENDING_OUTPUT_BATCHES"),
+            positive(environment, "BACKEND_MAX_PENDING_OUTPUT_BYTES"),
+            positive(environment, "BACKEND_PLAYABLE_TIME_BOOTSTRAP_SECONDS")
         );
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {

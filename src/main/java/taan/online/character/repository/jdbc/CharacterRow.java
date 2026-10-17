@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.AppearancePart;
@@ -21,9 +23,14 @@ final class CharacterRow {
     private final int level;
     private final AccountGender gender;
     private final Instant createdAt;
-    private final List<AppearancePart> parts = new ArrayList<>();
+    private final List<AppearancePart> parts = IntStream.range(0, 16)
+        .mapToObj(slot -> new AppearancePart(slot, 0, 0, 0, 0)).collect(Collectors.toCollection(ArrayList::new));
 
     CharacterRow(ResultSet rows) throws SQLException {
+        if (rows.getObject("equipment_id") == null) {
+            throw new SQLException("Missing character equipment inventory", "22000");
+        }
+
         id = new CharacterId(rows.getLong("id"));
         owner = new AccountId(rows.getLong("account_id"));
         name = new CharacterName(rows.getString("name"));
@@ -34,15 +41,14 @@ final class CharacterRow {
 
     void addPart(ResultSet rows) throws SQLException {
         if (rows.getObject("slot") != null) {
-            parts.add(
-                new AppearancePart(
-                    rows.getInt("slot"),
-                    rows.getLong("item_id"),
-                    rows.getInt("parameter0"),
-                    rows.getInt("parameter1"),
-                    rows.getInt("parameter2")
-                )
+            var part = new AppearancePart(
+                rows.getInt("slot"),
+                rows.getLong("item_id"),
+                rows.getInt("parameter0"),
+                rows.getInt("parameter1"),
+                rows.getInt("parameter2")
             );
+            parts.set(part.slot(), part);
         }
     }
 

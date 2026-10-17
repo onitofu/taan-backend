@@ -90,7 +90,7 @@ class CharacterDeletionIntegrationTest {
         }
 
         assertEquals(1, database.scalar("SELECT count(*) FROM characters WHERE deleted_at IS NOT NULL"));
-        assertEquals(32, database.scalar("SELECT count(*) FROM character_appearance_parts"));
+        assertEquals(8, database.scalar("SELECT count(*) FROM inventory_items"));
     }
 
     @Test

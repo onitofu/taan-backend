@@ -16,6 +16,7 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.protocol.codec.ChannelListRequestCodec;
 import taan.online.channel.protocol.codec.ChannelListResponseCodec;
 import taan.online.channel.protocol.packet.ChannelEntry;
+import taan.online.channel.protocol.packet.ChannelGroupEntry;
 import taan.online.channel.protocol.packet.PrGetChannelList;
 import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.protocol.codec.SelectCharacterRequestCodec;
@@ -25,9 +26,9 @@ import taan.online.character.protocol.packet.PrSelectCharacter;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.service.SelectCharacterAction;
 import taan.online.character.service.TestAccountAccess;
+import taan.online.inventory.protocol.codec.InventoryCodec;
 import taan.online.inventory.protocol.packet.Inventory;
 import taan.online.inventory.protocol.packet.InventoryItemData;
-import taan.online.inventory.protocol.codec.InventoryCodec;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.SBufferEncoder;
 import taan.online.session.protocol.codec.ClientLoggingCodec;
@@ -97,7 +98,19 @@ class SelectionWireTest {
         assertArrayEquals(
             SelectionFixtures.fixture("solar-disabled.root.hex"),
             new ChannelListResponseCodec().encode(
-                new PrGetChannelList("Solar", 2181, List.of(new ChannelEntry(1, "Moon"), new ChannelEntry(2, "Terra")))
+                new PrGetChannelList(
+                    List.of(
+                        new ChannelGroupEntry(
+                            "Solar",
+                            0,
+                            List.of(
+                                new ChannelEntry(1, "Moon", false, 0, 65535, 0),
+                                new ChannelEntry(2, "Terra", false, 0, 65535, 0)
+                            )
+                        )
+                    ),
+                    2181
+                )
             )
         );
     }

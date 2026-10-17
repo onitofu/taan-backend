@@ -221,6 +221,7 @@ class ConnectionContextTest {
 
             harness.run();
             delay.fail();
+            harness.channel().runPendingTasks();
 
             assertFalse(harness.channel().isActive());
         }
@@ -236,6 +237,7 @@ class ConnectionContextTest {
 
             harness.handler().exceptionCaught(harness.context(), new IOException("Write already closing"));
             delay.fail();
+            harness.channel().runPendingTasks();
 
             assertFalse(harness.channel().isActive());
             assertEquals(1, harness.repository().inserts());

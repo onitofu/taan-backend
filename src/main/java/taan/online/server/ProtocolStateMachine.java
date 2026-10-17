@@ -52,21 +52,51 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.CHARACTER_REQUEST_IGNORED, ProtocolPhase.AUTHENTICATED)
         ),
         ProtocolPhase.CHARACTER_SELECTED,
-        Map.ofEntries(
-            entry(ProtocolEvent.USER_LOGIN, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.LOGIN_IGNORED, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.SELECT_CHARACTER, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.KEEP_ALIVE, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.GET_CHANNEL_LIST, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.UPDATE_CASH, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.CLIENT_LOGGING, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.SELECTED_REQUEST_COMPLETED, ProtocolPhase.CHARACTER_SELECTED),
-            entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, ProtocolPhase.CHARACTER_SELECTED)
-        ),
+        selectedTransitions(ProtocolPhase.CHARACTER_SELECTED),
+        ProtocolPhase.CHANNEL_SELECTED,
+        selectedTransitions(ProtocolPhase.CHANNEL_SELECTED),
+        ProtocolPhase.LOBBY,
+        selectedTransitions(ProtocolPhase.LOBBY),
         ProtocolPhase.TERMINATED,
         Map.of()
     );
+
+    private static Map<ProtocolEvent, ProtocolPhase> selectedTransitions(ProtocolPhase phase) {
+        return Map.ofEntries(
+            entry(ProtocolEvent.USER_LOGIN, phase),
+            entry(ProtocolEvent.LOGIN_IGNORED, phase),
+            entry(ProtocolEvent.SELECT_CHARACTER, phase),
+            entry(ProtocolEvent.KEEP_ALIVE, phase),
+            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, phase),
+            entry(ProtocolEvent.GET_CHANNEL_LIST, phase),
+            entry(ProtocolEvent.UPDATE_CASH, phase),
+            entry(ProtocolEvent.CLIENT_LOGGING, phase),
+            entry(ProtocolEvent.SELECTED_REQUEST_COMPLETED, phase),
+            entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, phase),
+            entry(ProtocolEvent.MOVE_TO, phase),
+            entry(ProtocolEvent.LOBBY_ENTER, phase),
+            entry(
+                ProtocolEvent.LOBBY_LEAVE,
+                phase
+            ),
+            entry(ProtocolEvent.CHANNEL_MOVED, ProtocolPhase.CHANNEL_SELECTED),
+            entry(
+                ProtocolEvent.CHANNEL_MOVE_REJECTED,
+                phase
+            ),
+            entry(ProtocolEvent.LOBBY_ENTERED, ProtocolPhase.LOBBY),
+            entry(
+                ProtocolEvent.LOBBY_UNAVAILABLE,
+                ProtocolPhase.CHARACTER_SELECTED
+            ),
+            entry(ProtocolEvent.LOBBY_LEFT_MEMBER, ProtocolPhase.CHANNEL_SELECTED),
+            entry(ProtocolEvent.LOBBY_LEFT_UNBOUND, ProtocolPhase.CHARACTER_SELECTED),
+            entry(
+                ProtocolEvent.CHANNEL_REQUEST_IGNORED,
+                phase
+            )
+        );
+    }
 
     private ProtocolPhase phase = ProtocolPhase.INITIAL;
 
@@ -95,13 +125,14 @@ final class ProtocolStateMachine {
         return switch (event) {
             case USER_LOGIN -> phase != ProtocolPhase.AWAITING_LOGIN
                 ? ProtocolDecision.IGNORE : ProtocolDecision.PROCESS;
-            case SELECT_CHARACTER -> phase == ProtocolPhase.CHARACTER_SELECTED
+            case SELECT_CHARACTER -> phase != ProtocolPhase.AUTHENTICATED
                 ? ProtocolDecision.IGNORE : ProtocolDecision.PROCESS;
             case CHARACTER_SELECTION_REJECTED -> ProtocolDecision.CLOSE_WITHOUT_REPLY;
             case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
                 CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
-                CLIENT_LOGGING -> ProtocolDecision.PROCESS;
-            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED -> ProtocolDecision.IGNORE;
+                CLIENT_LOGGING, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE -> ProtocolDecision.PROCESS;
+            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED ->
+                ProtocolDecision.IGNORE;
             case REGISTRATION_CREATED, LOGIN_REJECTED -> ProtocolDecision.CLOSE_AFTER_REPLY;
             default -> ProtocolDecision.CONTINUE;
         };

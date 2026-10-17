@@ -43,6 +43,18 @@ public final class LogField {
         return new LogField("characterId", value);
     }
 
+    public static LogField channelId(int value) {
+        return new LogField("channelId", value);
+    }
+
+    public static LogField previousChannelId(Integer value) {
+        return new LogField("previousChannelId", value);
+    }
+
+    public static LogField population(int value) {
+        return new LogField("population", value);
+    }
+
     public static LogField durationMs(long value) {
         return new LogField("durationMs", value);
     }

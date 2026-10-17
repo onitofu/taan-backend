@@ -1,9 +1,10 @@
 package taan.online.character.service;
 
 import java.util.Optional;
-import taan.online.character.model.CharacterId;
 import java.util.UUID;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterId;
+import taan.online.character.model.GameCharacter;
 
 public final class TestAccountAccess implements CharacterSelectionAccess {
     public boolean active = true;
@@ -15,14 +16,14 @@ public final class TestAccountAccess implements CharacterSelectionAccess {
     public final AccountId owner = new AccountId(1);
 
     @Override
-    public boolean trySelect(UUID sessionId, CharacterId characterId) {
+    public boolean trySelect(UUID sessionId, GameCharacter character) {
         onSelect.run();
 
         if (!active || selected != null) {
             return false;
         }
 
-        selected = characterId;
+        selected = character.id();
         return true;
     }
 

@@ -1,9 +1,6 @@
 package taan.online;
 
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import java.net.ServerSocket;
-import taan.online.inventory.model.StarterEquipment;
-import taan.online.inventory.model.StarterItem;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +20,9 @@ import taan.online.character.repository.jdbc.JdbcCharacterRepository;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.model.CreateCharacterCommand;
 import taan.online.character.service.model.CreateCharacterResult;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import taan.online.persistence.DatabaseMigrator;
 
 public final class CharacterTestDatabase implements AutoCloseable {
@@ -45,7 +45,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
 
     public void reset() throws SQLException {
         execute(
-            "TRUNCATE inventory_items, inventories, character_appearance_parts, characters, accounts RESTART IDENTITY"
+            "TRUNCATE inventory_items, inventories, characters, accounts RESTART IDENTITY"
         );
     }
 
@@ -81,23 +81,6 @@ public final class CharacterTestDatabase implements AutoCloseable {
                     rows.next();
                     id = rows.getLong(1);
                 }
-            }
-
-            try (var statement = connection.prepareStatement(
-                "INSERT INTO character_appearance_parts "
-                    + "(character_id, slot, item_id, parameter0, parameter1, parameter2) VALUES (?, ?, ?, ?, ?, ?)"
-            )) {
-                for (var part : appearance.parts()) {
-                    statement.setLong(1, id);
-                    statement.setInt(2, part.slot());
-                    statement.setLong(3, part.itemId());
-                    statement.setInt(4, part.parameter0());
-                    statement.setInt(5, part.parameter1());
-                    statement.setInt(6, part.parameter2());
-                    statement.addBatch();
-                }
-
-                statement.executeBatch();
             }
 
             new JdbcInventoryRepository(5).create(

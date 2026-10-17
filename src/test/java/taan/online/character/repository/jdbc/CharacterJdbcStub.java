@@ -22,6 +22,7 @@ final class CharacterJdbcStub {
     boolean corruptInventory;
     boolean nameConflict;
     boolean nullSlot;
+    boolean missingEquipment;
     short gender = 2;
 
     DataSource source() {
@@ -103,7 +104,8 @@ final class CharacterJdbcStub {
                     case "getString" -> arguments[0].equals("kind")
                         ? corruptInventory ? "INVALID" : List.of("BAG", "EQUIPMENT", "JEWEL_BOX").get(index.get() - 1)
                         : "Luma";
-                    case "getObject" -> arguments[0].equals("slot")
+                    case "getObject" -> arguments[0].equals("equipment_id") ? missingEquipment ? null : 1L
+                        : arguments[0].equals("slot")
                         ? nullSlot ? null : index.get() - 1 : OffsetDateTime.parse("2026-10-17T00:00:00Z");
                     case "close" -> null;
                     default -> throw new AssertionError(method.getName());

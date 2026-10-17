@@ -2,10 +2,10 @@ package taan.online.channel.protocol.packet;
 
 import java.util.List;
 
-public record PrGetChannelList(String groupName, int port, List<ChannelEntry> channels) {
+public record PrGetChannelList(List<ChannelGroupEntry> groups, int port) {
     public static final int TYPE_ID = 0x332c0637;
 
     public PrGetChannelList {
-        channels = List.copyOf(channels);
+        groups = List.copyOf(groups);
     }
 }

@@ -1,6 +1,5 @@
 package taan.online.character.repository.jdbc;
 
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,9 +10,10 @@ import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
-import taan.online.character.model.CharacterName;
 import taan.online.character.model.CharacterId;
+import taan.online.character.model.CharacterName;
 import taan.online.character.repository.CharacterTransaction;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 
 class CharacterRepositoryFailureTest {
     @Test
@@ -118,7 +118,6 @@ class CharacterRepositoryFailureTest {
                             case "archive" -> transaction.archive(new CharacterId(1));
                             case "insert", "batch" -> transaction.tryInsert(
                                 new CharacterName("Luma"),
-                                CharacterFixtures.appearance(AccountGender.FEMALE),
                                 CharacterFixtures.starter(AccountGender.FEMALE)
                             );
                             case "catalog" -> transaction.catalog();
@@ -138,7 +137,7 @@ class CharacterRepositoryFailureTest {
     @Test
     void reportsCorruptRowsAndNameConflictsWithoutGuessingMissingState() {
         var stub = new CharacterJdbcStub();
-        stub.nullSlot = true;
+        stub.missingEquipment = true;
         var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5));
 
         assertThrows(CharacterPersistenceException.class, () -> repository.findByAccount(new AccountId(1)));
@@ -147,22 +146,29 @@ class CharacterRepositoryFailureTest {
             assertThrows(CharacterPersistenceException.class, transaction::catalog);
         }
 
-        stub.nullSlot = false;
+        stub.missingEquipment = false;
         stub.gender = 0;
 
         assertThrows(CharacterPersistenceException.class, () -> repository.findByAccount(new AccountId(1)));
 
         stub.gender = 2;
+        stub.nullSlot = true;
+
+        assertTrue(
+            repository.findByAccount(new AccountId(1)).getFirst().appearance().parts().stream()
+                .allMatch(
+                    part -> part.itemId() == 0 && part.parameter0() == 0
+                        && part.parameter1() == 0 && part.parameter2() == 0
+                )
+        );
+
         stub.nameConflict = true;
 
         try (var transaction = transaction(stub)) {
             assertTrue(
                 transaction.tryInsert(
                     new CharacterName("Luma"),
-                    CharacterFixtures.appearance(AccountGender.FEMALE),
-                    CharacterFixtures.starter(
-                        AccountGender.FEMALE
-                    )
+                    CharacterFixtures.starter(AccountGender.FEMALE)
                 )
                     .isEmpty()
             );

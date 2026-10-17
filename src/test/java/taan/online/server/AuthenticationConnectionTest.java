@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import taan.online.LogCapture;
 import taan.online.TestFixtures;
-import taan.online.network.FrameDecoder;
 import taan.online.network.FrameAssemblyTimeoutEvent;
+import taan.online.network.FrameDecoder;
 import taan.online.session.service.SessionRegistry;
 
 class AuthenticationConnectionTest {
@@ -296,6 +296,7 @@ class AuthenticationConnectionTest {
             harness.channel().writeInbound(TestFixtures.login(TestFixtures.LOGIN, TestFixtures.CREDENTIAL));
             harness.run();
             delay.fail();
+            harness.channel().runPendingTasks();
 
             assertFalse(harness.channel().isActive());
 

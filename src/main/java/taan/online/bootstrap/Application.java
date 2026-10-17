@@ -1,23 +1,11 @@
 package taan.online.bootstrap;
 
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static taan.online.logging.LogField.port;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
-import java.time.Duration;
-import java.util.List;
-import taan.online.channel.controller.GetChannelListPacketHandler;
-import taan.online.channel.model.ChannelDefinition;
-import taan.online.channel.model.ChannelDirectory;
-import taan.online.channel.service.GetChannelListAction;
-import taan.online.character.controller.SelectCharacterPacketHandler;
-import taan.online.character.service.SelectCharacterAction;
-import taan.online.session.service.SessionChannelAccess;
-import taan.online.session.controller.CashRefreshPacketHandler;
-import taan.online.session.controller.ClientLoggingPacketHandler;
-import taan.online.server.SelectedCharacterRequestDispatcher;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -31,31 +19,51 @@ import taan.online.account.repository.jdbc.JdbcAccountRepository;
 import taan.online.account.security.Argon2idCredentialHasher;
 import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
+import taan.online.bootstrap.logging.ServerLogEvent;
+import taan.online.channel.controller.ChannelCatalogMapper;
+import taan.online.channel.controller.GetChannelListPacketHandler;
+import taan.online.channel.controller.MoveToChannelPacketHandler;
+import taan.online.channel.protocol.codec.ChannelListResponseCodec;
+import taan.online.channel.repository.jdbc.JdbcChannelRepository;
+import taan.online.channel.service.ChannelRegistry;
+import taan.online.channel.service.GetChannelListAction;
+import taan.online.channel.service.MoveToChannelAction;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
 import taan.online.character.controller.DeleteCharacterPacketHandler;
+import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.repository.jdbc.JdbcCharacterRepository;
 import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
-import taan.online.bootstrap.logging.ServerLogEvent;
+import taan.online.character.service.SelectCharacterAction;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
+import taan.online.lobby.controller.LobbyPacketHandler;
+import taan.online.lobby.service.EnterLobbyAction;
+import taan.online.lobby.service.LeaveLobbyAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.server.ConnectionContext;
+import taan.online.server.LobbyRequestDispatcher;
+import taan.online.server.SelectedCharacterRequestDispatcher;
+import taan.online.session.controller.CashRefreshPacketHandler;
+import taan.online.session.controller.ClientLoggingPacketHandler;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
-import taan.online.session.service.SessionRegistry;
+import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
+import taan.online.session.service.SessionRegistry;
 
 public final class Application implements AutoCloseable {
     private static final EventLogger LOG = EventLogger.forClass(Application.class);
 
     private final ApplicationConfig config;
     private final PGSimpleDataSource dataSource;
+    private final ChannelRegistry channels;
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
     private final CountDownLatch terminated = new CountDownLatch(1);
@@ -108,19 +116,17 @@ public final class Application implements AutoCloseable {
         );
 
         var channelAccess = new SessionChannelAccess(sessions);
-        var directory = new ChannelDirectory(
-            config.channelGroupName(),
-            config.port(),
-            List.of(
-                new ChannelDefinition(1, config.channelOneName()),
-                new ChannelDefinition(2, config.channelTwoName())
-            )
+        channels = new ChannelRegistry(channelAccess, config.port());
+        var lobby = new LobbyRequestDispatcher(
+            new MoveToChannelPacketHandler(new MoveToChannelAction(channels), channelAccess, config.port()),
+            new LobbyPacketHandler(new EnterLobbyAction(channels), new LeaveLobbyAction(channels), channelAccess)
         );
         var selected = new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
-            new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, directory), channelAccess),
+            new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, channels), channelAccess),
             new CashRefreshPacketHandler(sessions),
-            new ClientLoggingPacketHandler(sessions)
+            new ClientLoggingPacketHandler(sessions),
+            config.playableTimeSeconds()
         );
 
         workers = new ThreadPoolExecutor(
@@ -165,7 +171,11 @@ public final class Application implements AutoCloseable {
                 confirmName,
                 createCharacter,
                 new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
-                selected
+                selected,
+                lobby,
+                config.outputBatches(),
+                config.outputBytes(),
+                config.maxFrameBytes()
             )
         );
     }
@@ -174,6 +184,15 @@ public final class Application implements AutoCloseable {
         LOG.log(ServerLogEvent.STARTING);
 
         new DatabaseMigrator().migrate(dataSource);
+        channels.initialize(new JdbcChannelRepository(dataSource, config.socketTimeoutSeconds()).load());
+        var catalog = new ChannelListResponseCodec().encode(new ChannelCatalogMapper().map(channels.catalog()));
+        long largestRoster = channels.catalog().directory().channels().stream()
+            .mapToLong(channel -> 12L + 51L * Math.min(channel.capacity(), config.maxConnections())).max().orElse(12);
+
+        if (catalog.length > config.maxFrameBytes() || largestRoster > config.maxFrameBytes()) {
+            throw new InvalidConfigurationException("BACKEND_MAX_FRAME_BYTES", "Channel snapshots exceed frame limit");
+        }
+
         server.start();
 
         LOG.log(ServerLogEvent.READY, port(server.port()));

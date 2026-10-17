@@ -7,8 +7,6 @@ import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
 
 import java.util.List;
-import taan.online.inventory.model.StarterEquipment;
-import taan.online.inventory.model.StarterItem;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import taan.online.account.model.AccountId;
@@ -21,6 +19,8 @@ import taan.online.character.repository.CharacterTransaction;
 import taan.online.character.service.model.CreateCharacterCommand;
 import taan.online.character.service.model.CreateCharacterOutcome;
 import taan.online.character.service.model.CreateCharacterResult;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
 import taan.online.logging.EventLogger;
 
 public final class CreateCharacterAction {
@@ -100,7 +100,7 @@ public final class CreateCharacterAction {
                     )
                 ).toList()
         );
-        var created = transaction.tryInsert(name, command.appearance(), starter);
+        var created = transaction.tryInsert(name, starter);
 
         if (created.isEmpty()) {
             return rejected(CreateCharacterOutcome.NAME_TAKEN, account, started);
@@ -112,7 +112,7 @@ public final class CreateCharacterAction {
         LOG.log(
             CharacterLogEvent.CREATION_SUCCEEDED,
             accountId(account.value()),
-            characterId(created.orElseThrow().id().value()),
+            characterId(created.orElseThrow().value()),
             outcome("CREATED"),
             durationMs(elapsed(started))
         );

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Level;
 import io.netty.channel.ChannelHandlerContext;
-import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
@@ -153,7 +153,7 @@ class ProtocolConnectionTest {
                 harness.context(),
                 new RequestCompletion(
                     ProtocolEvent.LOGIN_SUCCEEDED,
-                    TestFixtures.CREDENTIAL.getBytes(StandardCharsets.US_ASCII)
+                    CompletableFuture.completedFuture(null)
                 )
             );
 

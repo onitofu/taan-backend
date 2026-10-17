@@ -1,6 +1,5 @@
 package taan.online.character.repository.jdbc;
 
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,6 +26,7 @@ import taan.online.account.model.LoginName;
 import taan.online.account.repository.jdbc.JdbcAccountRepository;
 import taan.online.character.model.CharacterName;
 import taan.online.character.service.model.CreateCharacterOutcome;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import taan.online.persistence.DatabaseMigrator;
 
 class CharacterPersistenceIntegrationTest {
@@ -81,7 +81,7 @@ class CharacterPersistenceIntegrationTest {
         assertEquals(result.catalog(), reloaded);
         assertEquals(CharacterFixtures.appearance(AccountGender.FEMALE), reloaded.getFirst().appearance());
         assertEquals(1, reloaded.getFirst().level());
-        assertEquals(16, database.scalar("SELECT count(*) FROM character_appearance_parts"));
+        assertEquals(4, database.scalar("SELECT count(*) FROM inventory_items"));
         assertTrue(database.characters().existsByName(new CharacterName("Luma")));
         assertFalse(database.characters().existsByName(new CharacterName("luma")));
     }
@@ -122,7 +122,7 @@ class CharacterPersistenceIntegrationTest {
         var catalog = database.characters().findByAccount(owner.id());
 
         assertEquals(10, catalog.size());
-        assertEquals(160, database.scalar("SELECT count(*) FROM character_appearance_parts"));
+        assertEquals(40, database.scalar("SELECT count(*) FROM inventory_items"));
         assertTrue(catalog.getFirst().id().value() < catalog.getLast().id().value());
         assertEquals(
             CreateCharacterOutcome.ACCOUNT_HAS_CHARACTERS,
@@ -165,9 +165,9 @@ class CharacterPersistenceIntegrationTest {
     }
 
     @Test
-    void rollsBackPartialBatchWritesAndRejectsIncompleteStoredSnapshots() throws Exception {
+    void rollsBackPartialBatchWritesAndRejectsMissingEquipmentInventories() throws Exception {
         var owner = database.account("rollback@example.test", AccountGender.MALE);
-        database.execute("ALTER TABLE character_appearance_parts ADD CONSTRAINT private_marker CHECK (slot <> 8)");
+        database.execute("ALTER TABLE inventory_items ADD CONSTRAINT private_marker CHECK (slot <> 8)");
 
         try {
             var failure = assertThrows(
@@ -178,17 +178,20 @@ class CharacterPersistenceIntegrationTest {
             assertFalse(failure.getMessage().contains("MaleHero"));
             assertFalse(failure.getCause().getMessage().contains("private_marker"));
             assertEquals(0, database.scalar("SELECT count(*) FROM characters"));
-            assertEquals(0, database.scalar("SELECT count(*) FROM character_appearance_parts"));
+            assertEquals(0, database.scalar("SELECT count(*) FROM inventory_items"));
         } finally {
-            database.execute("ALTER TABLE character_appearance_parts DROP CONSTRAINT private_marker");
+            database.execute("ALTER TABLE inventory_items DROP CONSTRAINT private_marker");
         }
 
         database.create(owner.id(), "MaleHero", AccountGender.MALE);
-        database.execute("DELETE FROM character_appearance_parts WHERE slot = 15");
+        database.execute("DELETE FROM inventory_items");
 
-        assertThrows(CharacterPersistenceException.class, () -> database.characters().findByAccount(owner.id()));
+        var empty = database.characters().findByAccount(owner.id()).getFirst().appearance();
 
-        database.execute("DELETE FROM character_appearance_parts");
+        assertEquals(16, empty.parts().size());
+        assertTrue(empty.parts().stream().allMatch(part -> part.itemId() == 0));
+
+        database.execute("DELETE FROM inventories WHERE kind = 'EQUIPMENT'");
 
         assertThrows(CharacterPersistenceException.class, () -> database.characters().findByAccount(owner.id()));
         assertThrows(
@@ -217,12 +220,12 @@ class CharacterPersistenceIntegrationTest {
         for (String sql : List.of(
             "UPDATE characters SET level = 0",
             "UPDATE characters SET level = 65536",
-            "UPDATE character_appearance_parts SET slot = 16",
-            "UPDATE character_appearance_parts SET item_id = -1",
-            "UPDATE character_appearance_parts SET item_id = 4294967296",
-            "UPDATE character_appearance_parts SET parameter0 = -1",
-            "UPDATE character_appearance_parts SET parameter1 = 65536",
-            "UPDATE character_appearance_parts SET parameter2 = -1",
+            "UPDATE inventory_items SET slot = 256",
+            "UPDATE inventory_items SET item_id = -1",
+            "UPDATE inventory_items SET item_id = 4294967296",
+            "UPDATE inventory_items SET parameter0 = -1",
+            "UPDATE inventory_items SET parameter1 = 65536",
+            "UPDATE inventory_items SET parameter2 = -1",
             "DELETE FROM accounts",
             "DELETE FROM characters"
         )) {

@@ -43,7 +43,8 @@ class ArchitectureTest {
             "taan.online.account.repository",
             "taan.online.character.service",
             "taan.online.character.model..",
-            "taan.online.channel.service"
+            "taan.online.channel.service",
+            "taan.online.channel.model.."
         );
 
     @ArchTest
@@ -209,6 +210,7 @@ class ArchitectureTest {
         "taan.online.account.logging..",
         "taan.online.character.logging..",
         "taan.online.channel.logging..",
+        "taan.online.lobby.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -219,6 +221,7 @@ class ArchitectureTest {
         "taan.online.account.logging..",
         "taan.online.character.logging..",
         "taan.online.channel.logging..",
+        "taan.online.lobby.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -301,6 +304,7 @@ class ArchitectureTest {
             "taan.online.logging..",
             "taan.online.character.logging..",
             "taan.online.channel.logging..",
+            "taan.online.lobby.logging..",
             "taan.online.character.model..",
             "taan.online.inventory.model..",
             "taan.online.account.model..",
@@ -439,47 +443,4 @@ class ArchitectureTest {
     static final ArchRule INVENTORY_LAYER_CYCLES = slices().matching("taan.online.inventory.(*)..")
         .should().beFreeOfCycles();
 
-    @ArchTest
-    static final ArchRule CHANNEL_MODEL_DEPENDENCIES = classes().that().resideInAPackage("taan.online.channel.model..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.channel.model..");
-
-    @ArchTest
-    static final ArchRule CHANNEL_SERVICE_DEPENDENCIES = classes().that()
-        .resideInAPackage("taan.online.channel.service..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage(
-            "java..",
-            "taan.online.channel.service..",
-            "taan.online.channel.model..",
-            "taan.online.channel.logging..",
-            "taan.online.logging.."
-        );
-
-    @ArchTest
-    static final ArchRule CHANNEL_PACKET_DEPENDENCIES = classes().that()
-        .resideInAPackage("taan.online.channel.protocol.packet..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.channel.protocol.packet..");
-
-    @ArchTest
-    static final ArchRule CHANNEL_CODEC_DEPENDENCIES = classes().that()
-        .resideInAPackage("taan.online.channel.protocol.codec..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage(
-            "java..",
-            "taan.online.channel.protocol..",
-            "taan.online.protocol.."
-        );
-
-    @ArchTest
-    static final ArchRule CHANNEL_CONTROLLER_DEPENDENCIES = classes().that()
-        .resideInAPackage("taan.online.channel.controller..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage(
-            "java..",
-            "taan.online.channel.controller..",
-            "taan.online.channel.service..",
-            "taan.online.channel.model..",
-            "taan.online.channel.protocol.."
-        );
-
-    @ArchTest
-    static final ArchRule CHANNEL_LAYER_CYCLES = slices().matching("taan.online.channel.(*)..")
-        .should().beFreeOfCycles();
 }

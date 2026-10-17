@@ -6,5 +6,7 @@ public enum ProtocolPhase {
     AWAITING_LOGIN,
     AUTHENTICATED,
     CHARACTER_SELECTED,
+    CHANNEL_SELECTED,
+    LOBBY,
     TERMINATED
 }

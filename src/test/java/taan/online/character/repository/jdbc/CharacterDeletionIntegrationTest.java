@@ -1,6 +1,5 @@
 package taan.online.character.repository.jdbc;
 
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,6 +28,7 @@ import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.model.CreateCharacterOutcome;
 import taan.online.character.service.model.DeleteCharacterOutcome;
 import taan.online.character.service.model.DeleteCharacterResult;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import taan.online.persistence.DatabaseMigrator;
 
 class CharacterDeletionIntegrationTest {
@@ -68,7 +68,7 @@ class CharacterDeletionIntegrationTest {
         assertTrue(database.characters().findByAccount(owner.id()).isEmpty());
         assertFalse(database.characters().existsByName(new CharacterName("Luma")));
         assertEquals(1, database.scalar("SELECT count(*) FROM characters WHERE deleted_at IS NOT NULL"));
-        assertEquals(16, database.scalar("SELECT count(*) FROM character_appearance_parts"));
+        assertEquals(4, database.scalar("SELECT count(*) FROM inventory_items"));
         long archivedAt = database.scalar("SELECT (extract(epoch FROM deleted_at) * 1000000)::bigint FROM characters");
 
         assertTrue(archivedAt > 0);
@@ -113,7 +113,10 @@ class CharacterDeletionIntegrationTest {
         assertEquals(0, database.scalar("SELECT count(*) FROM characters WHERE deleted_at IS NOT NULL"));
 
         long broken = database.seed(owner.id(), "OtherHero", CharacterFixtures.appearance(AccountGender.MALE));
-        database.execute("DELETE FROM character_appearance_parts WHERE character_id = " + broken + " AND slot = 8");
+        database.execute(
+            "UPDATE inventory_items SET slot = 16 WHERE slot = 8 AND inventory_id = "
+                + "(SELECT id FROM inventories WHERE character_id = " + broken + " AND kind = 'EQUIPMENT')"
+        );
 
         assertThrows(CharacterPersistenceException.class, () -> delete(owner.id(), target));
         assertEquals(0, database.scalar("SELECT count(*) FROM characters WHERE deleted_at IS NOT NULL"));

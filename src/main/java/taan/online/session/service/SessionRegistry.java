@@ -1,13 +1,16 @@
 package taan.online.session.service;
 
 import java.util.HashMap;
-import java.util.Objects;
-import taan.online.character.model.CharacterId;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import taan.online.account.model.AccountId;
+import taan.online.channel.model.ChannelParticipant;
+import taan.online.character.model.CharacterId;
+import taan.online.character.model.GameCharacter;
 import taan.online.session.model.AuthenticatedPrincipal;
+import taan.online.session.model.SelectedCharacterProfile;
 import taan.online.session.model.SessionId;
 import taan.online.session.model.SessionPhase;
 import taan.online.session.service.model.LoginIgnored;
@@ -36,22 +39,44 @@ public final class SessionRegistry {
         return session == null ? Optional.empty() : Optional.ofNullable(session.principal);
     }
 
-    public synchronized boolean trySelect(SessionId id, CharacterId characterId) {
-        Objects.requireNonNull(characterId);
+    public synchronized boolean trySelect(SessionId id, GameCharacter character) {
+        Objects.requireNonNull(character);
         var session = sessions.get(id);
 
-        if (session == null || session.phase != SessionPhase.AUTHENTICATED) {
+        if (session == null || session.phase != SessionPhase.AUTHENTICATED
+            || !session.principal.accountId().equals(character.accountId())) {
             return false;
         }
 
-        session.selectedCharacterId = characterId;
+        session.selectedCharacter = new SelectedCharacterProfile(character.id(), character.name(), character.level());
         session.phase = SessionPhase.CHARACTER_SELECTED;
         return true;
     }
 
     public synchronized Optional<CharacterId> selectedCharacter(SessionId id) {
         var session = sessions.get(id);
-        return session == null ? Optional.empty() : Optional.ofNullable(session.selectedCharacterId);
+        return session == null ? Optional.empty() : Optional.ofNullable(session.selectedCharacter).map(
+            SelectedCharacterProfile::id
+        );
+    }
+
+    public synchronized Optional<ChannelParticipant> channelParticipant(SessionId id) {
+        var session = sessions.get(id);
+
+        if (session == null || session.selectedCharacter == null) {
+            return Optional.empty();
+        }
+
+        var character = session.selectedCharacter;
+        return Optional.of(
+            new ChannelParticipant(
+                id.value(),
+                session.principal.accountId(),
+                character.id(),
+                character.name(),
+                character.level()
+            )
+        );
     }
 
     public synchronized Optional<AuthenticatedPrincipal> selectablePrincipal(SessionId id) {

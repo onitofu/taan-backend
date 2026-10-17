@@ -65,7 +65,7 @@ class RegistrationIntegrationTest {
     @BeforeEach
     void clearAccounts() throws Exception {
         executeSql(
-            "TRUNCATE inventory_items, inventories, character_appearance_parts, characters, accounts RESTART IDENTITY"
+            "TRUNCATE inventory_items, inventories, characters, accounts RESTART IDENTITY"
         );
     }
 
