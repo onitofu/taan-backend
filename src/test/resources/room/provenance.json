@@ -121,6 +121,16 @@
       "origin": "SYNTHETIC"
     },
     {
+      "quickjoin-any.frame.hex": "9a21b927c0ca06d592b3f90559dd1eb8eff3c9a3e6776df2e7fc8ad241bbc1c7",
+      "original_file": "quickjoin-any.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "quickjoin-fail.frame.hex": "633ec8804dee7646181a8dfd332297854910268862284df9c0039b810ff53355",
+      "original_file": "quickjoin-fail.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
       "slot-open.frame.hex": "3d6437951a854be521cda8f2f8267c0c1cb072964f9a601a1f325370c70547c3",
       "original_file": "slot-open.frame.bin",
       "origin": "SYNTHETIC"

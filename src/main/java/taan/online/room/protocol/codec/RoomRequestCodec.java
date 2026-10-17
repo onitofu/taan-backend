@@ -4,9 +4,17 @@ import taan.online.protocol.BinaryReader;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestCodec {
+    public PqGameSessionQuickJoin quickJoin(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionQuickJoin.TYPE_ID);
+        var request = new PqGameSessionQuickJoin(input.unsignedShort(), new PeerMetaCodec().decode(input));
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionStartGame start(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionStartGame.TYPE_ID);
         input.finish();

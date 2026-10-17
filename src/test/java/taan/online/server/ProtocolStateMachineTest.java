@@ -73,6 +73,7 @@ class ProtocolStateMachineTest {
         ProtocolEvent.LOBBY_LEAVE,
         ProtocolEvent.ROOM_CREATE,
         ProtocolEvent.ROOM_ENTER,
+        ProtocolEvent.ROOM_QUICK_JOIN,
         ProtocolEvent.ROOM_LEAVE,
         ProtocolEvent.ROOM_START
     );
@@ -91,6 +92,7 @@ class ProtocolStateMachineTest {
             for (String event : new String[]{
                 "ROOM_CREATE",
                 "ROOM_ENTER",
+                "ROOM_QUICK_JOIN",
                 "ROOM_LEAVE",
                 "MOVE_INVENTORY_ITEM",
                 "MOVE_TO",
@@ -151,6 +153,7 @@ class ProtocolStateMachineTest {
             "LOBBY_LEAVE",
             "ROOM_CREATE",
             "ROOM_ENTER",
+            "ROOM_QUICK_JOIN",
             "ROOM_LEAVE",
             "ROOM_START"
         }) {

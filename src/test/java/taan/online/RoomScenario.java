@@ -23,6 +23,7 @@ import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
+import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
@@ -53,11 +54,26 @@ public final class RoomScenario implements AutoCloseable {
         new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
         new RoomBootstrapDefinition(1, 3)
     );
+    public final QuickJoinRoomAction quickJoin = new QuickJoinRoomAction(
+        access,
+        channels,
+        rooms,
+        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+        new RoomBootstrapDefinition(1, 3)
+    );
     public final Map<UUID, CollectingPacketOutput> outputs = new ConcurrentHashMap<>();
     public CollectingPacketOutput lastOutput;
     public final LeaveRoomAction leave = new LeaveRoomAction(rooms);
     public final RequestRoomStartAction start = new RequestRoomStartAction(access, channels, rooms);
-    public final RoomPacketHandler handler = new RoomPacketHandler(access, create, enter, leave, start, rooms);
+    public final RoomPacketHandler handler = new RoomPacketHandler(
+        access,
+        create,
+        enter,
+        quickJoin,
+        leave,
+        start,
+        rooms
+    );
 
     public UUID player(long id, int channel) {
         var character = CharacterFixtures.character(id, new AccountId(id), AccountGender.FEMALE, "Hero" + id);
@@ -113,6 +129,13 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomBootstrapDefinition(1, 3)
                 ),
                 new EnterRoomAction(
+                    access,
+                    channels,
+                    rooms,
+                    new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+                    new RoomBootstrapDefinition(1, 3)
+                ),
+                new QuickJoinRoomAction(
                     access,
                     channels,
                     rooms,

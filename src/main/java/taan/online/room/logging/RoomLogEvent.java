@@ -4,6 +4,8 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    QUICK_JOIN_REJECTED("room.quick_join.rejected", Level.DEBUG, "Quick join rejected"),
+    QUICK_JOIN_FAILED("room.quick_join.failed", Level.ERROR, "Quick join failed"),
     ENTRY_SUCCEEDED("room.entry.succeeded", Level.INFO, "Room entered"),
     ENTRY_FAILED("room.entry.failed", Level.ERROR, "Room entry failed"),
     OWNER_CHANGED("room.owner.changed", Level.INFO, "Room owner changed"),

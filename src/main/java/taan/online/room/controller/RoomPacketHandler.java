@@ -14,12 +14,15 @@ import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
+import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
+import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.model.CreateRoomCommand;
@@ -31,6 +34,7 @@ public final class RoomPacketHandler {
     private final SelectedCharacterAccess sessions;
     private final CreateRoomAction create;
     private final EnterRoomAction enter;
+    private final QuickJoinRoomAction quickJoin;
     private final LeaveRoomAction leave;
     private final RequestRoomStartAction start;
     private final RoomRegistry rooms;
@@ -39,6 +43,7 @@ public final class RoomPacketHandler {
         SelectedCharacterAccess sessions,
         CreateRoomAction create,
         EnterRoomAction enter,
+        QuickJoinRoomAction quickJoin,
         LeaveRoomAction leave,
         RequestRoomStartAction start,
         RoomRegistry rooms
@@ -46,6 +51,7 @@ public final class RoomPacketHandler {
         this.sessions = sessions;
         this.create = create;
         this.enter = enter;
+        this.quickJoin = quickJoin;
         this.leave = leave;
         this.start = start;
         this.rooms = rooms;
@@ -57,6 +63,24 @@ public final class RoomPacketHandler {
         }
 
         var codec = new RoomRequestCodec();
+
+        if (type == PqGameSessionQuickJoin.TYPE_ID) {
+            var request = codec.quickJoin(root);
+            var result = quickJoin.execute(id, request.selector(), new ProtocolRoomView(output));
+
+            if (result.outcome() == EnterRoomOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
+                return ignored();
+            }
+
+            if (result.outcome() == EnterRoomOutcome.ENTERED) {
+                return new RoomReply(RoomReplyOutcome.ENTERED, result.delivery());
+            }
+
+            return new RoomReply(
+                RoomReplyOutcome.QUICK_JOIN_REJECTED,
+                output.send(List.of(new RoomResponseCodec().encode(new PrGameSessionQuickJoinFail())))
+            );
+        }
 
         if (type == PqGameSessionEnter.TYPE_ID) {
             var request = codec.enter(root);

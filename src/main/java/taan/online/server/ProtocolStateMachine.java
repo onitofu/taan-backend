@@ -67,6 +67,7 @@ final class ProtocolStateMachine {
         return Map.ofEntries(
             entry(ProtocolEvent.ROOM_CREATE, phase),
             entry(ProtocolEvent.ROOM_ENTER, phase),
+            entry(ProtocolEvent.ROOM_QUICK_JOIN, phase),
             entry(ProtocolEvent.ROOM_LEAVE, phase),
             entry(ProtocolEvent.ROOM_CREATED, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_ENTERED, ProtocolPhase.ROOM),
@@ -117,6 +118,7 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.CHANNEL_REQUEST_IGNORED, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_CREATE, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_ENTER, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_QUICK_JOIN, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_LEAVE, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_START, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_LEFT, ProtocolPhase.CHANNEL_SELECTED),
@@ -159,7 +161,7 @@ final class ProtocolStateMachine {
             case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
                 CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
                 CLIENT_LOGGING, MOVE_INVENTORY_ITEM, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE,
-                ROOM_CREATE, ROOM_ENTER, ROOM_LEAVE, ROOM_START -> ProtocolDecision.PROCESS;
+                ROOM_CREATE, ROOM_ENTER, ROOM_QUICK_JOIN, ROOM_LEAVE, ROOM_START -> ProtocolDecision.PROCESS;
             case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED,
                 INVENTORY_REQUEST_IGNORED, ROOM_REQUEST_IGNORED ->
                 ProtocolDecision.IGNORE;
