@@ -73,6 +73,11 @@ public final class CharacterTestClient implements AutoCloseable {
         assertEquals(-1, socket.getInputStream().read());
     }
 
+    public void resetConnection() throws IOException {
+        socket.setSoLinger(true, 0);
+        socket.close();
+    }
+
     public void disconnect() throws IOException {
         socket.shutdownOutput();
         awaitClosure();

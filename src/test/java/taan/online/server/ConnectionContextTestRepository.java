@@ -11,6 +11,7 @@ import taan.online.account.model.LoginName;
 import taan.online.account.repository.AccountRepository;
 
 final class ConnectionContextTestRepository implements AccountRepository {
+    private AccountId accountId = new AccountId(1);
     private boolean exists;
     private RuntimeException failure;
     private int checks;
@@ -27,7 +28,7 @@ final class ConnectionContextTestRepository implements AccountRepository {
 
         return exists ? Optional.of(
             new Account(
-                new AccountId(1),
+                accountId,
                 login,
                 new CredentialVerifier(TestFixtures.VERIFIER),
                 AccountGender.FEMALE,
@@ -52,7 +53,11 @@ final class ConnectionContextTestRepository implements AccountRepository {
     public Optional<Account> tryCreate(LoginName login, CredentialVerifier verifier, AccountGender gender) {
         inserts++;
         exists = true;
-        return Optional.of(new Account(new AccountId(1), login, verifier, gender, Instant.EPOCH));
+        return Optional.of(new Account(accountId, login, verifier, gender, Instant.EPOCH));
+    }
+
+    void accountId(long value) {
+        accountId = new AccountId(value);
     }
 
     int checks() {
