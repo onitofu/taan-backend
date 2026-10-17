@@ -26,6 +26,7 @@ public final class ConnectionLimitHandler extends ChannelInboundHandlerAdapter {
             return;
         }
 
+        context.channel().closeFuture().addListener(ignored -> permits.release());
         super.channelActive(context);
     }
 
@@ -33,7 +34,6 @@ public final class ConnectionLimitHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext context) throws Exception {
         if (acquired) {
             acquired = false;
-            permits.release();
             super.channelInactive(context);
         }
     }
