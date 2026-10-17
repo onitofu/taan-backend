@@ -17,6 +17,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.CharacterFixtures;
+import taan.online.character.controller.ConfirmNamePacketHandler;
+import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.repository.TestCharacterRepository;
+import taan.online.character.service.ConfirmNameAction;
+import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.ListCharactersAction;
+import taan.online.session.service.SessionCharacterAccess;
 import taan.online.TestCredentialHasher;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
@@ -157,6 +165,8 @@ class ConnectionWorkCancellationTest {
         );
         var sessions = new SessionRegistry();
         var hasher = new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER));
+        var characters = new TestCharacterRepository();
+        var access = new SessionCharacterAccess(sessions);
         var handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -174,9 +184,18 @@ class ConnectionWorkCancellationTest {
             warnings,
             8,
             10,
-            new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions),
+            new UserLoginPacketHandler(
+                new LoginAction(repository, hasher, sessions),
+                sessions,
+                new ListCharactersAction(characters)
+            ),
             Clock.systemUTC(),
-            300
+            300,
+            new ConfirmNamePacketHandler(new ConfirmNameAction(access, characters, CharacterFixtures.filter()), access),
+            new CreateCharacterPacketHandler(
+                new CreateCharacterAction(access, characters, CharacterFixtures.filter(), CharacterFixtures.options()),
+                access
+            )
         );
         var channel = new EmbeddedChannel(new FrameEncoder(), handler);
         ByteBuf greeting = channel.readOutbound();

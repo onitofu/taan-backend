@@ -11,6 +11,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.character.controller.ConfirmNamePacketHandler;
+import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.repository.TestCharacterRepository;
+import taan.online.character.service.ConfirmNameAction;
+import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.ListCharactersAction;
+import taan.online.CharacterFixtures;
+import taan.online.session.service.SessionCharacterAccess;
 import taan.online.TestCredentialHasher;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
@@ -33,6 +41,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     private final QueuedTestExecutor workers;
     private final UserLoginPacketHandler login;
     private int hashes;
+    private final TestCharacterRepository characters = new TestCharacterRepository();
 
     ConnectionContextTestHarness(int capacity) {
         this(capacity, new SessionRegistry());
@@ -55,7 +64,12 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         );
         workers = new QueuedTestExecutor(jobs);
         var hasher = new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER));
-        login = new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions);
+        login = new UserLoginPacketHandler(
+            new LoginAction(repository, hasher, sessions),
+            sessions,
+            new ListCharactersAction(characters)
+        );
+        var access = new SessionCharacterAccess(sessions);
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -75,7 +89,12 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             10,
             login,
             clock,
-            300
+            300,
+            new ConfirmNamePacketHandler(new ConfirmNameAction(access, characters, CharacterFixtures.filter()), access),
+            new CreateCharacterPacketHandler(
+                new CreateCharacterAction(access, characters, CharacterFixtures.filter(), CharacterFixtures.options()),
+                access
+            )
         );
         channel = new EmbeddedChannel(new FrameEncoder());
         channel.pipeline().addLast(handler);
@@ -135,6 +154,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
 
     EmbeddedChannel channel() {
         return channel;
+    }
+
+    TestCharacterRepository characters() {
+        return characters;
     }
 
     int hashes() {

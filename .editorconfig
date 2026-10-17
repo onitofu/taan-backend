@@ -36,3 +36,6 @@ ij_java_array_initializer_right_brace_on_new_line = true
 
 [*.cmd]
 end_of_line = crlf
+
+[src/main/resources/character/name-filters.txt]
+trim_trailing_whitespace = false

@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
+import taan.online.character.repository.TestCharacterRepository;
+import taan.online.character.service.ListCharactersAction;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.account.service.model.ClientCredential;
@@ -156,7 +158,31 @@ class UserLoginPacketHandlerTest {
 
     private static UserLoginPacketHandler handler(LoginTestAccountRepository repository, SessionRegistry sessions) {
         var hasher = new TestCredentialHasher(credential -> repository.account.credentialVerifier());
-        return new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions);
+        return new UserLoginPacketHandler(
+            new LoginAction(repository, hasher, sessions),
+            sessions,
+            new ListCharactersAction(new TestCharacterRepository())
+        );
+    }
+
+    @Test
+    void dropsTheCatalogWhenTheSessionClosesDuringItsDatabaseRead() {
+        var repository = new LoginTestAccountRepository();
+        var characters = new TestCharacterRepository();
+        var sessions = new SessionRegistry();
+        var hasher = new TestCredentialHasher(credential -> repository.account.credentialVerifier());
+        var handler = new UserLoginPacketHandler(
+            new LoginAction(repository, hasher, sessions),
+            sessions,
+            new ListCharactersAction(characters)
+        );
+        var id = new SessionId(handler.open(UUID.randomUUID()));
+        characters.onRead = () -> handler.close("CATALOG_READ_DISCONNECTED");
+
+        assertTrue(handler.handle(TestFixtures.login(TestFixtures.LOGIN, TestFixtures.CREDENTIAL)).isEmpty());
+        assertEquals(1, characters.reads);
+        assertEquals(SessionPhase.CLOSED, sessions.phase(id));
+        assertTrue(sessions.principal(id).isEmpty());
     }
 
     private static UserLoginPacketHandler handler(
@@ -173,7 +199,11 @@ class UserLoginPacketHandlerTest {
                 return credential.hex().equals(TestFixtures.CREDENTIAL);
             }
         );
-        return new UserLoginPacketHandler(new LoginAction(repository, hasher, sessions), sessions);
+        return new UserLoginPacketHandler(
+            new LoginAction(repository, hasher, sessions),
+            sessions,
+            new ListCharactersAction(new TestCharacterRepository())
+        );
     }
 
     private static void assertIgnoredLogs(LogCapture logs) {

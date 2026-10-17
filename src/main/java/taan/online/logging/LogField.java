@@ -39,6 +39,10 @@ public final class LogField {
         return new LogField("accountId", value);
     }
 
+    public static LogField characterId(long value) {
+        return new LogField("characterId", value);
+    }
+
     public static LogField durationMs(long value) {
         return new LogField("durationMs", value);
     }

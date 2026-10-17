@@ -35,6 +35,11 @@ import taan.online.account.protocol.packet.PqCheckAccount;
 import taan.online.account.protocol.packet.PqCreateAccount;
 import taan.online.account.protocol.packet.PrCheckAccount;
 import taan.online.account.protocol.packet.PrCreateAccount;
+import taan.online.character.controller.ConfirmNamePacketHandler;
+import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.logging.CharacterLogEvent;
+import taan.online.character.protocol.packet.PqConfirmName;
+import taan.online.character.protocol.packet.PqNewCharacter;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.logging.LogEvent;
@@ -67,6 +72,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private final CheckAccountPacketHandler check;
     private final CreateAccountPacketHandler create;
     private final UserLoginPacketHandler login;
+    private final CharacterRequestDispatcher characters;
     private final Clock clock;
     private final int idleTimeoutSeconds;
     private final WarningLogLimiter warnings;
@@ -89,7 +95,9 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         int timeoutSeconds,
         UserLoginPacketHandler login,
         Clock clock,
-        int idleTimeoutSeconds
+        int idleTimeoutSeconds,
+        ConfirmNamePacketHandler confirmName,
+        CreateCharacterPacketHandler createCharacter
     ) {
         this.executor = executor;
         this.check = check;
@@ -100,6 +108,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         this.login = login;
         this.clock = clock;
         this.idleTimeoutSeconds = idleTimeoutSeconds;
+        characters = new CharacterRequestDispatcher(confirmName, createCharacter);
     }
 
     @Override
@@ -127,7 +136,8 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
 
         switch (type) {
             case PqCheckAccount.TYPE_ID, PqCreateAccount.TYPE_ID,
-                PqFirstPacket.TYPE_ID, PqUserLogin.TYPE_ID, PqKeepAlive.TYPE_ID -> { }
+                PqFirstPacket.TYPE_ID, PqUserLogin.TYPE_ID, PqKeepAlive.TYPE_ID,
+                PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID -> { }
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         }
 
@@ -188,6 +198,8 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             case PqCreateAccount.TYPE_ID -> ProtocolEvent.CREATE_ACCOUNT;
             case PqFirstPacket.TYPE_ID -> ProtocolEvent.FIRST_PACKET;
             case PqUserLogin.TYPE_ID -> ProtocolEvent.USER_LOGIN;
+            case PqConfirmName.TYPE_ID -> ProtocolEvent.CONFIRM_NAME;
+            case PqNewCharacter.TYPE_ID -> ProtocolEvent.NEW_CHARACTER;
             default -> ProtocolEvent.KEEP_ALIVE;
         };
     }
@@ -207,6 +219,16 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 onEventLoop(context, () -> exceptionCaught(context, failure));
                 return;
             } catch (RuntimeException failure) {
+                if (CharacterRequestDispatcher.accepts(request.type())) {
+                    LOG.failure(
+                        CharacterRequestDispatcher.failureEvent(request.type()),
+                        failure,
+                        durationMs(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
+                    );
+                    onEventLoop(context, () -> close(context, "CHARACTER_OPERATION_FAILED"));
+                    return;
+                }
+
                 if (request.type() == PqFirstPacket.TYPE_ID) {
                     onEventLoop(context, () -> exceptionCaught(context, failure));
                     return;
@@ -253,6 +275,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                     new UserLoginResponseCodec().encode(reply)
                 )
             ).orElseGet(() -> new RequestCompletion(ProtocolEvent.LOGIN_IGNORED, null));
+            case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID -> characters.dispatch(request.type(), sessionId, root);
             default -> {
                 new KeepAliveCodec().decode(root);
                 yield new RequestCompletion(ProtocolEvent.KEEP_ALIVE_ACCEPTED, null);
@@ -435,9 +458,13 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
 
         if (task != null && task.cancel()) {
             executor.remove(task);
+            LogEvent event = switch (pending.peekFirst().type()) {
+                case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
+                case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID -> CharacterLogEvent.REQUEST_CANCELLED;
+                default -> AccountLogEvent.REQUEST_CANCELLED;
+            };
             LOG.log(
-                pending.peekFirst().type() == PqUserLogin.TYPE_ID
-                    ? SessionLogEvent.LOGIN_CANCELLED : AccountLogEvent.REQUEST_CANCELLED,
+                event,
                 connectionId(id.value()),
                 operationId(task.operationId()),
                 reason(reason)
