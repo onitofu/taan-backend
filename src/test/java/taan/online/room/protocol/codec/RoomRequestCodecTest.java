@@ -19,8 +19,16 @@ import taan.online.room.protocol.packet.GameSessionInfo;
 import taan.online.room.protocol.packet.PeerMeta;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 class RoomRequestCodecTest {
+    @Test
+    void decodesTheObservedEmptyStartRequestAndRejectsOtherLayouts() throws Exception {
+        var codec = new RoomRequestCodec();
+        assertEquals(new PqGameSessionStartGame(), codec.start(root("start-empty")));
+        malformed(codec::start, root("start-empty"));
+    }
+
     @Test
     void readsIndependentCreateEnterAndLeaveRequestsWithoutInventingPeerMeaning() throws Exception {
         var codec = new RoomRequestCodec();

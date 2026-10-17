@@ -26,6 +26,7 @@ import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.lobby.controller.LobbyPacketHandler;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionRegistry;
@@ -172,12 +173,14 @@ class LobbyConnectionTest {
 
     private LobbyRequestDispatcher dispatcher(ChannelRegistry registry, SelectedCharacterAccess access) {
         return new LobbyRequestDispatcher(
-            new MoveToChannelPacketHandler(
-                new MoveToChannelAction(registry),
+            new MoveToChannelPacketHandler(new MoveToChannelAction(registry), access, 2181),
+            new LobbyPacketHandler(
+                new EnterLobbyAction(registry),
+                new LeaveLobbyAction(registry),
                 access,
-                2181
-            ),
-            new LobbyPacketHandler(new EnterLobbyAction(registry), new LeaveLobbyAction(registry), access)
+                new ListLobbyRoomsAction(registry, channel -> List.of()),
+                16384
+            )
         );
     }
 
@@ -190,12 +193,7 @@ class LobbyConnectionTest {
         harness.run();
         read(harness);
         harness.characters().stored.add(
-            CharacterFixtures.character(
-                1001,
-                new AccountId(1),
-                AccountGender.FEMALE,
-                "Luma"
-            )
+            CharacterFixtures.character(1001, new AccountId(1), AccountGender.FEMALE, "Luma")
         );
         harness.channel().writeInbound(CharacterFixtures.select(1001));
         harness.run();

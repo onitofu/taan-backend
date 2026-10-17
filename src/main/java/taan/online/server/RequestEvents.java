@@ -12,6 +12,10 @@ import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.protocol.connection.packet.PqFirstPacket;
+import taan.online.room.protocol.packet.PqGameSessionCreate;
+import taan.online.room.protocol.packet.PqGameSessionEnter;
+import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.session.protocol.packet.PcLogging;
 import taan.online.session.protocol.packet.PcUpdateCash;
 import taan.online.session.protocol.packet.PqUserLogin;
@@ -37,6 +41,10 @@ final class RequestEvents {
             case PqChannelMoveTo.TYPE_ID -> ProtocolEvent.MOVE_TO;
             case PqLobbyEnter.TYPE_ID -> ProtocolEvent.LOBBY_ENTER;
             case PqLobbyLeave.TYPE_ID -> ProtocolEvent.LOBBY_LEAVE;
+            case PqGameSessionCreate.TYPE_ID -> ProtocolEvent.ROOM_CREATE;
+            case PqGameSessionEnter.TYPE_ID -> ProtocolEvent.ROOM_ENTER;
+            case PqGameSessionLeave.TYPE_ID -> ProtocolEvent.ROOM_LEAVE;
+            case PqGameSessionStartGame.TYPE_ID -> ProtocolEvent.ROOM_START;
             default -> ProtocolEvent.KEEP_ALIVE;
         };
     }

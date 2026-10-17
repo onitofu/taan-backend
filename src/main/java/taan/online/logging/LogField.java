@@ -59,6 +59,18 @@ public final class LogField {
         return new LogField("channelId", value);
     }
 
+    public static LogField roomCount(int value) {
+        return new LogField("roomCount", value);
+    }
+
+    public static LogField recipientSessionId(UUID value) {
+        return new LogField("recipientSessionId", value);
+    }
+
+    public static LogField roomId(int value) {
+        return new LogField("roomId", value);
+    }
+
     public static LogField previousChannelId(Integer value) {
         return new LogField("previousChannelId", value);
     }

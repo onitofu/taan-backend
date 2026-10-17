@@ -1,0 +1,46 @@
+package taan.online.server;
+
+import java.util.UUID;
+import taan.online.logging.LogEvent;
+import taan.online.protocol.PacketOutput;
+import taan.online.room.controller.RoomPacketHandler;
+import taan.online.room.logging.RoomLogEvent;
+import taan.online.room.protocol.packet.PqGameSessionCreate;
+import taan.online.room.protocol.packet.PqGameSessionEnter;
+import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionStartGame;
+
+public final class RoomRequestDispatcher {
+    private final RoomPacketHandler handler;
+
+    public RoomRequestDispatcher(RoomPacketHandler handler) {
+        this.handler = handler;
+    }
+
+    RequestCompletion dispatch(int type, UUID id, byte[] root, PacketOutput output) {
+        var result = handler.handle(id, type, root);
+        var event = switch (result.outcome()) {
+            case CREATED -> ProtocolEvent.ROOM_CREATED;
+            case CREATE_REJECTED, ENTRY_REJECTED, LEAVE_REJECTED, START_UNAVAILABLE ->
+                ProtocolEvent.ROOM_REQUEST_COMPLETED;
+            case LEFT -> ProtocolEvent.ROOM_LEFT;
+            case LEAVE_REPLAYED -> ProtocolEvent.ROOM_LEAVE_REPLAYED;
+            case IGNORED -> ProtocolEvent.ROOM_REQUEST_IGNORED;
+        };
+        return RequestCompletion.batch(output, event, result.responses());
+    }
+
+    void close(UUID id, String reason) {
+        handler.close(id, reason);
+    }
+
+    static boolean accepts(int type) {
+        return type == PqGameSessionCreate.TYPE_ID || type == PqGameSessionEnter.TYPE_ID
+            || type == PqGameSessionLeave.TYPE_ID
+            || type == PqGameSessionStartGame.TYPE_ID;
+    }
+
+    static LogEvent failureEvent(int type) {
+        return type == PqGameSessionCreate.TYPE_ID ? RoomLogEvent.CREATION_FAILED : RoomLogEvent.OPERATION_FAILED;
+    }
+}

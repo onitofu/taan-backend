@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
+import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -22,6 +23,7 @@ import taan.online.account.model.AccountGender;
 import taan.online.account.model.CredentialVerifier;
 import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
+import taan.online.channel.service.ChannelRegistry;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
 import taan.online.character.controller.DeleteCharacterPacketHandler;
@@ -33,8 +35,10 @@ import taan.online.character.service.ListCharactersAction;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
+import taan.online.room.service.RoomRegistry;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
@@ -48,6 +52,8 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     private final QueuedTestExecutor workers;
     private final UserLoginPacketHandler login;
     private int hashes;
+    final ChannelRegistry channels;
+    final RoomRegistry rooms;
     private final TestCharacterRepository characters = new TestCharacterRepository();
 
     ConnectionContextTestHarness(int capacity) {
@@ -99,6 +105,8 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         );
         var access = new SessionCharacterAccess(sessions);
         characters.inventoryData = SelectionFixtures.inventories(AccountGender.FEMALE);
+        channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
+        rooms = new RoomRegistry(channels);
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -126,8 +134,9 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             ),
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
             selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride,
-            lobbyOverride == null ? SelectionFixtures.lobby(sessions) : lobbyOverride,
+            lobbyOverride == null ? SelectionFixtures.lobby(sessions, channels, rooms) : lobbyOverride,
             InventoryFixtures.dispatcher(sessions, inventories),
+            RoomScenario.dispatcher(sessions, channels, characters, rooms),
             64,
             1048576,
             16384
@@ -171,6 +180,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     @Override
     public void close() {
         channel.finishAndReleaseAll();
+        rooms.close();
     }
 
     ConnectionContextTestRepository repository() {

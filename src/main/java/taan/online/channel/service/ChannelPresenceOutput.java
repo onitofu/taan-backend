@@ -10,6 +10,12 @@ public interface ChannelPresenceOutput {
 
     CompletionStage<Void> update(List<ChannelParticipant> added, List<CharacterId> removed);
 
+    CompletionStage<Void> roomChanged(int roomId);
+
+    CompletionStage<Void> roomsReplaced();
+
+    void close(String reason);
+
     CompletionStage<Void> unavailable();
 
     CompletionStage<Void> left();

@@ -111,6 +111,8 @@ class ChannelArchitectureTest {
             "java..",
             "taan.online.channel.model..",
             "taan.online.channel.service..",
+            "taan.online.room.service",
+            "taan.online.room.service.model..",
             "taan.online.lobby.service..",
             "taan.online.lobby.logging..",
             "taan.online.logging.."
@@ -122,7 +124,8 @@ class ChannelArchitectureTest {
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
             "taan.online.channel.model..",
-            "taan.online.lobby.service.model.."
+            "taan.online.lobby.service.model..",
+            "taan.online.room.service.model.."
         );
 
     @ArchTest
@@ -144,12 +147,19 @@ class ChannelArchitectureTest {
         .resideInAPackage("taan.online.lobby.view..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
+            "taan.online.lobby.view..",
             "taan.online.account.model..",
             "taan.online.channel.service..",
             "taan.online.channel.model..",
             "taan.online.character.model..",
             "taan.online.lobby.protocol..",
-            "taan.online.protocol"
+            "taan.online.protocol",
+            "taan.online.room.model..",
+            "taan.online.room.service.model..",
+            "taan.online.room.protocol.packet..",
+            "taan.online.lobby.service..",
+            "taan.online.lobby.logging..",
+            "taan.online.logging.."
         );
 
     @ArchTest

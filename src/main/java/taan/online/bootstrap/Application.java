@@ -46,14 +46,21 @@ import taan.online.inventory.service.MoveInventoryItemAction;
 import taan.online.lobby.controller.LobbyPacketHandler;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
+import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
+import taan.online.room.controller.RoomPacketHandler;
+import taan.online.room.service.CreateRoomAction;
+import taan.online.room.service.LeaveRoomAction;
+import taan.online.room.service.RequestRoomStartAction;
+import taan.online.room.service.RoomRegistry;
 import taan.online.server.ConnectionContext;
 import taan.online.server.InventoryRequestDispatcher;
 import taan.online.server.LobbyRequestDispatcher;
+import taan.online.server.RoomRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
@@ -70,6 +77,7 @@ public final class Application implements AutoCloseable {
     private final ApplicationConfig config;
     private final PGSimpleDataSource dataSource;
     private final ChannelRegistry channels;
+    private final RoomRegistry rooms;
     private final ItemCatalog itemCatalog = new ItemCatalog();
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
@@ -106,10 +114,7 @@ public final class Application implements AutoCloseable {
         var characters = new JdbcCharacterRepository(
             dataSource,
             config.socketTimeoutSeconds(),
-            new JdbcInventoryRepository(
-                dataSource,
-                config.socketTimeoutSeconds()
-            )
+            new JdbcInventoryRepository(dataSource, config.socketTimeoutSeconds())
         );
         var inventoryAccess = new SessionInventoryAccess(sessions);
         var inventoryDispatcher = new InventoryRequestDispatcher(
@@ -136,9 +141,34 @@ public final class Application implements AutoCloseable {
 
         var channelAccess = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(channelAccess, config.port());
+        rooms = new RoomRegistry(channels);
+        var roomDefinitions = new RoomDefinitionLoader();
+        var roomDispatcher = new RoomRequestDispatcher(
+            new RoomPacketHandler(
+                channelAccess,
+                new CreateRoomAction(
+                    channelAccess,
+                    channels,
+                    rooms,
+                    characters,
+                    itemCatalog,
+                    roomDefinitions.titleFilter(Application.class.getResourceAsStream("/character/name-filters.txt")),
+                    roomDefinitions.defaults(Application.class.getResourceAsStream("/room/bootstrap.properties"))
+                ),
+                new LeaveRoomAction(rooms),
+                new RequestRoomStartAction(channelAccess, channels, rooms),
+                rooms
+            )
+        );
         var lobby = new LobbyRequestDispatcher(
             new MoveToChannelPacketHandler(new MoveToChannelAction(channels), channelAccess, config.port()),
-            new LobbyPacketHandler(new EnterLobbyAction(channels), new LeaveLobbyAction(channels), channelAccess)
+            new LobbyPacketHandler(
+                new EnterLobbyAction(channels),
+                new LeaveLobbyAction(channels),
+                channelAccess,
+                new ListLobbyRoomsAction(channels, rooms),
+                config.maxFrameBytes()
+            )
         );
         var selected = new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters, itemCatalog), access),
@@ -193,6 +223,7 @@ public final class Application implements AutoCloseable {
                 selected,
                 lobby,
                 inventoryDispatcher,
+                roomDispatcher,
                 config.outputBatches(),
                 config.outputBytes(),
                 config.maxFrameBytes()
@@ -207,12 +238,7 @@ public final class Application implements AutoCloseable {
         itemCatalog.initialize(new JdbcItemDefinitionRepository(dataSource, config.socketTimeoutSeconds()).load());
         channels.initialize(new JdbcChannelRepository(dataSource, config.socketTimeoutSeconds()).load());
         var catalog = new ChannelListResponseCodec().encode(new ChannelCatalogMapper().map(channels.catalog()));
-        long largestRoster = channels.catalog().directory().channels().stream()
-            .mapToLong(channel -> 12L + 51L * Math.min(channel.capacity(), config.maxConnections())).max().orElse(12);
-
-        if (catalog.length > config.maxFrameBytes() || largestRoster > config.maxFrameBytes()) {
-            throw new InvalidConfigurationException("BACKEND_MAX_FRAME_BYTES", "Channel snapshots exceed frame limit");
-        }
+        new LobbyOutputValidator().validate(config, channels.catalog(), catalog.length);
 
         server.start();
 
@@ -246,6 +272,7 @@ public final class Application implements AutoCloseable {
             Thread.currentThread().interrupt();
         } finally {
             server.close();
+            rooms.close();
             terminated.countDown();
 
             LOG.log(ServerLogEvent.STOPPED);

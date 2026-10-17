@@ -19,6 +19,24 @@ import taan.online.network.FrameEncoder;
 
 class ConnectionPacketOutputTest {
     @Test
+    void postsExplicitClosureToTheConnectionOwnerInsteadOfCleaningUpInsideTheCaller() {
+        var channel = new EmbeddedChannel(new FrameEncoder(), new ChannelInboundHandlerAdapter());
+        var reasons = new ArrayList<String>();
+
+        try {
+            var output = output(channel, 64, 1024, 128, reasons);
+            output.close("LOBBY_NOTIFICATION_FAILED");
+
+            assertTrue(reasons.isEmpty());
+            channel.runPendingTasks();
+
+            assertEquals(List.of("LOBBY_NOTIFICATION_FAILED"), reasons);
+        } finally {
+            channel.finishAndReleaseAll();
+        }
+    }
+
+    @Test
     void keepsBatchesContiguousAndCompletesReceiptsOnlyAfterEveryWriteFlushes() {
         var delayed = new QueuedOutboundWrites();
 
@@ -160,9 +178,7 @@ class ConnectionPacketOutputTest {
         return new WarningLogLimiter(
             LoggerFactory.getLogger(ConnectionPacketOutputTest.class),
             10,
-            Duration.ofMinutes(
-                1
-            ),
+            Duration.ofMinutes(1),
             System::nanoTime
         );
     }

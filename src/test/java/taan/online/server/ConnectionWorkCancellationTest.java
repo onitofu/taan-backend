@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
+import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -38,8 +39,10 @@ import taan.online.character.service.ListCharactersAction;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
+import taan.online.room.service.RoomRegistry;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
+import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
@@ -172,6 +175,7 @@ class ConnectionWorkCancellationTest {
         var hasher = new TestCredentialHasher(credential -> new CredentialVerifier(TestFixtures.VERIFIER));
         var characters = new TestCharacterRepository();
         var access = new SessionCharacterAccess(sessions);
+        var channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
         var handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -203,8 +207,9 @@ class ConnectionWorkCancellationTest {
             ),
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
             SelectionFixtures.dispatcher(sessions, characters),
-            SelectionFixtures.lobby(sessions),
+            SelectionFixtures.lobby(sessions, channels),
             InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
+            RoomScenario.dispatcher(sessions, channels, characters, new RoomRegistry(channels)),
             64,
             1048576,
             16384
