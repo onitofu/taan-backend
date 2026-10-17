@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
@@ -74,7 +75,7 @@ class CharacterActionTest {
             assertEquals(1, repository.inserts);
             assertEquals(1, repository.rollbacks);
 
-            var listed = new ListCharactersAction(repository).execute(access.owner);
+            var listed = new ListCharactersAction(repository, InventoryFixtures.catalog()).execute(access.owner);
             repository.stored.clear();
 
             assertEquals(1, listed.size());

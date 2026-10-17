@@ -1,7 +1,7 @@
 package taan.online.inventory.model;
 
 public enum InventoryKind {
-    BAG(64), EQUIPMENT(16), JEWEL_BOX(0);
+    BAG(80), EQUIPMENT(16), JEWEL_BOX(0);
 
     private final int capacity;
 

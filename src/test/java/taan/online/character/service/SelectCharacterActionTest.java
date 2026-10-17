@@ -9,8 +9,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
-import taan.online.SelectionFixtures;
+import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
+import taan.online.SelectionFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.controller.SelectCharacterHandlingOutcome;
@@ -25,7 +26,7 @@ class SelectCharacterActionTest {
         var access = new TestAccountAccess();
         var repository = repository();
         repository.stored.add(CharacterFixtures.character(2000, new AccountId(2), AccountGender.MALE, "MaleHero"));
-        var action = new SelectCharacterAction(access, repository);
+        var action = new SelectCharacterAction(access, repository, InventoryFixtures.catalog());
 
         for (long id : new long[]{0, 2000, 0xffff_ffffL}) {
             try (var logs = new LogCapture()) {
@@ -55,7 +56,14 @@ class SelectCharacterActionTest {
                 assertFalse(logs.text().contains("character.selection.succeeded"));
                 assertTrue(access.selected == null);
             };
-            var result = new SelectCharacterAction(access, repository).execute(UUID.randomUUID(), 1001);
+            var result = new SelectCharacterAction(
+                access,
+                repository,
+                InventoryFixtures.catalog()
+            ).execute(
+                UUID.randomUUID(),
+                1001
+            );
 
             assertEquals(SelectCharacterOutcome.SELECTED, result.outcome());
             assertEquals(result.character().id(), access.selected);
@@ -85,7 +93,14 @@ class SelectCharacterActionTest {
             try (var logs = new LogCapture()) {
                 assertThrows(
                     IllegalStateException.class,
-                    () -> new SelectCharacterAction(access, repository).execute(UUID.randomUUID(), 1001)
+                    () -> new SelectCharacterAction(
+                        access,
+                        repository,
+                        InventoryFixtures.catalog()
+                    ).execute(
+                        UUID.randomUUID(),
+                        1001
+                    )
                 );
                 assertTrue(access.selected == null);
                 assertEquals(1, repository.rollbacks);
@@ -144,6 +159,13 @@ class SelectCharacterActionTest {
     }
 
     private SelectCharacterPacketHandler handler(TestAccountAccess access, TestCharacterRepository repository) {
-        return new SelectCharacterPacketHandler(new SelectCharacterAction(access, repository), access);
+        return new SelectCharacterPacketHandler(
+            new SelectCharacterAction(
+                access,
+                repository,
+                InventoryFixtures.catalog()
+            ),
+            access
+        );
     }
 }

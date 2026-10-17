@@ -38,7 +38,11 @@ import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.character.service.SelectCharacterAction;
+import taan.online.inventory.controller.MoveInventoryItemPacketHandler;
+import taan.online.inventory.model.ItemCatalog;
 import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
+import taan.online.inventory.repository.jdbc.JdbcItemDefinitionRepository;
+import taan.online.inventory.service.MoveInventoryItemAction;
 import taan.online.lobby.controller.LobbyPacketHandler;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
@@ -48,6 +52,7 @@ import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.server.ConnectionContext;
+import taan.online.server.InventoryRequestDispatcher;
 import taan.online.server.LobbyRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
@@ -56,6 +61,7 @@ import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
 import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
+import taan.online.session.service.SessionInventoryAccess;
 import taan.online.session.service.SessionRegistry;
 
 public final class Application implements AutoCloseable {
@@ -64,6 +70,7 @@ public final class Application implements AutoCloseable {
     private final ApplicationConfig config;
     private final PGSimpleDataSource dataSource;
     private final ChannelRegistry channels;
+    private final ItemCatalog itemCatalog = new ItemCatalog();
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
     private final CountDownLatch terminated = new CountDownLatch(1);
@@ -100,7 +107,19 @@ public final class Application implements AutoCloseable {
             dataSource,
             config.socketTimeoutSeconds(),
             new JdbcInventoryRepository(
+                dataSource,
                 config.socketTimeoutSeconds()
+            )
+        );
+        var inventoryAccess = new SessionInventoryAccess(sessions);
+        var inventoryDispatcher = new InventoryRequestDispatcher(
+            new MoveInventoryItemPacketHandler(
+                new MoveInventoryItemAction(
+                    inventoryAccess,
+                    new JdbcInventoryRepository(dataSource, config.socketTimeoutSeconds()),
+                    itemCatalog
+                ),
+                inventoryAccess
             )
         );
         var access = new SessionCharacterAccess(sessions);
@@ -122,7 +141,7 @@ public final class Application implements AutoCloseable {
             new LobbyPacketHandler(new EnterLobbyAction(channels), new LeaveLobbyAction(channels), channelAccess)
         );
         var selected = new SelectedCharacterRequestDispatcher(
-            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
+            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters, itemCatalog), access),
             new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, channels), channelAccess),
             new CashRefreshPacketHandler(sessions),
             new ClientLoggingPacketHandler(sessions),
@@ -165,7 +184,7 @@ public final class Application implements AutoCloseable {
                 warnings,
                 config.maxPendingRequests(),
                 config.requestTimeoutSeconds(),
-                new UserLoginPacketHandler(login, sessions, new ListCharactersAction(characters)),
+                new UserLoginPacketHandler(login, sessions, new ListCharactersAction(characters, itemCatalog)),
                 Clock.systemUTC(),
                 config.idleTimeoutSeconds(),
                 confirmName,
@@ -173,6 +192,7 @@ public final class Application implements AutoCloseable {
                 new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
                 selected,
                 lobby,
+                inventoryDispatcher,
                 config.outputBatches(),
                 config.outputBytes(),
                 config.maxFrameBytes()
@@ -184,6 +204,7 @@ public final class Application implements AutoCloseable {
         LOG.log(ServerLogEvent.STARTING);
 
         new DatabaseMigrator().migrate(dataSource);
+        itemCatalog.initialize(new JdbcItemDefinitionRepository(dataSource, config.socketTimeoutSeconds()).load());
         channels.initialize(new JdbcChannelRepository(dataSource, config.socketTimeoutSeconds()).load());
         var catalog = new ChannelListResponseCodec().encode(new ChannelCatalogMapper().map(channels.catalog()));
         long largestRoster = channels.catalog().directory().channels().stream()

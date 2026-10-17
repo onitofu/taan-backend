@@ -26,8 +26,8 @@ final class AppearancePartsCodec {
 
     void encode(BinaryWriter output, List<CharacterPart> parts) {
         for (var part : parts) {
-            output.unsignedInt(part.itemId()).unsignedShort(part.parameter0())
-                .unsignedShort(part.parameter1()).unsignedShort(part.parameter2());
+            output.unsignedInt(part.itemId()).unsignedShort(part.palette1Id())
+                .unsignedShort(part.palette2Id()).unsignedShort(part.palette3Id());
         }
     }
 }

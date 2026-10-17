@@ -69,7 +69,7 @@ class CharacterPersistenceIntegrationTest {
         new DatabaseMigrator().migrate(isolated);
 
         assertEquals(original, accounts.findByLogin(original.login()).orElseThrow());
-        var migrated = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(5));
+        var migrated = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(isolated, 5));
 
         assertTrue(migrated.findByAccount(original.id()).isEmpty());
 
@@ -223,9 +223,9 @@ class CharacterPersistenceIntegrationTest {
             "UPDATE inventory_items SET slot = 256",
             "UPDATE inventory_items SET item_id = -1",
             "UPDATE inventory_items SET item_id = 4294967296",
-            "UPDATE inventory_items SET parameter0 = -1",
-            "UPDATE inventory_items SET parameter1 = 65536",
-            "UPDATE inventory_items SET parameter2 = -1",
+            "UPDATE inventory_items SET palette_1_id = -1",
+            "UPDATE inventory_items SET palette_2_id = 65536",
+            "UPDATE inventory_items SET palette_3_id = -1",
             "DELETE FROM accounts",
             "DELETE FROM characters"
         )) {

@@ -40,6 +40,8 @@ import taan.online.character.protocol.packet.PqConfirmName;
 import taan.online.character.protocol.packet.PqDelCharacter;
 import taan.online.character.protocol.packet.PqNewCharacter;
 import taan.online.character.protocol.packet.PqSelectCharacter;
+import taan.online.inventory.logging.InventoryLogEvent;
+import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.logging.EventLogger;
@@ -73,6 +75,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private final CharacterRequestDispatcher characters;
     private final SelectedCharacterRequestDispatcher selected;
     private final LobbyRequestDispatcher lobby;
+    private final InventoryRequestDispatcher inventories;
     private final int outputBatches;
     private final int outputBytes;
     private final int maxFrame;
@@ -104,6 +107,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         DeleteCharacterPacketHandler deleteCharacter,
         SelectedCharacterRequestDispatcher selected,
         LobbyRequestDispatcher lobby,
+        InventoryRequestDispatcher inventories,
         int outputBatches,
         int outputBytes,
         int maxFrame
@@ -112,6 +116,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         this.selected = selected;
         accounts = new AccountRequestDispatcher(check, create, login, clock);
         this.lobby = lobby;
+        this.inventories = inventories;
         this.outputBatches = outputBatches;
         this.outputBytes = outputBytes;
         this.maxFrame = maxFrame;
@@ -159,7 +164,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 PqFirstPacket.TYPE_ID, PqUserLogin.TYPE_ID, PqKeepAlive.TYPE_ID,
                 PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID, PqSelectCharacter.TYPE_ID,
                 PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID,
-                PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID -> { }
+                PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID, PqMoveInventoryItem.TYPE_ID -> { }
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         }
 
@@ -230,6 +235,16 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 onEventLoop(context, () -> exceptionCaught(context, failure));
                 return;
             } catch (RuntimeException failure) {
+                if (InventoryRequestDispatcher.accepts(request.type())) {
+                    LOG.failure(
+                        InventoryLogEvent.MOVE_FAILED,
+                        failure,
+                        durationMs(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
+                    );
+                    onEventLoop(context, () -> close(context, "INVENTORY_OPERATION_FAILED"));
+                    return;
+                }
+
                 if (CharacterRequestDispatcher.accepts(request.type()) || SelectedCharacterRequestDispatcher.accepts(
                     request.type()
                 )
@@ -268,6 +283,10 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     }
 
     private RequestCompletion dispatch(PendingRequest request) {
+        if (InventoryRequestDispatcher.accepts(request.type())) {
+            return inventories.dispatch(sessionId, request.root(), output);
+        }
+
         if (LobbyRequestDispatcher.accepts(request.type())) {
             return lobby.dispatch(request.type(), sessionId, request.root(), output);
         }
@@ -448,6 +467,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             executor.remove(task);
             LogEvent event = switch (pending.peekFirst().type()) {
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
+                case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,
                     PqSelectCharacter.TYPE_ID, PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID ->
                     CharacterLogEvent.REQUEST_CANCELLED;

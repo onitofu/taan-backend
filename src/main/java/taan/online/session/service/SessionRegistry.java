@@ -9,6 +9,7 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.GameCharacter;
+import taan.online.inventory.service.model.InventoryActor;
 import taan.online.session.model.AuthenticatedPrincipal;
 import taan.online.session.model.SelectedCharacterProfile;
 import taan.online.session.model.SessionId;
@@ -81,6 +82,17 @@ public final class SessionRegistry {
                 character.name(),
                 character.level(),
                 character.gender()
+            )
+        );
+    }
+
+    public synchronized Optional<InventoryActor> inventoryActor(SessionId id) {
+        return channelParticipant(id).map(
+            value -> new InventoryActor(
+                id.value(),
+                value.accountId(),
+                value.characterId().value(),
+                value.gender()
             )
         );
     }

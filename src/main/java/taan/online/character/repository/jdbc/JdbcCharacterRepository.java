@@ -1,7 +1,6 @@
 package taan.online.character.repository.jdbc;
 
 import java.sql.Connection;
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import java.sql.SQLException;
 import java.util.List;
 import javax.sql.DataSource;
@@ -9,8 +8,9 @@ import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
-import taan.online.character.repository.CharacterTransaction;
 import taan.online.character.repository.CharacterRepository;
+import taan.online.character.repository.CharacterTransaction;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 
 public final class JdbcCharacterRepository implements CharacterRepository {
     private final DataSource dataSource;
@@ -47,10 +47,10 @@ public final class JdbcCharacterRepository implements CharacterRepository {
 
     @Override
     public List<GameCharacter> findByAccount(AccountId accountId) {
-        try (var connection = dataSource.getConnection()) {
-            return CharacterRowReader.read(connection, accountId, queryTimeoutSeconds);
-        } catch (SQLException | IllegalArgumentException failure) {
-            throw new CharacterPersistenceException("findByAccount", failure);
+        try (var transaction = beginTransaction(accountId)) {
+            var catalog = transaction.catalog();
+            transaction.commit();
+            return catalog;
         }
     }
 

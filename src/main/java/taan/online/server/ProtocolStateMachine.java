@@ -71,6 +71,9 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.GET_CHANNEL_LIST, phase),
             entry(ProtocolEvent.UPDATE_CASH, phase),
             entry(ProtocolEvent.CLIENT_LOGGING, phase),
+            entry(ProtocolEvent.MOVE_INVENTORY_ITEM, phase),
+            entry(ProtocolEvent.INVENTORY_REQUEST_COMPLETED, phase),
+            entry(ProtocolEvent.INVENTORY_REQUEST_IGNORED, phase),
             entry(ProtocolEvent.SELECTED_REQUEST_COMPLETED, phase),
             entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, phase),
             entry(ProtocolEvent.MOVE_TO, phase),
@@ -130,8 +133,9 @@ final class ProtocolStateMachine {
             case CHARACTER_SELECTION_REJECTED -> ProtocolDecision.CLOSE_WITHOUT_REPLY;
             case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
                 CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
-                CLIENT_LOGGING, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE -> ProtocolDecision.PROCESS;
-            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED ->
+                CLIENT_LOGGING, MOVE_INVENTORY_ITEM, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE -> ProtocolDecision.PROCESS;
+            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED,
+                INVENTORY_REQUEST_IGNORED ->
                 ProtocolDecision.IGNORE;
             case REGISTRATION_CREATED, LOGIN_REJECTED -> ProtocolDecision.CLOSE_AFTER_REPLY;
             default -> ProtocolDecision.CONTINUE;

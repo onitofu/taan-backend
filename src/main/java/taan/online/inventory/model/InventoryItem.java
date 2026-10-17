@@ -7,9 +7,9 @@ public record InventoryItem(
     int slot,
     long itemId,
     int quantity,
-    int parameter0,
-    int parameter1,
-    int parameter2
+    int palette1Id,
+    int palette2Id,
+    int palette3Id
 ) {
     public InventoryItem {
         Objects.requireNonNull(id);
@@ -18,7 +18,7 @@ public record InventoryItem(
             throw new IllegalArgumentException("Invalid inventory item");
         }
 
-        for (int parameter : new int[]{parameter0, parameter1, parameter2}) {
+        for (int parameter : new int[]{palette1Id, palette2Id, palette3Id}) {
             if (parameter < 0 || parameter > 65535) {
                 throw new IllegalArgumentException("Invalid item appearance parameter");
             }

@@ -11,14 +11,15 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
-import taan.online.character.repository.TestCharacterRepository;
-import taan.online.character.service.ListCharactersAction;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.account.service.model.ClientCredential;
+import taan.online.character.repository.TestCharacterRepository;
+import taan.online.character.service.ListCharactersAction;
 import taan.online.session.model.AuthenticatedPrincipal;
 import taan.online.session.model.SessionId;
 import taan.online.session.model.SessionPhase;
@@ -161,7 +162,7 @@ class UserLoginPacketHandlerTest {
         return new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(new TestCharacterRepository())
+            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog())
         );
     }
 
@@ -174,7 +175,7 @@ class UserLoginPacketHandlerTest {
         var handler = new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(characters)
+            new ListCharactersAction(characters, InventoryFixtures.catalog())
         );
         var id = new SessionId(handler.open(UUID.randomUUID()));
         characters.onRead = () -> handler.close("CATALOG_READ_DISCONNECTED");
@@ -202,7 +203,7 @@ class UserLoginPacketHandlerTest {
         return new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(new TestCharacterRepository())
+            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog())
         );
     }
 

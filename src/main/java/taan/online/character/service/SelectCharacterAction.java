@@ -13,6 +13,7 @@ import taan.online.character.model.CharacterId;
 import taan.online.character.repository.CharacterRepository;
 import taan.online.character.service.model.SelectCharacterOutcome;
 import taan.online.character.service.model.SelectCharacterResult;
+import taan.online.inventory.model.ItemCatalog;
 import taan.online.logging.EventLogger;
 
 public final class SelectCharacterAction {
@@ -20,10 +21,12 @@ public final class SelectCharacterAction {
 
     private final CharacterSelectionAccess sessions;
     private final CharacterRepository characters;
+    private final ItemCatalog items;
 
-    public SelectCharacterAction(CharacterSelectionAccess sessions, CharacterRepository characters) {
+    public SelectCharacterAction(CharacterSelectionAccess sessions, CharacterRepository characters, ItemCatalog items) {
         this.sessions = sessions;
         this.characters = characters;
+        this.items = items;
     }
 
     public SelectCharacterResult execute(UUID sessionId, long requestedId) {
@@ -43,6 +46,7 @@ public final class SelectCharacterAction {
             if (selected.isPresent()) {
                 var character = selected.orElseThrow();
                 var inventories = transaction.inventories(character.id());
+                inventories.forEach(value -> items.validate(value, character.gender()));
                 result = new SelectCharacterResult(SelectCharacterOutcome.SELECTED, character, inventories);
                 transaction.commit();
             } else {

@@ -12,6 +12,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
+import taan.online.InventoryFixtures;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -29,6 +30,7 @@ import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
+import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
 import taan.online.session.controller.UserLoginPacketHandler;
@@ -37,6 +39,7 @@ import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
 final class ConnectionContextTestHarness implements AutoCloseable {
+    private final TestInventoryRepository inventories = new TestInventoryRepository();
     private final ConnectionContextTestRepository repository = new ConnectionContextTestRepository();
     private final BlockingQueue<Runnable> jobs = new ArrayBlockingQueue<>(128);
     private final ConnectionContext handler;
@@ -92,7 +95,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         login = new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(characters)
+            new ListCharactersAction(characters, InventoryFixtures.catalog())
         );
         var access = new SessionCharacterAccess(sessions);
         characters.inventoryData = SelectionFixtures.inventories(AccountGender.FEMALE);
@@ -124,6 +127,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
             selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride,
             lobbyOverride == null ? SelectionFixtures.lobby(sessions) : lobbyOverride,
+            InventoryFixtures.dispatcher(sessions, inventories),
             64,
             1048576,
             16384
@@ -191,6 +195,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
 
     TestCharacterRepository characters() {
         return characters;
+    }
+
+    TestInventoryRepository inventories() {
+        return inventories;
     }
 
     int hashes() {

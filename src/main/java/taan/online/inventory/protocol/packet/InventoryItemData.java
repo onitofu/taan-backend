@@ -5,8 +5,8 @@ public record InventoryItemData(
     int slot,
     long itemId,
     int quantity,
-    int parameter0,
-    int parameter1,
-    int parameter2
+    int palette1Id,
+    int palette2Id,
+    int palette3Id
 ) {
 }

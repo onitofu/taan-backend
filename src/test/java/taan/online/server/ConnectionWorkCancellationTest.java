@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
+import taan.online.InventoryFixtures;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -34,6 +35,7 @@ import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
+import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
 import taan.online.session.controller.UserLoginPacketHandler;
@@ -190,7 +192,7 @@ class ConnectionWorkCancellationTest {
             new UserLoginPacketHandler(
                 new LoginAction(repository, hasher, sessions),
                 sessions,
-                new ListCharactersAction(characters)
+                new ListCharactersAction(characters, InventoryFixtures.catalog())
             ),
             Clock.systemUTC(),
             300,
@@ -202,6 +204,7 @@ class ConnectionWorkCancellationTest {
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
             SelectionFixtures.dispatcher(sessions, characters),
             SelectionFixtures.lobby(sessions),
+            InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
             64,
             1048576,
             16384

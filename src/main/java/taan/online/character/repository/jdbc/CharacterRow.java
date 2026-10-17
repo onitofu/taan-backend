@@ -44,9 +44,9 @@ final class CharacterRow {
             var part = new AppearancePart(
                 rows.getInt("slot"),
                 rows.getLong("item_id"),
-                rows.getInt("parameter0"),
-                rows.getInt("parameter1"),
-                rows.getInt("parameter2")
+                rows.getInt("palette_1_id"),
+                rows.getInt("palette_2_id"),
+                rows.getInt("palette_3_id")
             );
             parts.set(part.slot(), part);
         }

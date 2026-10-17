@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
@@ -188,7 +189,14 @@ class SelectionConnectionTest {
             throw new IllegalStateException("private-channel-value");
         };
         var dispatcher = new SelectedCharacterRequestDispatcher(
-            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
+            new SelectCharacterPacketHandler(
+                new SelectCharacterAction(
+                    access,
+                    characters,
+                    InventoryFixtures.catalog()
+                ),
+                access
+            ),
             new GetChannelListPacketHandler(
                 new GetChannelListAction(broken, SelectionFixtures.registry(broken)),
                 broken

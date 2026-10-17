@@ -1,0 +1,39 @@
+{
+  "fixtures": [
+    {
+      "PqMoveInventoryItem-native.root.hex": "f57c4d5b69a3c270b5658e074ef4378fe6e6f63f4daf7d8c55b3ec8a0ac395d0",
+      "original_file": "events.jsonl",
+      "origin": "UNKNOWN"
+    },
+    {
+      "bag-after-swap.frame.hex": "e1cdec6e4ce1e2508020e8aaa9314b0b946d7a6c43c57ab1843eb6567ac9e6b2",
+      "original_file": "bag-after-swap.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "bag-before-swap.frame.hex": "e4fe5b9d76d8169dd31de3356bc3874be6546df0f6fff4cce8062f20cbc9ca47",
+      "original_file": "bag-before-swap.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "equipment-after-swap.frame.hex": "eeaf4c02f40f9b2b49cdf155f8f81c148e83f3b07fd9337c9c0757ac50c986ed",
+      "original_file": "equipment-after-swap.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "equipment-before-swap.frame.hex": "9ee3a1c6950d72ac3cf088b21d41e4923a91dadc4bdcff26ede37f5a5a832208",
+      "original_file": "equipment-before-swap.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-reply-two-ids.frame.hex": "d3aa09c37ac666b51788f517cd8f8d6e084d96603019a7cbe0bffe8ad86748ea",
+      "original_file": "move-reply-two-ids.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "move-swap-bag-to-equipment.frame.hex": "bced19c807e1ba4dc7cf31b78c4d04e404848d173a01cd2b1e6b38bdb23f9fd2",
+      "original_file": "move-swap-bag-to-equipment.frame.bin",
+      "origin": "UNKNOWN"
+    }
+  ]
+}

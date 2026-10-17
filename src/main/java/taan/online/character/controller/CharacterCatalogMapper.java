@@ -26,7 +26,7 @@ public final class CharacterCatalogMapper {
 
     private CharacterAppear appearance(GameCharacter character) {
         var parts = character.appearance().parts().stream().map(
-            part -> new CharacterPart(part.itemId(), part.parameter0(), part.parameter1(), part.parameter2())
+            part -> new CharacterPart(part.itemId(), part.palette1Id(), part.palette2Id(), part.palette3Id())
         ).toList();
         return new CharacterAppear(gender(character.gender()), 0, 0, parts);
     }

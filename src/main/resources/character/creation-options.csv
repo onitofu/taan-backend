@@ -1,4 +1,4 @@
-gender,slot,item_id,parameter0,parameter1,parameter2
+gender,slot,item_id,palette_1_id,palette_2_id,palette_3_id
 1,1,729,288,288,288
 1,1,729,295,295,295
 1,1,729,266,266,266

@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.EnumMap;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -43,7 +43,7 @@ public final class CharacterDefinitionLoader {
         }
 
         try (var reader = reader(input)) {
-            if (!"gender,slot,item_id,parameter0,parameter1,parameter2".equals(reader.readLine())) {
+            if (!"gender,slot,item_id,palette_1_id,palette_2_id,palette_3_id".equals(reader.readLine())) {
                 throw new IllegalArgumentException("Invalid character creation header");
             }
 

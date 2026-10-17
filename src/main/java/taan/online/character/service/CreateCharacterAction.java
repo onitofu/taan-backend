@@ -94,9 +94,9 @@ public final class CreateCharacterAction {
                     part -> new StarterItem(
                         part.slot(),
                         part.itemId(),
-                        part.parameter0(),
-                        part.parameter1(),
-                        part.parameter2()
+                        part.palette1Id(),
+                        part.palette2Id(),
+                        part.palette3Id()
                     )
                 ).toList()
         );

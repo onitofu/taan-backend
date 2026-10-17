@@ -67,6 +67,7 @@ class ProtocolStateMachineTest {
         ProtocolEvent.GET_CHANNEL_LIST,
         ProtocolEvent.UPDATE_CASH,
         ProtocolEvent.CLIENT_LOGGING,
+        ProtocolEvent.MOVE_INVENTORY_ITEM,
         ProtocolEvent.MOVE_TO,
         ProtocolEvent.LOBBY_ENTER,
         ProtocolEvent.LOBBY_LEAVE
@@ -84,6 +85,7 @@ class ProtocolStateMachineTest {
 
         for (String phase : new String[]{"CHARACTER_SELECTED", "CHANNEL_SELECTED", "LOBBY"}) {
             for (String event : new String[]{
+                "MOVE_INVENTORY_ITEM",
                 "MOVE_TO",
                 "LOBBY_ENTER",
                 "LOBBY_LEAVE",
@@ -100,7 +102,8 @@ class ProtocolStateMachineTest {
                 "LOGIN_IGNORED",
                 "SELECT_CHARACTER",
                 "SELECTED_REQUEST_IGNORED",
-                "CHANNEL_REQUEST_IGNORED"
+                "CHANNEL_REQUEST_IGNORED",
+                "INVENTORY_REQUEST_IGNORED"
             }) {
                 expected.put(phase + "/" + event, new String[]{phase, event, "IGNORE", phase});
             }
@@ -108,7 +111,8 @@ class ProtocolStateMachineTest {
             for (String event : new String[]{
                 "KEEP_ALIVE_ACCEPTED",
                 "SELECTED_REQUEST_COMPLETED",
-                "CHANNEL_MOVE_REJECTED"
+                "CHANNEL_MOVE_REJECTED",
+                "INVENTORY_REQUEST_COMPLETED"
             }) {
                 expected.put(phase + "/" + event, new String[]{phase, event, "CONTINUE", phase});
             }

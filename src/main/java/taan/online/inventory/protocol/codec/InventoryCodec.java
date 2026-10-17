@@ -12,7 +12,7 @@ public final class InventoryCodec {
             output.unsignedInt(item.instanceId() & 0xffff_ffffL).unsignedInt(item.instanceId() >>> 32)
                 .unsignedByte(item.slot()).unsignedInt(item.itemId()).unsignedShort(item.quantity())
                 .unsignedByte(0).unsignedShort(65535).unsignedShort(0)
-                .unsignedShort(item.parameter0()).unsignedShort(item.parameter1()).unsignedShort(item.parameter2())
+                .unsignedShort(item.palette1Id()).unsignedShort(item.palette2Id()).unsignedShort(item.palette3Id())
                 .unsignedByte(0);
         }
 

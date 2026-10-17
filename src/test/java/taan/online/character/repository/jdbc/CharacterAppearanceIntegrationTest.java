@@ -48,12 +48,12 @@ class CharacterAppearanceIntegrationTest {
         long id = created.id().value();
         long uid = database.scalar("SELECT id FROM inventory_items WHERE slot = 1");
         database.execute(
-            "UPDATE inventory_items SET item_id = 4294967295, parameter0 = 12, parameter1 = 34, parameter2 = 56 "
+            "UPDATE inventory_items SET item_id = 806, palette_1_id = 12, palette_2_id = 34, palette_3_id = 56 "
                 + "WHERE id = " + uid
         );
         var reloaded = database.characters().findByAccount(owner.id()).getFirst();
 
-        assertEquals(new AppearancePart(1, 4294967295L, 12, 34, 56), reloaded.appearance().parts().get(1));
+        assertEquals(new AppearancePart(1, 806, 12, 34, 56), reloaded.appearance().parts().get(1));
         assertEquals(created.id(), reloaded.id());
         assertEquals(created.createdAt(), reloaded.createdAt());
         assertEquals(created.appearance().parts().get(3), reloaded.appearance().parts().get(3));
@@ -81,7 +81,7 @@ class CharacterAppearanceIntegrationTest {
                 .filter(inventory -> inventory.kind().name().equals("BAG")).findFirst().orElseThrow();
 
             assertEquals(uid, bag.items().getFirst().id().value());
-            assertEquals(4294967295L, bag.items().getFirst().itemId());
+            assertEquals(806L, bag.items().getFirst().itemId());
             assertEquals(unequipped, transaction.catalog().getFirst());
             assertTrue(transaction.archive(new CharacterId(id)));
 
@@ -101,10 +101,13 @@ class CharacterAppearanceIntegrationTest {
         var source = legacy("appearance_upgrade");
         long uid = scalar(source, "SELECT max(id) FROM inventory_items");
         long inventoryId = scalar(source, "SELECT max(id) FROM inventories");
-        var original = repository(source).findByAccount(new AccountId(1));
+        String before = inventoryRows(source, true);
 
         new DatabaseMigrator().migrate(source);
         new DatabaseMigrator().migrate(source);
+
+        assertEquals(before, inventoryRows(source, false));
+        var original = repository(source).findByAccount(new AccountId(1));
 
         assertEquals(2, original.size());
         assertEquals(original, repository(source).findByAccount(new AccountId(1)));
@@ -185,7 +188,8 @@ class CharacterAppearanceIntegrationTest {
         execute(
             source,
             "INSERT INTO character_appearance_parts "
-                + "SELECT c.id, slot, CASE WHEN c.id < 3 AND slot IN (1, 3, 5, 8) THEN 100 + slot ELSE 0 END, "
+                + "SELECT c.id, slot, CASE WHEN c.id < 3 AND slot IN (1, 3, 5, 8) THEN CASE "
+                    + "slot WHEN 1 THEN 731 WHEN 3 THEN 824 WHEN 5 THEN 727 ELSE 737 END ELSE 0 END, "
                 + "CASE WHEN c.id < 3 AND slot IN (1, 3, 5, 8) THEN 12 ELSE 0 END, "
                 + "CASE WHEN c.id < 3 AND slot IN (1, 3, 5, 8) THEN 34 ELSE 0 END, "
                 + "CASE WHEN c.id < 3 AND slot IN (1, 3, 5, 8) THEN 56 ELSE 0 END "
@@ -195,8 +199,20 @@ class CharacterAppearanceIntegrationTest {
         return source;
     }
 
+    private String inventoryRows(PGSimpleDataSource source, boolean legacy) throws SQLException {
+        String sql = "SELECT string_agg(concat_ws(':', id, inventory_id, slot, item_id, quantity, "
+            + (legacy ? "parameter0, parameter1, parameter2" : "palette_1_id, palette_2_id, palette_3_id")
+            + "), ',' ORDER BY id) FROM inventory_items";
+
+        try (var connection = source.getConnection(); var statement = connection.createStatement();
+            var rows = statement.executeQuery(sql)) {
+            rows.next();
+            return rows.getString(1);
+        }
+    }
+
     private JdbcCharacterRepository repository(PGSimpleDataSource source) {
-        return new JdbcCharacterRepository(source, 5, new JdbcInventoryRepository(5));
+        return new JdbcCharacterRepository(source, 5, new JdbcInventoryRepository(source, 5));
     }
 
     private void execute(PGSimpleDataSource source, String sql) throws SQLException {

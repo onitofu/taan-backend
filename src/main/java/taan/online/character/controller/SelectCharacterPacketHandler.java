@@ -8,9 +8,8 @@ import taan.online.character.protocol.packet.PrSelectCharacter;
 import taan.online.character.service.CharacterSelectionAccess;
 import taan.online.character.service.SelectCharacterAction;
 import taan.online.character.service.model.SelectCharacterOutcome;
+import taan.online.inventory.controller.InventoryMapper;
 import taan.online.inventory.model.InventoryKind;
-import taan.online.inventory.protocol.packet.Inventory;
-import taan.online.inventory.protocol.packet.InventoryItemData;
 
 public final class SelectCharacterPacketHandler {
     private static final List<InventoryKind> ORDER = List.of(
@@ -47,23 +46,7 @@ public final class SelectCharacterPacketHandler {
         var info = new CharacterCatalogMapper().map(List.of(result.character())).info().getFirst();
         var inventories = result.inventories().stream()
             .sorted(Comparator.comparingInt(value -> ORDER.indexOf(value.kind())))
-            .map(
-                value -> new Inventory(
-                    value.id().value(),
-                    value.kind().capacity(),
-                    value.items().stream().map(
-                        item -> new InventoryItemData(
-                            item.id().value(),
-                            item.slot(),
-                            item.itemId(),
-                            item.quantity(),
-                            item.parameter0(),
-                            item.parameter1(),
-                            item.parameter2()
-                        )
-                    ).toList()
-                )
-            ).toList();
+            .map(new InventoryMapper()::map).toList();
         return new SelectCharacterHandlingResult(
             SelectCharacterHandlingOutcome.SELECTED,
             new PrSelectCharacter(info, inventories)
