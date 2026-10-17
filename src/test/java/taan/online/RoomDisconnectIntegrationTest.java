@@ -73,11 +73,11 @@ class RoomDisconnectIntegrationTest {
                 lobby(owner, a, 1);
                 lobby(guest, b, 1);
                 owner.read();
-                owner.send(root("create-unprotected"));
+                owner.send(root("create-password"));
                 int room = wire.initialize(owner.read()).info().roomId();
                 guest.read();
                 guest.read();
-                guest.send(RoomEntryFixtures.enter(room));
+                guest.send(RoomEntryFixtures.enter(room, "пароль"));
                 wire.initialize(guest.read());
                 wire.slot(owner.read());
                 assertTimeoutPreemptively(Duration.ofSeconds(config.shutdownTimeoutSeconds()), app::close);

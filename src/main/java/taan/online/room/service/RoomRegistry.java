@@ -27,8 +27,10 @@ import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.model.RoomParticipant;
+import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
+import taan.online.room.model.RoomState;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
@@ -84,6 +86,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     public synchronized CreateRoomResult create(
         ChannelMembershipSnapshot context,
         RoomSettings settings,
+        RoomPassword password,
         RoomParticipant owner,
         RoomPresenceOutput output
     ) {
@@ -120,7 +123,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return rejected("ROOM_IDS_EXHAUSTED");
         }
 
-        var room = new Room(allocated.orElseThrow(), UUID.randomUUID(), context.channelId(), settings, owner);
+        var room = new Room(allocated.orElseThrow(), UUID.randomUUID(), context.channelId(), settings, password, owner);
         rooms.put(room.id(), room);
         var subscription = subscribe(room, owner, output);
         var result = snapshot(room);
@@ -136,6 +139,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         ChannelMembershipSnapshot context,
         RoomEntryTarget target,
         RoomParticipant participant,
+        String password,
         RoomPresenceOutput output
     ) {
         if (phase == RoomRegistryPhase.CLOSED) {
@@ -153,7 +157,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var room = rooms.get(target.id());
 
         if (room == null || !room.generation().equals(target.generation()) || room.channelId() != context.channelId()
-            || target.channelId() != context.channelId()) {
+            || target.channelId() != context.channelId() || room.state() != RoomState.WAITING) {
             return entryRejected(EnterRoomOutcome.NOT_FOUND, "ROOM_UNAVAILABLE");
         }
 
@@ -165,7 +169,11 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return entryRejected(EnterRoomOutcome.FULL, "ROOM_FULL");
         }
 
-        var occupied = room.enter(participant);
+        if (!room.acceptsPassword(password)) {
+            return entryRejected(EnterRoomOutcome.WRONG_PASSWORD, "WRONG_PASSWORD");
+        }
+
+        var occupied = room.enter(participant, password);
 
         if (occupied.isEmpty()) {
             return entryRejected(EnterRoomOutcome.NO_SLOT, "NO_OPEN_SLOT");
@@ -352,7 +360,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
                     room.settings().rule(),
                     room.playerCount(),
                     room.settings().capacity(),
-                    room.settings().mapId()
+                    room.settings().mapId(),
+                    room.protectedRoom()
                 )
             ).toList();
 
@@ -372,7 +381,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             room.channelId(),
             room.settings(),
             room.ownerSessionId(),
-            room.slots()
+            room.slots(),
+            room.protectedRoom()
         );
     }
 

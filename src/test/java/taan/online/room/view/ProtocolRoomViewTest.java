@@ -35,8 +35,8 @@ class ProtocolRoomViewTest {
         var a = participant(1, "ProbeHero");
         var b = participant(2, "GuestHero");
         var settings = new RoomSettings(new RoomTitle("Ngon vào đây ! "), RoomMode.ITEM, RoomRule.BONUS, 1, 8);
-        var room = new Room(new RoomId(1), UUID.randomUUID(), 1, settings, a);
-        room.enter(b);
+        var room = new Room(new RoomId(1), UUID.randomUUID(), 1, settings, null, a);
+        room.enter(b, "");
         var output = new CollectingPacketOutput();
         var view = new ProtocolRoomView(output);
         view.initialize(snapshot(room));
@@ -65,7 +65,8 @@ class ProtocolRoomViewTest {
             room.channelId(),
             room.settings(),
             room.ownerSessionId(),
-            room.slots()
+            room.slots(),
+            false
         );
     }
 

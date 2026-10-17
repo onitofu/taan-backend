@@ -75,6 +75,7 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     scenario.channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),
+                    null,
                     scenario.owner(a),
                     new RecordingRoomOutput()
                 ).outcome()
@@ -96,6 +97,7 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     new ChannelMembershipSnapshot(1, ChannelPresencePhase.MEMBER, actor),
                     settings,
+                    null,
                     owner,
                     new RecordingRoomOutput()
                 ).reason()
@@ -105,6 +107,7 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     new ChannelMembershipSnapshot(2, ChannelPresencePhase.LOBBY, actor),
                     settings,
+                    null,
                     owner,
                     new RecordingRoomOutput()
                 ).reason()
@@ -116,6 +119,7 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     context,
                     settings,
+                    null,
                     new RoomParticipant(id, scenario.owner(other).character(), 3),
                     new RecordingRoomOutput()
                 ).reason()
@@ -126,15 +130,16 @@ class RoomRegistryTest {
                 scenario.rooms.create(
                     context,
                     settings,
+                    null,
                     new RoomParticipant(id, changed, 3),
                     new RecordingRoomOutput()
                 ).reason()
             );
-            scenario.rooms.create(context, settings, owner, new RecordingRoomOutput());
+            scenario.rooms.create(context, settings, null, owner, new RecordingRoomOutput());
 
             assertEquals(
                 "ALREADY_IN_ROOM",
-                scenario.rooms.create(context, settings, owner, new RecordingRoomOutput()).reason()
+                scenario.rooms.create(context, settings, null, owner, new RecordingRoomOutput()).reason()
             );
             scenario.channels.move(id, new MoveToCommand(0, 2, 0, 929));
 
@@ -153,7 +158,7 @@ class RoomRegistryTest {
                 var current = scenario.channels.membership(other).orElseThrow();
                 assertEquals(
                     "ROOM_IDS_EXHAUSTED",
-                    exhausted.create(current, settings, scenario.owner(other), new RecordingRoomOutput()).reason()
+                    exhausted.create(current, settings, null, scenario.owner(other), new RecordingRoomOutput()).reason()
                 );
                 assertTrue(exhausted.membership(other).isEmpty());
             }

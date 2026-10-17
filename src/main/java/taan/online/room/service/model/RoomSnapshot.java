@@ -14,7 +14,8 @@ public record RoomSnapshot(
     int channelId,
     RoomSettings settings,
     UUID ownerSessionId,
-    List<RoomSlot> slots
+    List<RoomSlot> slots,
+    boolean protectedRoom
 ) {
     public RoomSnapshot {
         slots = List.copyOf(slots);

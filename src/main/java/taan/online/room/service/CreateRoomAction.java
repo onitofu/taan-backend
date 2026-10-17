@@ -14,6 +14,7 @@ import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomBootstrapDefinition;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
+import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
@@ -85,6 +86,14 @@ public final class CreateRoomAction {
             return rejected(id, "TITLE_FORBIDDEN", started);
         }
 
+        RoomPassword password;
+
+        try {
+            password = command.password() == null ? null : new RoomPassword(command.password());
+        } catch (IllegalArgumentException failure) {
+            return rejected(id, "INVALID_PASSWORD", started);
+        }
+
         var character = characters.load(context.orElseThrow());
 
         if (!sessions.hasSelectedCharacter(id)) {
@@ -103,7 +112,7 @@ public final class CreateRoomAction {
             8
         );
         var owner = new RoomParticipant(id, character.orElseThrow(), defaults.weaponId());
-        var result = rooms.create(context.orElseThrow(), settings, owner, output);
+        var result = rooms.create(context.orElseThrow(), settings, password, owner, output);
         return result.outcome() == CreateRoomOutcome.REJECTED ? rejected(id, result.reason(), started) : result;
     }
 
@@ -111,7 +120,7 @@ public final class CreateRoomAction {
         return command.state() == 5 && command.roomGrade() == 0 && command.gameKind() == 0
             && (command.gameType() == 0 || command.gameType() == 1)
             && command.rule() == (command.gameType() == 0 ? 2 : 0)
-            && command.playerCount() == 0 && command.capacity() == 8 && !command.protectedRoom()
+            && command.playerCount() == 0 && command.capacity() == 8
             && (command.mapId() == 0 || command.mapId() == 1);
     }
 

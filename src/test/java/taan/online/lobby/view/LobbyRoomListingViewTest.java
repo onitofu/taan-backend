@@ -38,7 +38,8 @@ class LobbyRoomListingViewTest {
                 RoomRule.BASIC,
                 2,
                 8,
-                1
+                1,
+                false
             )
         );
 
@@ -54,7 +55,18 @@ class LobbyRoomListingViewTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> mapper.map(
-                new RoomListing(source.id(), 2, source.title(), RoomState.CLOSED, source.mode(), source.rule(), 0, 8, 1)
+                new RoomListing(
+                    source.id(),
+                    2,
+                    source.title(),
+                    RoomState.CLOSED,
+                    source.mode(),
+                    source.rule(),
+                    0,
+                    8,
+                    1,
+                    false
+                )
             )
         );
     }

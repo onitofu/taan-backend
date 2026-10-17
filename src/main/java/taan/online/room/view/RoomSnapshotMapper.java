@@ -26,7 +26,7 @@ public final class RoomSnapshotMapper {
             settings.rule() == RoomRule.BONUS ? 2 : 0,
             count,
             settings.capacity(),
-            null,
+            room.protectedRoom() ? "" : null,
             settings.mapId()
         );
         return new PcGameSessionInit(

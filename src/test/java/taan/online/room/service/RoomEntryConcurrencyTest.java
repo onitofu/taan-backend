@@ -25,7 +25,7 @@ class RoomEntryConcurrencyTest {
                 var id = scenario.player(i, 1);
                 assertEquals(
                     EnterRoomOutcome.ENTERED,
-                    scenario.enter.execute(id, room, new RecordingRoomOutput()).outcome()
+                    scenario.enter.execute(id, room, "", new RecordingRoomOutput()).outcome()
                 );
             }
 
@@ -40,13 +40,13 @@ class RoomEntryConcurrencyTest {
             var first = workers.submit(
                 () -> {
                     barrier.await(5, TimeUnit.SECONDS);
-                    return scenario.rooms.enter(contextA, target, scenario.owner(a), outA);
+                    return scenario.rooms.enter(contextA, target, scenario.owner(a), "", outA);
                 }
             );
             var second = workers.submit(
                 () -> {
                     barrier.await(5, TimeUnit.SECONDS);
-                    return scenario.rooms.enter(contextB, target, scenario.owner(b), outB);
+                    return scenario.rooms.enter(contextB, target, scenario.owner(b), "", outB);
                 }
             );
             var results = List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
@@ -76,7 +76,13 @@ class RoomEntryConcurrencyTest {
                     var creation = workers.submit(
                         () -> {
                             barrier.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.create(contextA, RoomScenario.settings(), scenario.owner(a), out);
+                            return scenario.rooms.create(
+                                contextA,
+                                RoomScenario.settings(),
+                                null,
+                                scenario.owner(a),
+                                out
+                            );
                         }
                     );
                     var joining = workers.submit(
@@ -88,6 +94,7 @@ class RoomEntryConcurrencyTest {
                                     contextB,
                                     value,
                                     scenario.owner(b),
+                                    "",
                                     new RecordingRoomOutput()
                                 )
                             );
@@ -108,7 +115,13 @@ class RoomEntryConcurrencyTest {
                     var entering = workers.submit(
                         () -> {
                             nextBarrier.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.enter(contextC, target, scenario.owner(c), new RecordingRoomOutput());
+                            return scenario.rooms.enter(
+                                contextC,
+                                target,
+                                scenario.owner(c),
+                                "",
+                                new RecordingRoomOutput()
+                            );
                         }
                     );
                     departure.get(5, TimeUnit.SECONDS);

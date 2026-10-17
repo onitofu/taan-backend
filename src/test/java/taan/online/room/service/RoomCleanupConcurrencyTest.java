@@ -30,7 +30,7 @@ class RoomCleanupConcurrencyTest {
                         new RecordingRoomOutput()
                     ).room().id().value();
                     var out = new RecordingRoomOutput();
-                    scenario.enter.execute(b, room, out);
+                    scenario.enter.execute(b, room, "", out);
                     var barrier = new CyclicBarrier(2);
                     var leaving = workers.submit(
                         () -> {
@@ -77,8 +77,8 @@ class RoomCleanupConcurrencyTest {
                         new RecordingRoomOutput()
                     ).room().id().value();
                     var out = new RecordingRoomOutput();
-                    scenario.enter.execute(b, room, out);
-                    scenario.enter.execute(c, room, new RecordingRoomOutput());
+                    scenario.enter.execute(b, room, "", out);
+                    scenario.enter.execute(c, room, "", new RecordingRoomOutput());
                     out.updates.clear();
                     out.changedSlots.clear();
                     out.ownerChanges.clear();
@@ -123,7 +123,7 @@ class RoomCleanupConcurrencyTest {
             var context = scenario.channels.membership(a).orElseThrow();
             var participant = scenario.owner(a);
             var created = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
-            scenario.enter.execute(b, created.id().value(), new RecordingRoomOutput());
+            scenario.enter.execute(b, created.id().value(), "", new RecordingRoomOutput());
             var old = scenario.rooms.membership(a).orElseThrow();
             var barrier = new CyclicBarrier(2);
             var tasks = List.of(a, b).stream().map(
@@ -157,6 +157,7 @@ class RoomCleanupConcurrencyTest {
                 scenario.rooms.create(
                     context,
                     RoomScenario.settings(),
+                    null,
                     participant,
                     new RecordingRoomOutput()
                 ).outcome()
@@ -167,6 +168,7 @@ class RoomCleanupConcurrencyTest {
                     context,
                     new RoomEntryTarget(created.id(), created.generation(), 1),
                     participant,
+                    "",
                     new RecordingRoomOutput()
                 ).outcome()
             );

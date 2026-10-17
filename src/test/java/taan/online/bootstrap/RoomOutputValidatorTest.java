@@ -29,11 +29,12 @@ class RoomOutputValidatorTest {
             UUID.randomUUID(),
             1,
             new RoomSettings(new RoomTitle("x".repeat(256)), settings.mode(), settings.rule(), 1, 8),
+            null,
             owner
         );
 
         for (int i = 2; i <= 8; i++) {
-            room.enter(participant(i));
+            room.enter(participant(i), "");
         }
 
         var snapshot = new RoomSnapshot(
@@ -42,7 +43,8 @@ class RoomOutputValidatorTest {
             1,
             room.settings(),
             owner.sessionId(),
-            room.slots()
+            room.slots(),
+            false
         );
         int bytes = new RoomResponseCodec().encode(new RoomSnapshotMapper().map(snapshot)).length;
         var env = TestFixtures.environment();

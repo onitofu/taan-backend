@@ -12,6 +12,14 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class RoomArchitectureTest {
     @ArchTest
+    static final ArchRule PASSWORD_ENCAPSULATION = noClasses().that().resideInAnyPackage(
+        "taan.online.room.service.model..",
+        "taan.online.room.protocol..",
+        "taan.online.room.view..",
+        "taan.online.lobby.."
+    ).should().dependOnClassesThat().haveSimpleName("RoomPassword");
+
+    @ArchTest
     static final ArchRule PACKET_DEPENDENCIES = classes().that().resideInAPackage("taan.online.room.protocol.packet..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",

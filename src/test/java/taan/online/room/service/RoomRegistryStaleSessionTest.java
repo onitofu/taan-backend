@@ -35,6 +35,7 @@ class RoomRegistryStaleSessionTest {
             var old = rooms.create(
                 channels.membership(first).orElseThrow(),
                 RoomScenario.settings(),
+                null,
                 new RoomParticipant(first, character, 3),
                 new RecordingRoomOutput()
             );
@@ -58,6 +59,7 @@ class RoomRegistryStaleSessionTest {
             var current = rooms.create(
                 channels.membership(next).orElseThrow(),
                 RoomScenario.settings(),
+                null,
                 new RoomParticipant(next, character, 3),
                 new RecordingRoomOutput()
             );

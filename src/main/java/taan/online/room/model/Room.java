@@ -13,16 +13,25 @@ public final class Room {
     private final UUID generation;
     private final int channelId;
     private final RoomSettings settings;
+    private final RoomPassword password;
     private final List<RoomSlot> slots;
     private UUID ownerSessionId;
     private RoomState state = RoomState.WAITING;
 
-    public Room(RoomId id, UUID generation, int channelId, RoomSettings settings, RoomParticipant owner) {
+    public Room(
+        RoomId id,
+        UUID generation,
+        int channelId,
+        RoomSettings settings,
+        RoomPassword password,
+        RoomParticipant owner
+    ) {
         this(
             id,
             generation,
             channelId,
             settings,
+            password,
             owner,
             IntStream.range(0, 8).mapToObj(index -> new RoomSlot(index, RoomSlotState.OPEN, null)).toList()
         );
@@ -33,12 +42,14 @@ public final class Room {
         UUID generation,
         int channelId,
         RoomSettings settings,
+        RoomPassword password,
         RoomParticipant owner,
         List<RoomSlot> slots
     ) {
         this.id = Objects.requireNonNull(id);
         this.generation = Objects.requireNonNull(generation);
         this.settings = Objects.requireNonNull(settings);
+        this.password = password;
         ownerSessionId = owner.sessionId();
 
         if (channelId < 1 || channelId > 65535 || slots.size() != 8) {
@@ -97,8 +108,16 @@ public final class Room {
         );
     }
 
-    public Optional<RoomSlot> enter(RoomParticipant participant) {
-        if (state != RoomState.WAITING || playerCount() >= settings.capacity()) {
+    public boolean protectedRoom() {
+        return password != null;
+    }
+
+    public boolean acceptsPassword(String candidate) {
+        return password == null || password.matches(candidate);
+    }
+
+    public Optional<RoomSlot> enter(RoomParticipant participant, String candidate) {
+        if (state != RoomState.WAITING || playerCount() >= settings.capacity() || !acceptsPassword(candidate)) {
             return Optional.empty();
         }
 

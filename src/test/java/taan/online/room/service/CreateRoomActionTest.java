@@ -42,16 +42,15 @@ class CreateRoomActionTest {
             scenario.lobby(id);
 
             for (CreateRoomCommand command : List.of(
-                new CreateRoomCommand(0, 0, "Room", 0, 0, 2, 0, 8, false, 0),
-                new CreateRoomCommand(5, 1, "Room", 0, 0, 2, 0, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 1, 0, 2, 0, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 2, 2, 0, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 0, 0, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 1, 2, 0, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 1, 8, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 7, false, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, true, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, false, 2)
+                new CreateRoomCommand(0, 0, "Room", 0, 0, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 1, "Room", 0, 0, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 1, 0, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 2, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 0, 0, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 1, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 1, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 7, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, null, 2)
             )) {
                 assertEquals(
                     "UNSUPPORTED_SETTINGS",
@@ -99,7 +98,7 @@ class CreateRoomActionTest {
                 CreateRoomOutcome.CREATED,
                 scenario.create.execute(
                     id,
-                    new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, false, 1),
+                    new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, null, 1),
                     new RecordingRoomOutput()
                 ).outcome()
             );
@@ -173,6 +172,6 @@ class CreateRoomActionTest {
     }
 
     private CreateRoomCommand title(String value) {
-        return new CreateRoomCommand(5, 0, value, 0, 0, 2, 0, 8, false, 0);
+        return new CreateRoomCommand(5, 0, value, 0, 0, 2, 0, 8, null, 0);
     }
 }
