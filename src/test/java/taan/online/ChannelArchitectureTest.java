@@ -155,7 +155,11 @@ class ChannelArchitectureTest {
     @ArchTest
     static final ArchRule LOBBY_PACKET_DEPENDENCIES = classes().that()
         .resideInAPackage("taan.online.lobby.protocol.packet..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.lobby.protocol.packet..");
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.lobby.protocol.packet..",
+            "taan.online.room.protocol.packet.."
+        );
 
     @ArchTest
     static final ArchRule LOBBY_CODEC_DEPENDENCIES = classes().that()
@@ -163,6 +167,7 @@ class ChannelArchitectureTest {
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
             "taan.online.lobby.protocol..",
+            "taan.online.room.protocol..",
             "taan.online.protocol.."
         );
 

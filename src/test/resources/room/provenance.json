@@ -1,0 +1,129 @@
+{
+  "fixtures": [
+    {
+      "PcGameSession_Init-two-players.frame.hex": "14d1c226f450a26c71a060b5574b383a1398d7784e8d6c723cf14b86cd2f6cc0",
+      "original_file": "PcGameSession_Init-two-players.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PcGameSession_UpdateSlot-join-red2.frame.hex": "5c79ceb914f7fc06ae15857c242e94b06a9c65ae7f45bc0b29895b4552790cd9",
+      "original_file": "PcGameSession_UpdateSlot-join-red2.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PcGameSession_UpdateSlot-leave-blue0.frame.hex": "071c861ded0f4234d501ca4f7b956470fb1aee63ca4a44e503a8afd6d2a4fa2c",
+      "original_file": "PcGameSession_UpdateSlot-leave-blue0.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "create-fail-generic.frame.hex": "052e004f325276b4d0fee2b9f032bbad24cf3b44c4c635683aaa0ceffea808b9",
+      "original_file": "create-fail-generic.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "create-password.frame.hex": "5d05957078a744aadf1f14b0a5d82a3e088778ff1b1e79bd01c07d5b71349d76",
+      "original_file": "create-password.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "create-unprotected.frame.hex": "2030f8ac7e935e9cde3065152f39a1f389d7b3c6d98c595eb3f9f6a6f5fbabcd",
+      "original_file": "create-unprotected.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-empty-password.frame.hex": "95f06dbfda6ffd100cc75e91d49a1ca7d45f2d48cc4187ca907bb5a6172d599b",
+      "original_file": "enter-empty-password.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-3.frame.hex": "5d58d1067da8cb86a00a6144cd47819251bc9e8350ba3e5137fddc3029b1bb5c",
+      "original_file": "enter-fail-3.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-4.frame.hex": "1cde57713c1af57b2df771fd97f3d4830a91b963f6343c0464222d6892aabe34",
+      "original_file": "enter-fail-4.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-5.frame.hex": "cef6d246f03f769f2b6f614f75f976662f546006d0ec695b5f9db4612349db26",
+      "original_file": "enter-fail-5.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-6.frame.hex": "d71defc3f1b298d207c93bac79df1922a97b90643ac55c5125a8bae1f6401b73",
+      "original_file": "enter-fail-6.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-7.frame.hex": "4beb0d4b9da963742a73a6049afac0a15b5b50091524f5c49b89ca8e6919490d",
+      "original_file": "enter-fail-7.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-fail-8.frame.hex": "1c6700d8118c2c81772b088069378c4312b13803785d8702782a335620f6586a",
+      "original_file": "enter-fail-8.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "enter-password.frame.hex": "974bc8cb138d9cf88f0a49402bbd44098ba29688fb92e8e37a6b63d2079b43da",
+      "original_file": "enter-password.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "leave-rejected.frame.hex": "5a01fedd2c8042096f6c621047a67f335b9a4c3640dfac3c6b9535504d517eb8",
+      "original_file": "leave-rejected.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "leave-request.frame.hex": "2ba39471bcf20d8a1c86fc35b0df339bf49c7fc863e13ec5b125c80e70867b7d",
+      "original_file": "leave-request.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "leave-success.frame.hex": "160ee82087052758d12017cd0071f33d3dc785c9dd7faa68958e28e48b8f2285",
+      "original_file": "leave-success.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-add-one-room.frame.hex": "5b956dbfbf8efd7443551a722323302e4c93834457ba277bf3a36e1b5d794663",
+      "original_file": "lobby-add-one-room.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-distinct-fields.frame.hex": "ea6e4616fbf57be8ee34b342e13c8d592ae9ad167e103957745280439ec6c21c",
+      "original_file": "lobby-codec.py",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-init-one-room.frame.hex": "656d7a87e59d64e71cdc922329b159177b7680cdf72badadc02c89f24d12b81b",
+      "original_file": "lobby-init-one-room.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-room-count.frame.hex": "e1ed677a4ef2ff35f338a0e70533009db9dcfaa330b73a3adaed749174e7949b",
+      "original_file": "lobby-room-count.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-room-delete.frame.hex": "c7834974fe43b7be5bcf82364dc1a177180ddea0f279f7b313c860f25ac94bf6",
+      "original_file": "lobby-room-delete.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "lobby-room-empty-snapshot.frame.hex": "453cd2d55f2a651e1b9475703b987cb5aee2da0d7b82f7d663776cdc59e2a098",
+      "original_file": "lobby-room-empty-snapshot.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "owner-transfer.frame.hex": "a3079e798177d36ee84ecd9c155b491c7a58d4d7182c6a0226fdcd8aa8b8e6d8",
+      "original_file": "owner-transfer.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "slot-open.frame.hex": "3d6437951a854be521cda8f2f8267c0c1cb072964f9a601a1f325370c70547c3",
+      "original_file": "slot-open.frame.bin",
+      "origin": "SYNTHETIC"
+    }
+  ]
+}
