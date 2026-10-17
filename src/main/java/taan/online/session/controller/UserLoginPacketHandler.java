@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.LoginName;
 import taan.online.account.service.model.ClientCredential;
+import taan.online.character.controller.CharacterCatalogMapper;
+import taan.online.character.service.ListCharactersAction;
 import taan.online.logging.EventLogger;
 import taan.online.session.logging.SessionLogEvent;
 import taan.online.session.model.SessionId;
@@ -32,12 +34,14 @@ public final class UserLoginPacketHandler {
 
     private final LoginAction login;
     private final SessionRegistry sessions;
+    private final ListCharactersAction characters;
     private SessionId id;
     private UUID connection;
 
-    public UserLoginPacketHandler(LoginAction login, SessionRegistry sessions) {
+    public UserLoginPacketHandler(LoginAction login, SessionRegistry sessions, ListCharactersAction characters) {
         this.login = login;
         this.sessions = sessions;
+        this.characters = characters;
     }
 
     public UUID open(UUID connectionId) {
@@ -78,6 +82,13 @@ public final class UserLoginPacketHandler {
 
         if (result instanceof LoginSucceeded success) {
             var principal = success.principal();
+            var catalog = new CharacterCatalogMapper().map(characters.execute(principal.accountId()));
+
+            if (sessions.phase(id) == SessionPhase.CLOSED) {
+                LOG.log(SessionLogEvent.LOGIN_IGNORED, reason("SESSION_CLOSED"));
+                return Optional.empty();
+            }
+
             LOG.log(
                 SessionLogEvent.LOGIN_SUCCEEDED,
                 accountId(principal.accountId().value()),
@@ -85,7 +96,7 @@ public final class UserLoginPacketHandler {
                 durationMs(elapsed(started))
             );
             return Optional.of(
-                new PrUserLogin(true, principal.accountId().value(), wireGender(principal.gender()), 0)
+                new PrUserLogin(true, principal.accountId().value(), wireGender(principal.gender()), 0, catalog)
             );
         }
 

@@ -29,6 +29,11 @@ public final class SessionRegistry {
         return session == null ? SessionPhase.CLOSED : session.phase;
     }
 
+    public synchronized Optional<AuthenticatedPrincipal> principal(SessionId id) {
+        var session = sessions.get(id);
+        return session == null ? Optional.empty() : Optional.ofNullable(session.principal);
+    }
+
     public synchronized LoginResult tryClaim(SessionId id, AuthenticatedPrincipal principal) {
         var session = sessions.get(id);
 

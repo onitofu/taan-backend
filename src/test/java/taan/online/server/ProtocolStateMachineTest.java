@@ -32,22 +32,32 @@ class ProtocolStateMachineTest {
         AUTHENTICATED KEEP_ALIVE PROCESS AUTHENTICATED
         AUTHENTICATED LOGIN_IGNORED IGNORE AUTHENTICATED
         AUTHENTICATED KEEP_ALIVE_ACCEPTED CONTINUE AUTHENTICATED
+        AUTHENTICATED CONFIRM_NAME PROCESS AUTHENTICATED
+        AUTHENTICATED NEW_CHARACTER PROCESS AUTHENTICATED
+        AUTHENTICATED NAME_CHECK_COMPLETED CONTINUE AUTHENTICATED
+        AUTHENTICATED CHARACTER_CREATED CONTINUE AUTHENTICATED
+        AUTHENTICATED CHARACTER_REJECTED CONTINUE AUTHENTICATED
+        AUTHENTICATED CHARACTER_REQUEST_IGNORED IGNORE AUTHENTICATED
         """;
     private static final Set<ProtocolEvent> REQUESTS = Set.of(
         ProtocolEvent.CHECK_ACCOUNT,
         ProtocolEvent.CREATE_ACCOUNT,
         ProtocolEvent.FIRST_PACKET,
         ProtocolEvent.USER_LOGIN,
-        ProtocolEvent.KEEP_ALIVE
+        ProtocolEvent.KEEP_ALIVE,
+        ProtocolEvent.CONFIRM_NAME,
+        ProtocolEvent.NEW_CHARACTER
     );
 
     @Test
     void checksEveryPhaseAndEventAgainstTheProtocolContract() {
         Map<String, String[]> expected = new HashMap<>();
-        TRANSITIONS.lines().forEach(line -> {
-            String[] values = line.split(" ");
-            expected.put(values[0] + "/" + values[1], values);
-        });
+        TRANSITIONS.lines().forEach(
+            line -> {
+                String[] values = line.split(" ");
+                expected.put(values[0] + "/" + values[1], values);
+            }
+        );
 
         for (var phase : ProtocolPhase.values()) {
             for (var event : ProtocolEvent.values()) {

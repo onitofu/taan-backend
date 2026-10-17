@@ -19,6 +19,12 @@ import taan.online.account.repository.jdbc.JdbcAccountRepository;
 import taan.online.account.security.Argon2idCredentialHasher;
 import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
+import taan.online.character.controller.ConfirmNamePacketHandler;
+import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.repository.jdbc.JdbcCharacterRepository;
+import taan.online.character.service.ConfirmNameAction;
+import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.ListCharactersAction;
 import taan.online.bootstrap.logging.ServerLogEvent;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
@@ -29,6 +35,7 @@ import taan.online.server.ConnectionContext;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
 import taan.online.session.service.SessionRegistry;
+import taan.online.session.service.SessionCharacterAccess;
 
 public final class Application implements AutoCloseable {
     private static final EventLogger LOG = EventLogger.forClass(Application.class);
@@ -67,6 +74,18 @@ public final class Application implements AutoCloseable {
 
         var sessions = new SessionRegistry();
         var login = new LoginAction(accounts, hasher, sessions);
+        var characters = new JdbcCharacterRepository(dataSource, config.socketTimeoutSeconds());
+        var access = new SessionCharacterAccess(sessions);
+        var definitions = new CharacterDefinitionLoader();
+        var names = definitions.nameFilter(Application.class.getResourceAsStream("/character/name-filters.txt"));
+        var options = definitions.creationOptions(
+            Application.class.getResourceAsStream("/character/creation-options.csv")
+        );
+        var confirmName = new ConfirmNamePacketHandler(new ConfirmNameAction(access, characters, names), access);
+        var createCharacter = new CreateCharacterPacketHandler(
+            new CreateCharacterAction(access, characters, names, options),
+            access
+        );
 
         workers = new ThreadPoolExecutor(
             config.workerThreads(),
@@ -104,9 +123,11 @@ public final class Application implements AutoCloseable {
                 warnings,
                 config.maxPendingRequests(),
                 config.requestTimeoutSeconds(),
-                new UserLoginPacketHandler(login, sessions),
+                new UserLoginPacketHandler(login, sessions, new ListCharactersAction(characters)),
                 Clock.systemUTC(),
-                config.idleTimeoutSeconds()
+                config.idleTimeoutSeconds(),
+                confirmName,
+                createCharacter
             )
         );
     }

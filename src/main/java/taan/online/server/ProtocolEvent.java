@@ -6,6 +6,8 @@ enum ProtocolEvent {
     FIRST_PACKET,
     USER_LOGIN,
     KEEP_ALIVE,
+    CONFIRM_NAME,
+    NEW_CHARACTER,
     ACCOUNT_CHECK_COMPLETED,
     REGISTRATION_CREATED,
     REGISTRATION_REJECTED,
@@ -14,11 +16,16 @@ enum ProtocolEvent {
     LOGIN_REJECTED,
     LOGIN_IGNORED,
     KEEP_ALIVE_ACCEPTED,
+    NAME_CHECK_COMPLETED,
+    CHARACTER_CREATED,
+    CHARACTER_REJECTED,
+    CHARACTER_REQUEST_IGNORED,
     CONNECTION_CLOSED;
 
     boolean isRequest() {
         return switch (this) {
-            case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, USER_LOGIN, KEEP_ALIVE -> true;
+            case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, USER_LOGIN, KEEP_ALIVE,
+                CONFIRM_NAME, NEW_CHARACTER -> true;
             default -> false;
         };
     }

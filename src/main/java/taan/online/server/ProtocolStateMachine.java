@@ -38,7 +38,13 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.USER_LOGIN, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.KEEP_ALIVE, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.LOGIN_IGNORED, ProtocolPhase.AUTHENTICATED),
-            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.AUTHENTICATED)
+            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CONFIRM_NAME, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.NEW_CHARACTER, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.NAME_CHECK_COMPLETED, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CHARACTER_CREATED, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CHARACTER_REJECTED, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CHARACTER_REQUEST_IGNORED, ProtocolPhase.AUTHENTICATED)
         ),
         ProtocolPhase.TERMINATED,
         Map.of()
@@ -71,8 +77,9 @@ final class ProtocolStateMachine {
         return switch (event) {
             case USER_LOGIN -> phase == ProtocolPhase.AUTHENTICATED
                 ? ProtocolDecision.IGNORE : ProtocolDecision.PROCESS;
-            case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE -> ProtocolDecision.PROCESS;
-            case LOGIN_IGNORED -> ProtocolDecision.IGNORE;
+            case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
+                CONFIRM_NAME, NEW_CHARACTER -> ProtocolDecision.PROCESS;
+            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED -> ProtocolDecision.IGNORE;
             case REGISTRATION_CREATED, LOGIN_REJECTED -> ProtocolDecision.CLOSE_AFTER_REPLY;
             default -> ProtocolDecision.CONTINUE;
         };

@@ -39,7 +39,8 @@ class ArchitectureTest {
             "taan.online.account.model..",
             "taan.online.account.service",
             "taan.online.account.service.model..",
-            "taan.online.account.repository"
+            "taan.online.account.repository",
+            "taan.online.character.service"
         );
 
     @ArchTest
@@ -56,7 +57,11 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule SESSION_PACKET_DEPENDENCIES = classes().that()
         .resideInAPackage("taan.online.session.protocol.packet..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.session.protocol.packet..");
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.session.protocol.packet..",
+            "taan.online.character.protocol.packet.."
+        );
 
     @ArchTest
     static final ArchRule SESSION_CODEC_DEPENDENCIES = classes().that()
@@ -64,7 +69,8 @@ class ArchitectureTest {
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
             "taan.online.protocol..",
-            "taan.online.session.protocol.."
+            "taan.online.session.protocol..",
+            "taan.online.character.protocol.."
         );
 
     @ArchTest
@@ -79,7 +85,11 @@ class ArchitectureTest {
             "taan.online.session.protocol..",
             "taan.online.session.logging..",
             "taan.online.account.model..",
-            "taan.online.account.service.model.."
+            "taan.online.account.service.model..",
+            "taan.online.character.model..",
+            "taan.online.character.controller..",
+            "taan.online.character.service..",
+            "taan.online.character.protocol.packet.."
         );
 
     @ArchTest
@@ -190,6 +200,7 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule LOG_CATALOG_DEPENDENCIES = classes().that().resideInAnyPackage(
         "taan.online.account.logging..",
+        "taan.online.character.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -198,6 +209,7 @@ class ArchitectureTest {
         "org.slf4j.event..",
         "taan.online.logging",
         "taan.online.account.logging..",
+        "taan.online.character.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -218,6 +230,7 @@ class ArchitectureTest {
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.server..",
             "taan.online.account..",
+            "taan.online.character..",
             "taan.online.session..",
             "taan.online.persistence..",
             "taan.online.bootstrap.."
@@ -229,6 +242,7 @@ class ArchitectureTest {
             "taan.online.network..",
             "taan.online.server..",
             "taan.online.account..",
+            "taan.online.character..",
             "taan.online.session..",
             "taan.online.persistence..",
             "taan.online.bootstrap..",
@@ -246,13 +260,115 @@ class ArchitectureTest {
             "taan.online.account.security..",
             "taan.online.session.model..",
             "taan.online.session.service..",
+            "taan.online.character.model..",
+            "taan.online.character.service..",
+            "taan.online.character.repository..",
             "java.sql..",
             "javax.sql.."
         );
 
     @ArchTest
+    static final ArchRule CHARACTER_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.character.model..",
+            "taan.online.account.model.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_SERVICE_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.service..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.logging..",
+            "taan.online.character.logging..",
+            "taan.online.character.model..",
+            "taan.online.account.model..",
+            "taan.online.character.service..",
+            "taan.online.character.repository"
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_SERVICE_MODEL_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.service.model..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.character.service.model..",
+            "taan.online.character.model.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_REPOSITORY_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.repository")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.character.repository",
+            "taan.online.character.model..",
+            "taan.online.account.model.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_JDBC_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.repository.jdbc..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "javax.sql..",
+            "taan.online.logging..",
+            "taan.online.account.model..",
+            "taan.online.character.model..",
+            "taan.online.character.repository.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_CONTROLLER_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.controller..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.account.model..",
+            "taan.online.protocol",
+            "taan.online.character.controller..",
+            "taan.online.character.model..",
+            "taan.online.character.service..",
+            "taan.online.character.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_PACKET_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.protocol.packet..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.character.protocol.packet..");
+
+    @ArchTest
+    static final ArchRule CHARACTER_CODEC_DEPENDENCIES = classes().that()
+        .resideInAPackage("taan.online.character.protocol.codec..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.protocol..",
+            "taan.online.character.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule CHARACTER_CORE_IO_DEPENDENCIES = noClasses().that().resideInAnyPackage(
+        "taan.online.character.model..",
+        "taan.online.character.service..",
+        "taan.online.character.repository"
+    ).should().dependOnClassesThat().resideInAnyPackage(
+        "java.sql..",
+        "javax.sql..",
+        "java.net..",
+        "java.io..",
+        "java.nio.channels..",
+        "java.nio.file.."
+    );
+
+    @ArchTest
+    static final ArchRule CHARACTER_LAYER_CYCLES = slices().matching("taan.online.character.(*)..")
+        .should().beFreeOfCycles();
+
+    @ArchTest
     static final ArchRule DOMAIN_WIRE_CONVERSIONS = noMethods().that().areDeclaredInClassesThat()
-        .resideInAPackage("taan.online.account.model..").should().haveNameMatching("wireValue|fromWire");
+        .resideInAnyPackage("taan.online.account.model..", "taan.online.character.model..")
+        .should().haveNameMatching("wireValue|fromWire");
 
     @ArchTest
     static final ArchRule MODULE_CYCLES = slices().matching("taan.online.(*)..").should().beFreeOfCycles();
