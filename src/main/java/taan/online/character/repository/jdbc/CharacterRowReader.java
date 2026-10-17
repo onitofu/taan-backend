@@ -18,7 +18,7 @@ final class CharacterRowReader {
             FROM characters c
             JOIN accounts a ON a.id = c.account_id
             LEFT JOIN character_appearance_parts p ON p.character_id = c.id
-            WHERE c.account_id = ?
+            WHERE c.account_id = ? AND c.deleted_at IS NULL
             ORDER BY c.id, p.slot
             """;
         var characters = new LinkedHashMap<Long, CharacterRow>();

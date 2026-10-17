@@ -41,10 +41,28 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.CONFIRM_NAME, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.NEW_CHARACTER, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.SELECT_CHARACTER, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CHARACTER_SELECTED, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.CHARACTER_SELECTION_REJECTED, ProtocolPhase.TERMINATED),
+            entry(ProtocolEvent.DELETE_CHARACTER, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.NAME_CHECK_COMPLETED, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.CHARACTER_CREATED, ProtocolPhase.AUTHENTICATED),
+            entry(ProtocolEvent.CHARACTER_DELETED, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.CHARACTER_REJECTED, ProtocolPhase.AUTHENTICATED),
             entry(ProtocolEvent.CHARACTER_REQUEST_IGNORED, ProtocolPhase.AUTHENTICATED)
+        ),
+        ProtocolPhase.CHARACTER_SELECTED,
+        Map.ofEntries(
+            entry(ProtocolEvent.USER_LOGIN, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.LOGIN_IGNORED, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.SELECT_CHARACTER, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.KEEP_ALIVE, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.KEEP_ALIVE_ACCEPTED, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.GET_CHANNEL_LIST, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.UPDATE_CASH, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.CLIENT_LOGGING, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.SELECTED_REQUEST_COMPLETED, ProtocolPhase.CHARACTER_SELECTED),
+            entry(ProtocolEvent.SELECTED_REQUEST_IGNORED, ProtocolPhase.CHARACTER_SELECTED)
         ),
         ProtocolPhase.TERMINATED,
         Map.of()
@@ -75,11 +93,15 @@ final class ProtocolStateMachine {
         phase = next;
 
         return switch (event) {
-            case USER_LOGIN -> phase == ProtocolPhase.AUTHENTICATED
+            case USER_LOGIN -> phase != ProtocolPhase.AWAITING_LOGIN
                 ? ProtocolDecision.IGNORE : ProtocolDecision.PROCESS;
+            case SELECT_CHARACTER -> phase == ProtocolPhase.CHARACTER_SELECTED
+                ? ProtocolDecision.IGNORE : ProtocolDecision.PROCESS;
+            case CHARACTER_SELECTION_REJECTED -> ProtocolDecision.CLOSE_WITHOUT_REPLY;
             case CHECK_ACCOUNT, CREATE_ACCOUNT, FIRST_PACKET, KEEP_ALIVE,
-                CONFIRM_NAME, NEW_CHARACTER -> ProtocolDecision.PROCESS;
-            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED -> ProtocolDecision.IGNORE;
+                CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
+                CLIENT_LOGGING -> ProtocolDecision.PROCESS;
+            case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED -> ProtocolDecision.IGNORE;
             case REGISTRATION_CREATED, LOGIN_REJECTED -> ProtocolDecision.CLOSE_AFTER_REPLY;
             default -> ProtocolDecision.CONTINUE;
         };

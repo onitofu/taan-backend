@@ -1,5 +1,6 @@
 package taan.online.character.repository.jdbc;
 
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,7 +12,8 @@ import taan.online.CharacterFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterName;
-import taan.online.character.repository.CharacterCreationTransaction;
+import taan.online.character.model.CharacterId;
+import taan.online.character.repository.CharacterTransaction;
 
 class CharacterRepositoryFailureTest {
     @Test
@@ -19,7 +21,7 @@ class CharacterRepositoryFailureTest {
         for (String stage : List.of("source.getConnection", "statement.executeQuery", "rows.getLong")) {
             var stub = new CharacterJdbcStub();
             stub.failures.add(stage);
-            var repository = new JdbcCharacterRepository(stub.source(), 5);
+            var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5));
             var failure = assertThrows(
                 CharacterPersistenceException.class,
                 () -> repository.findByAccount(new AccountId(1))
@@ -34,7 +36,11 @@ class CharacterRepositoryFailureTest {
         safe(
             assertThrows(
                 CharacterPersistenceException.class,
-                () -> new JdbcCharacterRepository(stub.source(), 5).existsByName(new CharacterName("Luma"))
+                () -> new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5)).existsByName(
+                    new CharacterName(
+                        "Luma"
+                    )
+                )
             )
         );
         assertTrue(stub.calls.contains("connection.close"));
@@ -50,7 +56,7 @@ class CharacterRepositoryFailureTest {
             safe(
                 assertThrows(
                     CharacterPersistenceException.class,
-                    () -> new JdbcCharacterRepository(stub.source(), 5).beginCreation(new AccountId(1))
+                    () -> transaction(stub)
                 )
             );
 
@@ -64,7 +70,11 @@ class CharacterRepositoryFailureTest {
 
         assertThrows(
             CharacterPersistenceException.class,
-            () -> new JdbcCharacterRepository(missing.source(), 5).beginCreation(new AccountId(1))
+            () -> new JdbcCharacterRepository(missing.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+                new AccountId(
+                    1
+                )
+            )
         );
 
         for (short value : new short[]{0, 3}) {
@@ -73,19 +83,26 @@ class CharacterRepositoryFailureTest {
 
             assertThrows(
                 CharacterPersistenceException.class,
-                () -> new JdbcCharacterRepository(invalid.source(), 5).beginCreation(new AccountId(1))
+                () -> new JdbcCharacterRepository(invalid.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+                    new AccountId(
+                        1
+                    )
+                )
             );
         }
     }
 
     @Test
     void propagatesTransactionFailuresAndAlwaysAttemptsRollbackAndConnectionClosure() {
-        for (String operation : List.of("count", "insert", "batch", "catalog", "commit", "rollback", "close")) {
+        var operations = List.of("count", "insert", "batch", "archive", "catalog", "commit", "rollback", "close");
+
+        for (String operation : operations) {
             var stub = new CharacterJdbcStub();
             var transaction = transaction(stub);
             String stage = switch (operation) {
                 case "count", "insert", "catalog" -> "statement.executeQuery";
                 case "batch" -> "statement.executeBatch";
+                case "archive" -> "statement.executeUpdate";
                 case "commit" -> "connection.commit";
                 case "rollback" -> "connection.rollback";
                 default -> "connection.close";
@@ -98,9 +115,11 @@ class CharacterRepositoryFailureTest {
                     try (transaction) {
                         switch (operation) {
                             case "count" -> transaction.hasCharacters();
+                            case "archive" -> transaction.archive(new CharacterId(1));
                             case "insert", "batch" -> transaction.tryInsert(
                                 new CharacterName("Luma"),
-                                CharacterFixtures.appearance(AccountGender.FEMALE)
+                                CharacterFixtures.appearance(AccountGender.FEMALE),
+                                CharacterFixtures.starter(AccountGender.FEMALE)
                             );
                             case "catalog" -> transaction.catalog();
                             case "commit" -> transaction.commit();
@@ -120,7 +139,7 @@ class CharacterRepositoryFailureTest {
     void reportsCorruptRowsAndNameConflictsWithoutGuessingMissingState() {
         var stub = new CharacterJdbcStub();
         stub.nullSlot = true;
-        var repository = new JdbcCharacterRepository(stub.source(), 5);
+        var repository = new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5));
 
         assertThrows(CharacterPersistenceException.class, () -> repository.findByAccount(new AccountId(1)));
 
@@ -138,15 +157,54 @@ class CharacterRepositoryFailureTest {
 
         try (var transaction = transaction(stub)) {
             assertTrue(
-                transaction.tryInsert(new CharacterName("Luma"), CharacterFixtures.appearance(AccountGender.FEMALE))
+                transaction.tryInsert(
+                    new CharacterName("Luma"),
+                    CharacterFixtures.appearance(AccountGender.FEMALE),
+                    CharacterFixtures.starter(
+                        AccountGender.FEMALE
+                    )
+                )
                     .isEmpty()
             );
             assertEquals(AccountGender.FEMALE, transaction.accountGender());
         }
     }
 
-    private CharacterCreationTransaction transaction(CharacterJdbcStub stub) {
-        return new JdbcCharacterRepository(stub.source(), 5).beginCreation(new AccountId(1));
+    @Test
+    void loadsInventoriesAndWrapsMissingCorruptAndFailedReads() {
+        var valid = new CharacterJdbcStub();
+
+        try (var transaction = transaction(valid)) {
+            assertEquals(3, transaction.inventories(new CharacterId(1)).size());
+        }
+
+        for (int mode : new int[]{0, 1, 2}) {
+            var stub = new CharacterJdbcStub();
+            stub.incompleteInventories = mode == 0;
+            stub.corruptInventory = mode == 1;
+            var transaction = transaction(stub);
+
+            if (mode == 2) {
+                stub.failures.add("statement.executeQuery");
+            }
+
+            try (transaction) {
+                safe(
+                    assertThrows(
+                        CharacterPersistenceException.class,
+                        () -> transaction.inventories(new CharacterId(1))
+                    )
+                );
+            }
+        }
+    }
+
+    private CharacterTransaction transaction(CharacterJdbcStub stub) {
+        return new JdbcCharacterRepository(stub.source(), 5, new JdbcInventoryRepository(5)).beginTransaction(
+            new AccountId(
+                1
+            )
+        );
     }
 
     private void safe(CharacterPersistenceException failure) {

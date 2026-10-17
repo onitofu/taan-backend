@@ -10,5 +10,5 @@ public interface CharacterRepository {
 
     List<GameCharacter> findByAccount(AccountId accountId);
 
-    CharacterCreationTransaction beginCreation(AccountId accountId);
+    CharacterTransaction beginTransaction(AccountId accountId);
 }

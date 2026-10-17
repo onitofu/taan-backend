@@ -1,6 +1,8 @@
 package taan.online.character.repository;
 
 import java.time.Instant;
+import taan.online.inventory.model.CharacterInventory;
+import taan.online.inventory.model.StarterEquipment;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,10 +13,11 @@ import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
 
-final class TestCharacterTransaction implements CharacterCreationTransaction {
+final class TestCharacterTransaction implements CharacterTransaction {
     private final TestCharacterRepository repository;
     private final AccountId owner;
     private GameCharacter pending;
+    private GameCharacter archived;
     private boolean committed;
 
     TestCharacterTransaction(TestCharacterRepository repository, AccountId owner) {
@@ -33,7 +36,11 @@ final class TestCharacterTransaction implements CharacterCreationTransaction {
     }
 
     @Override
-    public Optional<GameCharacter> tryInsert(CharacterName name, CharacterAppearance appearance) {
+    public Optional<GameCharacter> tryInsert(
+        CharacterName name,
+        CharacterAppearance appearance,
+        StarterEquipment starter
+    ) {
         repository.inserts++;
         repository.onInsert.run();
         repository.fail();
@@ -55,8 +62,26 @@ final class TestCharacterTransaction implements CharacterCreationTransaction {
     }
 
     @Override
+    public List<CharacterInventory> inventories(CharacterId characterId) {
+        repository.onInventories.run();
+        repository.fail();
+        return repository.inventoryData;
+    }
+
+    @Override
+    public boolean archive(CharacterId characterId) {
+        repository.onArchive.run();
+        repository.fail();
+        archived = repository.stored.stream().filter(
+            character -> character.accountId().equals(owner) && character.id().equals(characterId)
+        ).findFirst().orElse(null);
+        return archived != null;
+    }
+
+    @Override
     public List<GameCharacter> catalog() {
         var values = new ArrayList<>(repository.findByAccount(owner));
+        values.remove(archived);
 
         if (pending != null) {
             values.add(pending);
@@ -70,7 +95,15 @@ final class TestCharacterTransaction implements CharacterCreationTransaction {
         repository.onCommit.run();
         repository.fail();
         repository.commits++;
-        repository.stored.add(pending);
+        if (pending != null) {
+            repository.stored.add(pending);
+        }
+
+        if (archived != null) {
+            repository.stored.remove(archived);
+            repository.archived.add(archived);
+        }
+
         committed = true;
     }
 

@@ -1,6 +1,8 @@
 package taan.online;
 
 import java.io.IOException;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -71,6 +73,31 @@ public final class CharacterFixtures {
             appearance(gender),
             Instant.EPOCH
         );
+    }
+
+    public static StarterEquipment starter(AccountGender gender) {
+        return new StarterEquipment(
+            appearance(gender).parts().stream().filter(part -> part.itemId() != 0)
+                .map(
+                    part -> new StarterItem(
+                        part.slot(),
+                        part.itemId(),
+                        part.parameter0(),
+                        part.parameter1(),
+                        part.parameter2()
+                    )
+                ).toList()
+        );
+    }
+
+    public static byte[] select(long characterId) {
+        return ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
+            .putInt(0x3abb06ae).putInt(1).putInt((int) characterId).array();
+    }
+
+    public static byte[] delete(long characterId, int slot) {
+        return ByteBuffer.allocate(9).order(ByteOrder.LITTLE_ENDIAN)
+            .putInt(0x26d30563).put((byte) slot).putInt((int) characterId).array();
     }
 
     public static byte[] confirm(String name, int slot) {

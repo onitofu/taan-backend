@@ -1,6 +1,8 @@
 package taan.online.session.service;
 
 import java.util.HashMap;
+import java.util.Objects;
+import taan.online.character.model.CharacterId;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +34,30 @@ public final class SessionRegistry {
     public synchronized Optional<AuthenticatedPrincipal> principal(SessionId id) {
         var session = sessions.get(id);
         return session == null ? Optional.empty() : Optional.ofNullable(session.principal);
+    }
+
+    public synchronized boolean trySelect(SessionId id, CharacterId characterId) {
+        Objects.requireNonNull(characterId);
+        var session = sessions.get(id);
+
+        if (session == null || session.phase != SessionPhase.AUTHENTICATED) {
+            return false;
+        }
+
+        session.selectedCharacterId = characterId;
+        session.phase = SessionPhase.CHARACTER_SELECTED;
+        return true;
+    }
+
+    public synchronized Optional<CharacterId> selectedCharacter(SessionId id) {
+        var session = sessions.get(id);
+        return session == null ? Optional.empty() : Optional.ofNullable(session.selectedCharacterId);
+    }
+
+    public synchronized Optional<AuthenticatedPrincipal> selectablePrincipal(SessionId id) {
+        var session = sessions.get(id);
+        return session == null || session.phase != SessionPhase.AUTHENTICATED
+            ? Optional.empty() : Optional.of(session.principal);
     }
 
     public synchronized LoginResult tryClaim(SessionId id, AuthenticatedPrincipal principal) {

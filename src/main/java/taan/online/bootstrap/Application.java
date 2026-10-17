@@ -1,10 +1,22 @@
 package taan.online.bootstrap;
 
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static taan.online.logging.LogField.port;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import java.time.Duration;
+import java.util.List;
+import taan.online.channel.controller.GetChannelListPacketHandler;
+import taan.online.channel.model.ChannelDefinition;
+import taan.online.channel.model.ChannelDirectory;
+import taan.online.channel.service.GetChannelListAction;
+import taan.online.character.controller.SelectCharacterPacketHandler;
+import taan.online.character.service.SelectCharacterAction;
+import taan.online.session.service.SessionChannelAccess;
+import taan.online.session.controller.CashRefreshPacketHandler;
+import taan.online.session.controller.ClientLoggingPacketHandler;
+import taan.online.server.SelectedCharacterRequestDispatcher;
 import java.time.Clock;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -21,9 +33,11 @@ import taan.online.account.service.CheckAccountAction;
 import taan.online.account.service.RegisterAccountAction;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.controller.DeleteCharacterPacketHandler;
 import taan.online.character.repository.jdbc.JdbcCharacterRepository;
 import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.bootstrap.logging.ServerLogEvent;
 import taan.online.logging.EventLogger;
@@ -74,7 +88,13 @@ public final class Application implements AutoCloseable {
 
         var sessions = new SessionRegistry();
         var login = new LoginAction(accounts, hasher, sessions);
-        var characters = new JdbcCharacterRepository(dataSource, config.socketTimeoutSeconds());
+        var characters = new JdbcCharacterRepository(
+            dataSource,
+            config.socketTimeoutSeconds(),
+            new JdbcInventoryRepository(
+                config.socketTimeoutSeconds()
+            )
+        );
         var access = new SessionCharacterAccess(sessions);
         var definitions = new CharacterDefinitionLoader();
         var names = definitions.nameFilter(Application.class.getResourceAsStream("/character/name-filters.txt"));
@@ -85,6 +105,22 @@ public final class Application implements AutoCloseable {
         var createCharacter = new CreateCharacterPacketHandler(
             new CreateCharacterAction(access, characters, names, options),
             access
+        );
+
+        var channelAccess = new SessionChannelAccess(sessions);
+        var directory = new ChannelDirectory(
+            config.channelGroupName(),
+            config.port(),
+            List.of(
+                new ChannelDefinition(1, config.channelOneName()),
+                new ChannelDefinition(2, config.channelTwoName())
+            )
+        );
+        var selected = new SelectedCharacterRequestDispatcher(
+            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters), access),
+            new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, directory), channelAccess),
+            new CashRefreshPacketHandler(sessions),
+            new ClientLoggingPacketHandler(sessions)
         );
 
         workers = new ThreadPoolExecutor(
@@ -127,7 +163,9 @@ public final class Application implements AutoCloseable {
                 Clock.systemUTC(),
                 config.idleTimeoutSeconds(),
                 confirmName,
-                createCharacter
+                createCharacter,
+                new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
+                selected
             )
         );
     }
