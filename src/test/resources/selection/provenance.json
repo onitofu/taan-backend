@@ -1,0 +1,49 @@
+{
+  "fixtures": [
+    {
+      "PrGetChannelList-one-local-S00.body.hex": "ddd85b3d14ced911f3043943eda4f7385bbd9b2d8499cbaabf25ced3efe089cb",
+      "original_file": "PrGetChannelList-one-local-S00.body.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "candidate-select-character.packet.hex": "f4e52757792a21e30f094ac761b4eba117623f7f0966e1f008702cbf758db346",
+      "original_file": "candidate-select-character.packet.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "event-0023-request.root.hex": "9980803fa66d75455b0d30730178bd1b705abd4a82e489653879eb0a1fd8ad91",
+      "original_file": "event-0023-request.root.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "event-0081-request.root.hex": "f043125509b21e45ccc3397369dbdb0a2fbff331afa2f2cf71b34ce6d363a64e",
+      "original_file": "event-0081-request.root.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "female-selected.root.hex": "0f83ded811fdaa6b6775e946dae85357c4731390e0df26a39737103cd8eb8404",
+      "original_file": "female-selected.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "inventory-high-uid.typed.hex": "3715559e51bff19b7d3bcb9c8243011ac38ab86e5d17ccdd7c96833b6555709d",
+      "original_file": "inventory-high-uid.typed.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "male-selected.root.hex": "0c1399deb3c96baea5e9b757dc65e25e6785b8cd3af6b8c2d8144644c1fd2cb2",
+      "original_file": "male-selected.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "one-channel-tree.hex": "3cad3349f1b2cd974e392d4331cbf2c6cc61b4b7c40dd24bf9606fd306138292",
+      "original_file": "one-channel-tree.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "solar-disabled.root.hex": "fedfc1ebef6679c52d895c3f8a2e41a7e54ab98b0b9b95aff93d027b03b45213",
+      "original_file": "solar-disabled.root.hex",
+      "origin": "UNKNOWN"
+    }
+  ]
+}

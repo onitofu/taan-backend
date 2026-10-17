@@ -1,6 +1,9 @@
 package taan.online;
 
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import java.net.ServerSocket;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,7 +44,9 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public void reset() throws SQLException {
-        execute("TRUNCATE character_appearance_parts, characters, accounts RESTART IDENTITY");
+        execute(
+            "TRUNCATE inventory_items, inventories, character_appearance_parts, characters, accounts RESTART IDENTITY"
+        );
     }
 
     public Account account(String login, AccountGender gender) {
@@ -49,7 +54,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public JdbcCharacterRepository characters() {
-        return new JdbcCharacterRepository(source, 5);
+        return new JdbcCharacterRepository(source, 5, new JdbcInventoryRepository(5));
     }
 
     public CreateCharacterResult create(AccountId owner, String name, AccountGender gender) {
@@ -95,6 +100,21 @@ public final class CharacterTestDatabase implements AutoCloseable {
                 statement.executeBatch();
             }
 
+            new JdbcInventoryRepository(5).create(
+                connection,
+                id,
+                new StarterEquipment(
+                    appearance.parts().stream().filter(part -> part.itemId() != 0).map(
+                        part -> new StarterItem(
+                            part.slot(),
+                            part.itemId(),
+                            part.parameter0(),
+                            part.parameter1(),
+                            part.parameter2()
+                        )
+                    ).toList()
+                )
+            );
             connection.commit();
             return id;
         }

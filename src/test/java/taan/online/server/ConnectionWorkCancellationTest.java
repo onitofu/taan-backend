@@ -17,12 +17,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.SelectionFixtures;
 import taan.online.CharacterFixtures;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.controller.DeleteCharacterPacketHandler;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.TestCredentialHasher;
@@ -195,7 +198,9 @@ class ConnectionWorkCancellationTest {
             new CreateCharacterPacketHandler(
                 new CreateCharacterAction(access, characters, CharacterFixtures.filter(), CharacterFixtures.options()),
                 access
-            )
+            ),
+            new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
+            SelectionFixtures.dispatcher(sessions, characters)
         );
         var channel = new EmbeddedChannel(new FrameEncoder(), handler);
         ByteBuf greeting = channel.readOutbound();

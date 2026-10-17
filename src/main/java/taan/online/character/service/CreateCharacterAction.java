@@ -7,6 +7,8 @@ import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
 
 import java.util.List;
+import taan.online.inventory.model.StarterEquipment;
+import taan.online.inventory.model.StarterItem;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import taan.online.account.model.AccountId;
@@ -15,7 +17,7 @@ import taan.online.character.model.CharacterCreationOptions;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.CharacterNameFilter;
 import taan.online.character.repository.CharacterRepository;
-import taan.online.character.repository.CharacterCreationTransaction;
+import taan.online.character.repository.CharacterTransaction;
 import taan.online.character.service.model.CreateCharacterCommand;
 import taan.online.character.service.model.CreateCharacterOutcome;
 import taan.online.character.service.model.CreateCharacterResult;
@@ -64,7 +66,7 @@ public final class CreateCharacterAction {
 
         CreateCharacterResult result;
 
-        try (var transaction = characters.beginCreation(account)) {
+        try (var transaction = characters.beginTransaction(account)) {
             result = createInTransaction(transaction, account, name, command, started);
         }
 
@@ -72,7 +74,7 @@ public final class CreateCharacterAction {
     }
 
     private CreateCharacterResult createInTransaction(
-        CharacterCreationTransaction transaction,
+        CharacterTransaction transaction,
         AccountId account,
         CharacterName name,
         CreateCharacterCommand command,
@@ -86,7 +88,19 @@ public final class CreateCharacterAction {
             return rejected(CreateCharacterOutcome.INVALID_APPEARANCE, account, started);
         }
 
-        var created = transaction.tryInsert(name, command.appearance());
+        var starter = new StarterEquipment(
+            command.appearance().parts().stream().filter(part -> part.itemId() != 0)
+                .map(
+                    part -> new StarterItem(
+                        part.slot(),
+                        part.itemId(),
+                        part.parameter0(),
+                        part.parameter1(),
+                        part.parameter2()
+                    )
+                ).toList()
+        );
+        var created = transaction.tryInsert(name, command.appearance(), starter);
 
         if (created.isEmpty()) {
             return rejected(CreateCharacterOutcome.NAME_TAKEN, account, started);

@@ -27,7 +27,10 @@ public record ApplicationConfig(
     int argonParallelism,
     String logLevel,
     int logWarnBurst,
-    int logWarnIntervalSeconds
+    int logWarnIntervalSeconds,
+    String channelGroupName,
+    String channelOneName,
+    String channelTwoName
 ) {
     public static ApplicationConfig fromEnvironment(Map<String, String> environment) {
         String level = required(environment, "LOG_LEVEL");
@@ -60,7 +63,10 @@ public record ApplicationConfig(
             positive(environment, "ARGON2_PARALLELISM"),
             level,
             positive(environment, "LOG_WARN_BURST"),
-            positive(environment, "LOG_WARN_INTERVAL_SECONDS")
+            positive(environment, "LOG_WARN_INTERVAL_SECONDS"),
+            required(environment, "CHANNEL_GROUP_NAME"),
+            required(environment, "CHANNEL_1_NAME"),
+            required(environment, "CHANNEL_2_NAME")
         );
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {

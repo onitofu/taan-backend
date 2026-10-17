@@ -1,5 +1,6 @@
 package taan.online.character.repository.jdbc;
 
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -68,7 +69,9 @@ class CharacterPersistenceIntegrationTest {
         new DatabaseMigrator().migrate(isolated);
 
         assertEquals(original, accounts.findByLogin(original.login()).orElseThrow());
-        assertTrue(new JdbcCharacterRepository(isolated, 5).findByAccount(original.id()).isEmpty());
+        var migrated = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(5));
+
+        assertTrue(migrated.findByAccount(original.id()).isEmpty());
 
         var owner = database.account("fresh@example.test", AccountGender.FEMALE);
         var result = database.create(owner.id(), "Luma", AccountGender.FEMALE);
@@ -190,7 +193,7 @@ class CharacterPersistenceIntegrationTest {
         assertThrows(CharacterPersistenceException.class, () -> database.characters().findByAccount(owner.id()));
         assertThrows(
             CharacterPersistenceException.class,
-            () -> database.characters().beginCreation(new AccountId(999))
+            () -> database.characters().beginTransaction(new AccountId(999))
         );
     }
 

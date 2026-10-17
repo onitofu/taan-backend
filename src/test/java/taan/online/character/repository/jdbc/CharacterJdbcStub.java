@@ -18,6 +18,8 @@ final class CharacterJdbcStub {
     final Set<String> failures = new HashSet<>();
     final List<String> calls = new ArrayList<>();
     boolean ownerExists = true;
+    boolean incompleteInventories;
+    boolean corruptInventory;
     boolean nameConflict;
     boolean nullSlot;
     short gender = 2;
@@ -57,6 +59,10 @@ final class CharacterJdbcStub {
                     return rows(sql);
                 }
 
+                if (method.getName().equals("executeUpdate")) {
+                    return 1;
+                }
+
                 if (method.getName().equals("executeBatch")) {
                     return new int[16];
                 }
@@ -69,7 +75,9 @@ final class CharacterJdbcStub {
     private ResultSet rows(String sql) {
         int count = 1;
 
-        if (sql.startsWith("SELECT c.id")) {
+        if (sql.contains("SELECT i.id")) {
+            count = incompleteInventories ? 2 : 3;
+        } else if (sql.startsWith("SELECT c.id")) {
             count = 16;
         } else if (sql.startsWith("SELECT gender") && !ownerExists
             || sql.startsWith("INSERT") && nameConflict) {
@@ -86,13 +94,15 @@ final class CharacterJdbcStub {
                     case "next" -> index.incrementAndGet() <= rowCount;
                     case "getBoolean" -> false;
                     case "getShort" -> gender;
-                    case "getLong" -> arguments[0].equals("item_id") ? 0L : 1L;
+                    case "getLong" -> arguments[0].equals("item_id") && !sql.contains("FROM inventory_items") ? 0L : 1L;
                     case "getInt" -> switch (arguments[0].toString()) {
                         case "slot" -> index.get() - 1;
-                        case "level" -> 1;
+                        case "level", "quantity" -> 1;
                         default -> 0;
                     };
-                    case "getString" -> "Luma";
+                    case "getString" -> arguments[0].equals("kind")
+                        ? corruptInventory ? "INVALID" : List.of("BAG", "EQUIPMENT", "JEWEL_BOX").get(index.get() - 1)
+                        : "Luma";
                     case "getObject" -> arguments[0].equals("slot")
                         ? nullSlot ? null : index.get() - 1 : OffsetDateTime.parse("2026-10-17T00:00:00Z");
                     case "close" -> null;

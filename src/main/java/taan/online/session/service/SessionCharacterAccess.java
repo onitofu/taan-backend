@@ -3,11 +3,12 @@ package taan.online.session.service;
 import java.util.Optional;
 import java.util.UUID;
 import taan.online.account.model.AccountId;
-import taan.online.character.service.AuthenticatedAccountAccess;
+import taan.online.character.service.CharacterSelectionAccess;
+import taan.online.character.model.CharacterId;
 import taan.online.session.model.AuthenticatedPrincipal;
 import taan.online.session.model.SessionId;
 
-public final class SessionCharacterAccess implements AuthenticatedAccountAccess {
+public final class SessionCharacterAccess implements CharacterSelectionAccess {
     private final SessionRegistry sessions;
 
     public SessionCharacterAccess(SessionRegistry sessions) {
@@ -15,7 +16,17 @@ public final class SessionCharacterAccess implements AuthenticatedAccountAccess 
     }
 
     @Override
+    public boolean trySelect(UUID sessionId, CharacterId characterId) {
+        return sessions.trySelect(new SessionId(sessionId), characterId);
+    }
+
+    @Override
+    public Optional<CharacterId> selectedCharacter(UUID sessionId) {
+        return sessions.selectedCharacter(new SessionId(sessionId));
+    }
+
+    @Override
     public Optional<AccountId> authenticatedAccount(UUID sessionId) {
-        return sessions.principal(new SessionId(sessionId)).map(AuthenticatedPrincipal::accountId);
+        return sessions.selectablePrincipal(new SessionId(sessionId)).map(AuthenticatedPrincipal::accountId);
     }
 }

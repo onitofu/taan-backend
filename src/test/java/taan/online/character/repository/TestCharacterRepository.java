@@ -3,6 +3,7 @@ package taan.online.character.repository;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import taan.online.inventory.model.CharacterInventory;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterName;
@@ -10,12 +11,16 @@ import taan.online.character.model.GameCharacter;
 
 public final class TestCharacterRepository implements CharacterRepository {
     public final List<GameCharacter> stored = new ArrayList<>();
+    public final List<GameCharacter> archived = new ArrayList<>();
     public AccountGender gender = AccountGender.FEMALE;
     public boolean conflict;
     public RuntimeException failure;
+    public List<CharacterInventory> inventoryData = List.of();
+    public Runnable onInventories = () -> { };
     public Runnable onRead = () -> { };
     public Runnable onBegin = () -> { };
     public Runnable onInsert = () -> { };
+    public Runnable onArchive = () -> { };
     public Runnable onCommit = () -> { };
     public int reads;
     public int checks;
@@ -43,7 +48,7 @@ public final class TestCharacterRepository implements CharacterRepository {
     }
 
     @Override
-    public CharacterCreationTransaction beginCreation(AccountId accountId) {
+    public CharacterTransaction beginTransaction(AccountId accountId) {
         transactions++;
         onBegin.run();
         fail();

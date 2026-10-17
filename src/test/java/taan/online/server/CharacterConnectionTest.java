@@ -13,6 +13,7 @@ import taan.online.CharacterFixtures;
 import taan.online.LogCapture;
 import taan.online.TestFixtures;
 import taan.online.account.model.AccountGender;
+import taan.online.account.model.AccountId;
 import taan.online.character.repository.jdbc.CharacterPersistenceException;
 import taan.online.session.service.SessionRegistry;
 
@@ -53,9 +54,9 @@ class CharacterConnectionTest {
 
     @Test
     void rejectsWrongPhasesLocalAccountsAndMalformedBodiesWithoutDatabaseWork() {
-        for (boolean creation : new boolean[]{false, true}) {
+        for (int operation : new int[]{0, 1, 2}) {
             try (var harness = new ConnectionContextTestHarness(8)) {
-                harness.channel().writeInbound(request(creation));
+                harness.channel().writeInbound(request(operation));
 
                 assertFalse(harness.channel().isActive());
                 assertTrue(harness.jobs().isEmpty());
@@ -66,7 +67,7 @@ class CharacterConnectionTest {
             for (boolean badSlot : new boolean[]{false, true}) {
                 try (var logs = new LogCapture(); var harness = new ConnectionContextTestHarness(8)) {
                     authenticate(harness);
-                    byte[] root = request(creation);
+                    byte[] root = request(operation);
 
                     if (badSlot) {
                         root[4] = 1;
@@ -90,7 +91,7 @@ class CharacterConnectionTest {
 
     @Test
     void closesInfrastructureFailuresAndLogsEachExceptionOnceWithSafeAsyncContext() {
-        for (boolean creation : new boolean[]{false, true}) {
+        for (int operation : new int[]{0, 1, 2}) {
             try (var harness = new ConnectionContextTestHarness(8)) {
                 authenticate(harness);
                 harness.characters().failure = new CharacterPersistenceException(
@@ -99,12 +100,16 @@ class CharacterConnectionTest {
                 );
 
                 try (var logs = new LogCapture()) {
-                    harness.channel().writeInbound(request(creation));
+                    harness.channel().writeInbound(request(operation));
                     harness.run();
 
                     assertFalse(harness.channel().isActive());
                     assertNull(harness.channel().readOutbound());
-                    String eventName = creation ? "character.creation.failed" : "character.name.check.failed";
+                    String eventName = switch (operation) {
+                        case 0 -> "character.name.check.failed";
+                        case 1 -> "character.creation.failed";
+                        default -> "character.deletion.failed";
+                    };
                     var failures = logs.events().stream().filter(
                         event -> event.getKeyValuePairs().stream().anyMatch(
                             field -> field.key.equals("event") && field.value.equals(eventName)
@@ -125,11 +130,11 @@ class CharacterConnectionTest {
 
     @Test
     void removesQueuedCharacterWorkAfterDisconnectOrTimeout() {
-        for (boolean creation : new boolean[]{false, true}) {
+        for (int operation : new int[]{0, 1, 2}) {
             for (boolean timeout : new boolean[]{false, true}) {
                 try (var logs = new LogCapture(); var harness = new ConnectionContextTestHarness(8)) {
                     authenticate(harness);
-                    harness.channel().writeInbound(request(creation));
+                    harness.channel().writeInbound(request(operation));
 
                     assertEquals(1, harness.jobs().size());
 
@@ -146,11 +151,11 @@ class CharacterConnectionTest {
 
     @Test
     void ignoresResultsForInvalidatedSessionsWithoutRenewingIdleActivity() {
-        for (boolean creation : new boolean[]{false, true}) {
+        for (int operation : new int[]{0, 1, 2}) {
             try (var harness = new ConnectionContextTestHarness(8)) {
                 authenticate(harness);
                 harness.channel().advanceTimeBy(250, TimeUnit.SECONDS);
-                harness.channel().writeInbound(request(creation));
+                harness.channel().writeInbound(request(operation));
                 harness.invalidateSession();
                 harness.run();
 
@@ -211,6 +216,63 @@ class CharacterConnectionTest {
         try (var reconnected = new ConnectionContextTestHarness(8, sessions)) {
             authenticate(reconnected);
         }
+    }
+
+    @Test
+    void serializesDeletionAndNameReuseAndDiscardsAlreadyCommittedRepliesAfterDisconnect() {
+        try (var logs = new LogCapture(); var harness = new ConnectionContextTestHarness(8)) {
+            authenticate(harness);
+            harness.characters().stored.add(
+                CharacterFixtures.character(1001, new AccountId(1), AccountGender.FEMALE, "Luma")
+            );
+            harness.channel().writeInbound(CharacterFixtures.delete(1001, 0));
+            harness.channel().writeInbound(CharacterFixtures.confirm("Luma", 0));
+
+            assertEquals(1, harness.jobs().size());
+
+            harness.run();
+
+            assertEquals(0, harness.reply());
+            assertEquals(1, harness.characters().archived.size());
+            assertEquals(1, harness.jobs().size());
+
+            harness.run();
+
+            assertEquals(0, harness.reply());
+            assertTrue(harness.channel().isActive());
+
+            harness.channel().writeInbound(CharacterFixtures.delete(1001, 0));
+            harness.run();
+
+            assertEquals(1, harness.reply());
+            assertTrue(harness.channel().isActive());
+            assertFalse(logs.text().contains("Luma"));
+            assertTrue(logs.text().contains("character.deletion.succeeded"));
+            assertTrue(logs.text().contains("character.deletion.rejected"));
+        }
+
+        try (var harness = new ConnectionContextTestHarness(8)) {
+            authenticate(harness);
+            harness.characters().stored.add(
+                CharacterFixtures.character(1001, new AccountId(1), AccountGender.FEMALE, "Luma")
+            );
+            harness.characters().onArchive = () -> harness.channel().unsafe().close(harness.channel().newPromise());
+            harness.channel().writeInbound(CharacterFixtures.delete(1001, 0));
+            harness.run();
+
+            assertFalse(harness.channel().isActive());
+            assertNull(harness.channel().readOutbound());
+            assertEquals(1, harness.characters().commits);
+            assertEquals(1, harness.characters().archived.size());
+        }
+    }
+
+    private static byte[] request(int operation) {
+        return switch (operation) {
+            case 0 -> request(false);
+            case 1 -> request(true);
+            default -> CharacterFixtures.delete(1001, 0);
+        };
     }
 
     private static byte[] request(boolean creation) {

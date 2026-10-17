@@ -21,6 +21,21 @@
       "origin": "SYNTHETIC"
     },
     {
+      "event-0033-request.root.hex": "28c22672e4c2382fd0b968e9497e646e6e29eca4ab8183ba75d9a4a9e8e8e56d",
+      "original_file": "event-0033-request.root.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "event-0035-reply.frame.hex": "016d1386203ad52404e8c1637190ad453bf5f145981d2e690ebec6499e5aa119",
+      "original_file": "event-0035-reply.frame.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "event-0047-reply.frame.hex": "d89105554c374511ab223cded67a5aabde6a2d73b1d44072399531d62464527e",
+      "original_file": "event-0047-reply.frame.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
       "event-0054-reply.frame.hex": "3b20030508238e1ffa35a9a6aa7eae38f1fff990035194efd924b1d445d47ee0",
       "original_file": "event-0054-reply.frame.hex",
       "origin": "SYNTHETIC"
@@ -43,6 +58,16 @@
     {
       "event-0083-reply.frame.hex": "e74e6a1319957bf8f83e238d5e93cac51e099d519ed3c01dc8df4f67a0147dc4",
       "original_file": "event-0083-reply.frame.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "event-0091-request.root.hex": "a8b3c54f2789df7f62d65d1c8557e1e1e631cda1d9c02ebc750c65b4100084bb",
+      "original_file": "event-0091-request.root.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "event-0093-reply.frame.hex": "f3b78329bc33c6321c46b4458b049e699dc12d6a35d508db84bc98444f067f2e",
+      "original_file": "event-0093-reply.frame.hex",
       "origin": "SYNTHETIC"
     }
   ]

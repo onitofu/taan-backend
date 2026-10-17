@@ -9,6 +9,13 @@ public enum CharacterLogEvent implements LogEvent {
     CREATION_SUCCEEDED("character.creation.succeeded", Level.INFO, "Character created"),
     CREATION_REJECTED("character.creation.rejected", Level.INFO, "Character creation rejected"),
     CREATION_FAILED("character.creation.failed", Level.ERROR, "Character creation failed"),
+    DELETION_SUCCEEDED("character.deletion.succeeded", Level.INFO, "Character archived"),
+    DELETION_REJECTED("character.deletion.rejected", Level.INFO, "Character deletion rejected"),
+    DELETION_FAILED("character.deletion.failed", Level.ERROR, "Character deletion failed"),
+    SELECTION_SUCCEEDED("character.selection.succeeded", Level.INFO, "Character selected"),
+    SELECTION_REJECTED("character.selection.rejected", Level.INFO, "Character selection rejected"),
+    SELECTION_IGNORED("character.selection.ignored", Level.DEBUG, "Character selection ignored"),
+    SELECTION_FAILED("character.selection.failed", Level.ERROR, "Character selection failed"),
     CATALOG_LOADED("character.catalog.loaded", Level.DEBUG, "Character catalog loaded"),
     REQUEST_CANCELLED("character.request.cancelled", Level.DEBUG, "Queued character request cancelled");
 

@@ -1,6 +1,7 @@
 package taan.online.character.repository.jdbc;
 
 import java.sql.Connection;
+import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
 import java.sql.SQLException;
 import java.util.List;
 import javax.sql.DataSource;
@@ -8,22 +9,30 @@ import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
-import taan.online.character.repository.CharacterCreationTransaction;
+import taan.online.character.repository.CharacterTransaction;
 import taan.online.character.repository.CharacterRepository;
 
 public final class JdbcCharacterRepository implements CharacterRepository {
     private final DataSource dataSource;
+    private final JdbcInventoryRepository inventories;
     private final int queryTimeoutSeconds;
 
-    public JdbcCharacterRepository(DataSource dataSource, int queryTimeoutSeconds) {
+    public JdbcCharacterRepository(
+        DataSource dataSource,
+        int queryTimeoutSeconds,
+        JdbcInventoryRepository inventories
+    ) {
         this.dataSource = dataSource;
+        this.inventories = inventories;
         this.queryTimeoutSeconds = queryTimeoutSeconds;
     }
 
     @Override
     public boolean existsByName(CharacterName name) {
         try (var connection = dataSource.getConnection();
-            var statement = connection.prepareStatement("SELECT EXISTS (SELECT 1 FROM characters WHERE name = ?)")) {
+            var statement = connection.prepareStatement(
+                "SELECT EXISTS (SELECT 1 FROM characters WHERE name = ? AND deleted_at IS NULL)"
+            )) {
             statement.setQueryTimeout(queryTimeoutSeconds);
             statement.setString(1, name.value());
 
@@ -46,7 +55,7 @@ public final class JdbcCharacterRepository implements CharacterRepository {
     }
 
     @Override
-    public CharacterCreationTransaction beginCreation(AccountId accountId) {
+    public CharacterTransaction beginTransaction(AccountId accountId) {
         Connection connection = null;
 
         try {
@@ -67,7 +76,7 @@ public final class JdbcCharacterRepository implements CharacterRepository {
                 }
             }
 
-            return new JdbcCharacterCreationTransaction(connection, accountId, gender, queryTimeoutSeconds);
+            return new JdbcCharacterTransaction(connection, accountId, gender, queryTimeoutSeconds, inventories);
         } catch (SQLException failure) {
             if (connection != null) {
                 try {
@@ -77,7 +86,7 @@ public final class JdbcCharacterRepository implements CharacterRepository {
                 }
             }
 
-            throw new CharacterPersistenceException("beginCreation", failure);
+            throw new CharacterPersistenceException("beginTransaction", failure);
         }
     }
 }

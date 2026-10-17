@@ -6,16 +6,20 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.time.Duration;
+import taan.online.account.model.AccountGender;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.TestFixtures;
+import taan.online.SelectionFixtures;
 import taan.online.character.controller.ConfirmNamePacketHandler;
 import taan.online.character.controller.CreateCharacterPacketHandler;
+import taan.online.character.controller.DeleteCharacterPacketHandler;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.service.ConfirmNameAction;
 import taan.online.character.service.CreateCharacterAction;
+import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.CharacterFixtures;
 import taan.online.session.service.SessionCharacterAccess;
@@ -56,6 +60,16 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     }
 
     ConnectionContextTestHarness(int capacity, SessionRegistry sessions, boolean activate, Clock clock) {
+        this(capacity, sessions, activate, clock, null);
+    }
+
+    ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        boolean activate,
+        Clock clock,
+        SelectedCharacterRequestDispatcher selectedOverride
+    ) {
         var warnings = new WarningLogLimiter(
             LoggerFactory.getLogger(ConnectionContext.class),
             10,
@@ -70,6 +84,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             new ListCharactersAction(characters)
         );
         var access = new SessionCharacterAccess(sessions);
+        characters.inventoryData = SelectionFixtures.inventories(AccountGender.FEMALE);
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -94,7 +109,9 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             new CreateCharacterPacketHandler(
                 new CreateCharacterAction(access, characters, CharacterFixtures.filter(), CharacterFixtures.options()),
                 access
-            )
+            ),
+            new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
+            selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride
         );
         channel = new EmbeddedChannel(new FrameEncoder());
         channel.pipeline().addLast(handler);

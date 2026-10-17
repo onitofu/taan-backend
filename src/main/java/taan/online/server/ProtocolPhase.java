@@ -5,5 +5,6 @@ public enum ProtocolPhase {
     PRELIMINARY,
     AWAITING_LOGIN,
     AUTHENTICATED,
+    CHARACTER_SELECTED,
     TERMINATED
 }
