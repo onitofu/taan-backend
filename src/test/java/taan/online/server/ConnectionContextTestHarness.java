@@ -52,6 +52,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     private final QueuedTestExecutor workers;
     private final UserLoginPacketHandler login;
     private int hashes;
+    private final boolean ownsRooms;
     final ChannelRegistry channels;
     final RoomRegistry rooms;
     private final TestCharacterRepository characters = new TestCharacterRepository();
@@ -90,6 +91,32 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         SelectedCharacterRequestDispatcher selectedOverride,
         LobbyRequestDispatcher lobbyOverride
     ) {
+        this(capacity, sessions, activate, clock, selectedOverride, lobbyOverride, null, null, 1);
+    }
+
+    ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        ChannelRegistry channels,
+        RoomRegistry rooms,
+        long accountId
+    ) {
+        this(capacity, sessions, true, Clock.systemUTC(), null, null, channels, rooms, accountId);
+    }
+
+    private ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        boolean activate,
+        Clock clock,
+        SelectedCharacterRequestDispatcher selectedOverride,
+        LobbyRequestDispatcher lobbyOverride,
+        ChannelRegistry sharedChannels,
+        RoomRegistry sharedRooms,
+        long accountId
+    ) {
+        repository.accountId(accountId);
+        ownsRooms = sharedRooms == null;
         var warnings = new WarningLogLimiter(
             LoggerFactory.getLogger(ConnectionContext.class),
             10,
@@ -105,8 +132,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         );
         var access = new SessionCharacterAccess(sessions);
         characters.inventoryData = SelectionFixtures.inventories(AccountGender.FEMALE);
-        channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
-        rooms = new RoomRegistry(channels);
+        channels = sharedChannels == null ? SelectionFixtures.registry(
+            new SessionChannelAccess(sessions)
+        ) : sharedChannels;
+        rooms = sharedRooms == null ? new RoomRegistry(channels) : sharedRooms;
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -180,7 +209,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
     @Override
     public void close() {
         channel.finishAndReleaseAll();
-        rooms.close();
+
+        if (ownsRooms) {
+            rooms.close();
+        }
     }
 
     ConnectionContextTestRepository repository() {

@@ -341,9 +341,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         if (terminal) {
             closeReason = completion.event() == ProtocolEvent.LOGIN_REJECTED
                 ? "LOGIN_REJECTED" : "REGISTRATION_COMPLETED";
-            login.close(closeReason);
-            rooms.close(sessionId, closeReason);
-            lobby.close(sessionId, closeReason);
+            releaseMemberships(closeReason);
         }
 
         completion.delivery().whenComplete(
@@ -401,12 +399,10 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     @Override
     public void channelInactive(ChannelHandlerContext context) {
         cleanup();
-
-        LOG.log(ConnectionLogEvent.CLOSED, connectionId(id.value()), reason(closeReason));
     }
 
     private void close(ChannelHandlerContext context, String reason) {
-        if (phase == ConnectionPhase.CLOSED) {
+        if (phase == ConnectionPhase.CLOSING || phase == ConnectionPhase.CLOSED) {
             return;
         }
 
@@ -418,9 +414,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             output.close();
         }
 
-        login.close(reason);
-        rooms.close(sessionId, reason);
-        lobby.close(sessionId, reason);
+        releaseMemberships(reason);
         cancelWork(reason);
         pending.clear();
 
@@ -444,11 +438,14 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     }
 
     private void cleanup() {
+        if (phase == ConnectionPhase.CLOSED) {
+            return;
+        }
+
         phase = ConnectionPhase.CLOSED;
         protocol.on(ProtocolEvent.CONNECTION_CLOSED);
-        login.close(closeReason);
-        rooms.close(sessionId, closeReason);
-        lobby.close(sessionId, closeReason);
+        releaseMemberships(closeReason);
+
         if (output != null) {
             output.close();
         }
@@ -463,6 +460,14 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         if (idleDeadline != null) {
             idleDeadline.cancel(false);
         }
+
+        LOG.log(ConnectionLogEvent.CLOSED, connectionId(id.value()), reason(closeReason));
+    }
+
+    private void releaseMemberships(String reason) {
+        login.close(reason);
+        rooms.close(sessionId, reason);
+        lobby.close(sessionId, reason);
     }
 
     private void cancelWork(String reason) {
