@@ -13,12 +13,21 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.ChannelFixtures;
 import taan.online.CharacterFixtures;
+import taan.online.CollectingPacketOutput;
 import taan.online.LogCapture;
+import taan.online.RecordingRoomOutput;
+import taan.online.RoomEntryFixtures;
+import taan.online.RoomListingFixtures;
+import taan.online.RoomScenario;
 import taan.online.TestFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.channel.service.model.MoveToCommand;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
+import taan.online.room.model.RoomParticipant;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.session.model.AuthenticatedPrincipal;
+import taan.online.session.service.SessionRegistry;
 
 class RoomConnectionTest {
     @Test
@@ -68,7 +77,7 @@ class RoomConnectionTest {
             harness.channel().writeInbound(leave(first.info().roomId(), 0));
             harness.run();
 
-            assertEquals(1, new RoomResponseCodec().leave(read(harness)).success());
+            assertEquals(0, new RoomResponseCodec().leave(read(harness)).success());
             harness.channel().writeInbound(root("start-empty"));
             harness.run();
 
@@ -190,6 +199,44 @@ class RoomConnectionTest {
                 assertFalse(logs.text().contains(TestFixtures.VERIFIER));
                 assertFalse(logs.text().contains("Ngon vào đây"));
             }
+        }
+    }
+
+    @Test
+    void logsEntryPersistenceFailureOnceAndPreservesTheOtherPlayersRoom() throws Exception {
+        var sessions = new SessionRegistry();
+
+        try (var harness = new ConnectionContextTestHarness(8, sessions); var logs = new LogCapture()) {
+            lobby(harness);
+            var owner = sessions.open();
+            var character = CharacterFixtures.character(1002, new AccountId(2), AccountGender.MALE, "Owner");
+            sessions.tryClaim(owner, new AuthenticatedPrincipal(character.accountId(), character.gender()));
+            sessions.trySelect(owner, character);
+            harness.channels.move(owner.value(), new MoveToCommand(0, 1, 0, 929));
+            harness.channels.enter(owner.value(), RoomListingFixtures.emptyView(new CollectingPacketOutput()));
+            var room = harness.rooms.create(
+                harness.channels.membership(owner.value()).orElseThrow(),
+                RoomScenario.settings(),
+                new RoomParticipant(owner.value(), character, 3),
+                new RecordingRoomOutput()
+            );
+            harness.channel().runPendingTasks();
+            drain(harness);
+            harness.characters().failure = new IllegalStateException("Private title and credentials");
+            harness.channel().writeInbound(RoomEntryFixtures.enter(room.room().id().value()));
+            harness.run();
+
+            assertFalse(harness.channel().isActive());
+            assertTrue(harness.rooms.current(owner.value()).isPresent());
+            assertEquals(
+                1,
+                logs.events().stream().filter(
+                    entry -> entry.getKeyValuePairs().stream().anyMatch(
+                        field -> field.key.equals("event") && field.value.equals("room.entry.failed")
+                    )
+                ).count()
+            );
+            assertFalse(logs.text().contains("Private title and credentials"));
         }
     }
 

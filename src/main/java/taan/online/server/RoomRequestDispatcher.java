@@ -18,8 +18,9 @@ public final class RoomRequestDispatcher {
     }
 
     RequestCompletion dispatch(int type, UUID id, byte[] root, PacketOutput output) {
-        var result = handler.handle(id, type, root);
+        var result = handler.handle(id, type, root, output);
         var event = switch (result.outcome()) {
+            case ENTERED -> ProtocolEvent.ROOM_ENTERED;
             case CREATED -> ProtocolEvent.ROOM_CREATED;
             case CREATE_REJECTED, ENTRY_REJECTED, LEAVE_REJECTED, START_UNAVAILABLE ->
                 ProtocolEvent.ROOM_REQUEST_COMPLETED;
@@ -27,7 +28,7 @@ public final class RoomRequestDispatcher {
             case LEAVE_REPLAYED -> ProtocolEvent.ROOM_LEAVE_REPLAYED;
             case IGNORED -> ProtocolEvent.ROOM_REQUEST_IGNORED;
         };
-        return RequestCompletion.batch(output, event, result.responses());
+        return new RequestCompletion(event, result.delivery());
     }
 
     void close(UUID id, String reason) {
@@ -41,6 +42,7 @@ public final class RoomRequestDispatcher {
     }
 
     static LogEvent failureEvent(int type) {
-        return type == PqGameSessionCreate.TYPE_ID ? RoomLogEvent.CREATION_FAILED : RoomLogEvent.OPERATION_FAILED;
+        return type == PqGameSessionCreate.TYPE_ID ? RoomLogEvent.CREATION_FAILED
+            : type == PqGameSessionEnter.TYPE_ID ? RoomLogEvent.ENTRY_FAILED : RoomLogEvent.OPERATION_FAILED;
     }
 }

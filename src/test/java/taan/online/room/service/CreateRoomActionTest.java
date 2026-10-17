@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
 import taan.online.LogCapture;
+import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
@@ -26,12 +27,18 @@ class CreateRoomActionTest {
 
             assertEquals(
                 CreateRoomOutcome.IGNORED,
-                scenario.create.execute(UUID.randomUUID(), RoomScenario.command()).outcome()
+                scenario.create.execute(UUID.randomUUID(), RoomScenario.command(), new RecordingRoomOutput()).outcome()
             );
-            assertEquals("NO_CHANNEL", scenario.create.execute(id, RoomScenario.command()).reason());
+            assertEquals(
+                "NO_CHANNEL",
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).reason()
+            );
             scenario.channels.move(id, new MoveToCommand(0, 1, 0, 929));
 
-            assertEquals("NOT_IN_LOBBY", scenario.create.execute(id, RoomScenario.command()).reason());
+            assertEquals(
+                "NOT_IN_LOBBY",
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).reason()
+            );
             scenario.lobby(id);
 
             for (CreateRoomCommand command : List.of(
@@ -46,12 +53,18 @@ class CreateRoomActionTest {
                 new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, true, 0),
                 new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, false, 2)
             )) {
-                assertEquals("UNSUPPORTED_SETTINGS", scenario.create.execute(id, command).reason());
+                assertEquals(
+                    "UNSUPPORTED_SETTINGS",
+                    scenario.create.execute(id, command, new RecordingRoomOutput()).reason()
+                );
             }
 
-            assertEquals("INVALID_TITLE", scenario.create.execute(id, title(null)).reason());
-            assertEquals("INVALID_TITLE", scenario.create.execute(id, title(" ")).reason());
-            assertEquals("TITLE_FORBIDDEN", scenario.create.execute(id, title("Private DEniED title")).reason());
+            assertEquals("INVALID_TITLE", scenario.create.execute(id, title(null), new RecordingRoomOutput()).reason());
+            assertEquals("INVALID_TITLE", scenario.create.execute(id, title(" "), new RecordingRoomOutput()).reason());
+            assertEquals(
+                "TITLE_FORBIDDEN",
+                scenario.create.execute(id, title("Private DEniED title"), new RecordingRoomOutput()).reason()
+            );
             assertEquals(0, scenario.characters.transactions);
             assertFalse(logs.text().contains("Private DEniED title"));
             assertFalse(title("Private title").toString().contains("Private title"));
@@ -66,14 +79,17 @@ class CreateRoomActionTest {
                 CharacterFixtures.character(1, new AccountId(10), AccountGender.FEMALE, "OtherHero")
             );
             scenario.characters.onCommit = () -> assertTrue(scenario.rooms.current(id).isEmpty());
-            var result = scenario.create.execute(id, RoomScenario.command());
+            var result = scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
 
             assertEquals(CreateRoomOutcome.CREATED, result.outcome());
             assertEquals(scenario.characters.stored.getFirst(), result.room().owner().character());
             assertEquals(1, scenario.characters.commits);
             assertEquals(1, scenario.characters.closes);
             assertEquals(0, scenario.characters.rollbacks);
-            assertEquals("ALREADY_IN_ROOM", scenario.create.execute(id, RoomScenario.command()).reason());
+            assertEquals(
+                "ALREADY_IN_ROOM",
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).reason()
+            );
             assertEquals(1, scenario.characters.transactions);
             scenario.rooms.release(id, "TEST");
             scenario.lobby(id);
@@ -81,7 +97,11 @@ class CreateRoomActionTest {
 
             assertEquals(
                 CreateRoomOutcome.CREATED,
-                scenario.create.execute(id, new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, false, 1)).outcome()
+                scenario.create.execute(
+                    id,
+                    new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, false, 1),
+                    new RecordingRoomOutput()
+                ).outcome()
             );
         }
     }
@@ -92,18 +112,27 @@ class CreateRoomActionTest {
             var id = scenario.player(1, 1);
             var character = scenario.characters.stored.removeFirst();
 
-            assertEquals("CHARACTER_UNAVAILABLE", scenario.create.execute(id, RoomScenario.command()).reason());
+            assertEquals(
+                "CHARACTER_UNAVAILABLE",
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).reason()
+            );
             assertEquals(1, scenario.characters.commits);
             assertTrue(scenario.rooms.current(id).isEmpty());
             scenario.characters.stored.add(character);
             scenario.characters.onCommit = () -> scenario.channels.move(id, new MoveToCommand(0, 2, 0, 929));
 
-            assertEquals("CHANNEL_CHANGED", scenario.create.execute(id, RoomScenario.command()).reason());
+            assertEquals(
+                "CHANNEL_CHANGED",
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).reason()
+            );
             assertTrue(scenario.rooms.current(id).isEmpty());
             scenario.lobby(id);
             scenario.characters.onCommit = () -> scenario.sessions.close(new SessionId(id));
 
-            assertEquals(CreateRoomOutcome.IGNORED, scenario.create.execute(id, RoomScenario.command()).outcome());
+            assertEquals(
+                CreateRoomOutcome.IGNORED,
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput()).outcome()
+            );
             assertTrue(scenario.rooms.current(id).isEmpty());
         }
 
@@ -113,7 +142,10 @@ class CreateRoomActionTest {
                 throw new IllegalStateException("Private inventory value");
             };
 
-            assertThrows(IllegalStateException.class, () -> scenario.create.execute(id, RoomScenario.command()));
+            assertThrows(
+                IllegalStateException.class,
+                () -> scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput())
+            );
             assertEquals(0, scenario.characters.commits);
             assertEquals(1, scenario.characters.rollbacks);
             assertTrue(scenario.rooms.current(id).isEmpty());
@@ -127,7 +159,7 @@ class CreateRoomActionTest {
 
             assertTrue(scenario.start.execute(UUID.randomUUID()).ignored());
             assertThrows(IllegalStateException.class, () -> scenario.start.execute(id));
-            scenario.create.execute(id, RoomScenario.command());
+            scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
 
             assertFalse(scenario.start.execute(id).ignored());
             assertEquals("Starting a match is currently unavailable.", scenario.start.execute(id).message());

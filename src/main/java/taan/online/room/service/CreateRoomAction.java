@@ -4,16 +4,11 @@ import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.sessionId;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.SelectedCharacterAccess;
-import taan.online.channel.service.model.ChannelMembershipSnapshot;
-import taan.online.character.model.GameCharacter;
-import taan.online.character.repository.CharacterRepository;
-import taan.online.inventory.model.ItemCatalog;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomBootstrapDefinition;
@@ -21,7 +16,6 @@ import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
 import taan.online.room.service.model.CreateRoomCommand;
@@ -34,8 +28,7 @@ public final class CreateRoomAction {
     private final SelectedCharacterAccess sessions;
     private final ChannelRegistry channels;
     private final RoomRegistry rooms;
-    private final CharacterRepository characters;
-    private final ItemCatalog items;
+    private final RoomCharacterLoader characters;
     private final RoomTitleFilter titles;
     private final RoomBootstrapDefinition defaults;
 
@@ -43,8 +36,7 @@ public final class CreateRoomAction {
         SelectedCharacterAccess sessions,
         ChannelRegistry channels,
         RoomRegistry rooms,
-        CharacterRepository characters,
-        ItemCatalog items,
+        RoomCharacterLoader characters,
         RoomTitleFilter titles,
         RoomBootstrapDefinition defaults
     ) {
@@ -52,12 +44,11 @@ public final class CreateRoomAction {
         this.channels = channels;
         this.rooms = rooms;
         this.characters = characters;
-        this.items = items;
         this.titles = titles;
         this.defaults = defaults;
     }
 
-    public CreateRoomResult execute(UUID id, CreateRoomCommand command) {
+    public CreateRoomResult execute(UUID id, CreateRoomCommand command, RoomPresenceOutput output) {
         long started = System.nanoTime();
 
         if (!sessions.hasSelectedCharacter(id)) {
@@ -94,7 +85,7 @@ public final class CreateRoomAction {
             return rejected(id, "TITLE_FORBIDDEN", started);
         }
 
-        var character = character(context.orElseThrow());
+        var character = characters.load(context.orElseThrow());
 
         if (!sessions.hasSelectedCharacter(id)) {
             return ignored();
@@ -111,27 +102,9 @@ public final class CreateRoomAction {
             defaults.mapId(),
             8
         );
-        var owner = new RoomParticipant(id, character.orElseThrow(), 0, RoomTeam.BLUE, defaults.weaponId());
-        var result = rooms.create(context.orElseThrow(), settings, owner);
+        var owner = new RoomParticipant(id, character.orElseThrow(), defaults.weaponId());
+        var result = rooms.create(context.orElseThrow(), settings, owner, output);
         return result.outcome() == CreateRoomOutcome.REJECTED ? rejected(id, result.reason(), started) : result;
-    }
-
-    private Optional<GameCharacter> character(ChannelMembershipSnapshot context) {
-        var actor = context.participant();
-
-        try (var transaction = characters.beginTransaction(actor.accountId())) {
-            var selected = transaction.catalog().stream().filter(
-                value -> value.id().equals(actor.characterId())
-            ).findFirst();
-
-            if (selected.isPresent()) {
-                var character = selected.orElseThrow();
-                transaction.inventories(character.id()).forEach(value -> items.validate(value, character.gender()));
-            }
-
-            transaction.commit();
-            return selected;
-        }
     }
 
     private boolean supported(CreateRoomCommand command) {

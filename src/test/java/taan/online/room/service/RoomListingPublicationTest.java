@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.ChannelFixtures;
 import taan.online.CollectingPacketOutput;
+import taan.online.RecordingRoomOutput;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.channel.model.ChannelPresencePhase;
@@ -27,9 +28,9 @@ class RoomListingPublicationTest {
             var b = scenario.player(2, 2);
             var c = scenario.player(3, 1);
             var old = scenario.rooms.forChannel(1);
-            var first = scenario.create.execute(a, RoomScenario.command()).room();
-            var other = scenario.create.execute(b, RoomScenario.command()).room();
-            var last = scenario.create.execute(c, RoomScenario.command()).room();
+            var first = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
+            var other = scenario.create.execute(b, RoomScenario.command(), new RecordingRoomOutput()).room();
+            var last = scenario.create.execute(c, RoomScenario.command(), new RecordingRoomOutput()).room();
             var snapshot = scenario.rooms.forChannel(1);
 
             assertTrue(old.isEmpty());
@@ -54,7 +55,7 @@ class RoomListingPublicationTest {
     void allowsLockFreeReadsWhileTheRoomOwnerIsBusy() throws Exception {
         try (var scenario = new RoomScenario(); var worker = Executors.newSingleThreadExecutor()) {
             var id = scenario.player(1, 1);
-            scenario.create.execute(id, RoomScenario.command());
+            scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
             var locked = new CountDownLatch(1);
             var release = new CountDownLatch(1);
             var owner = worker.submit(
@@ -100,7 +101,7 @@ class RoomListingPublicationTest {
                     var create = workers.submit(
                         () -> {
                             barrier.await(5, TimeUnit.SECONDS);
-                            return scenario.create.execute(creator, RoomScenario.command());
+                            return scenario.create.execute(creator, RoomScenario.command(), new RecordingRoomOutput());
                         }
                     );
                     enter.get(5, TimeUnit.SECONDS);

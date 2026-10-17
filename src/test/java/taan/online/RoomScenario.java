@@ -1,7 +1,9 @@
 package taan.online;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.service.ChannelRegistry;
@@ -9,18 +11,20 @@ import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
+import taan.online.room.controller.RoomReply;
 import taan.online.room.model.RoomBootstrapDefinition;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.service.CreateRoomAction;
+import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
+import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.server.RoomRequestDispatcher;
@@ -38,14 +42,22 @@ public final class RoomScenario implements AutoCloseable {
         access,
         channels,
         rooms,
-        characters,
-        InventoryFixtures.catalog(),
+        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
         new RoomTitleFilter(List.of("denied")),
         new RoomBootstrapDefinition(1, 3)
     );
+    public final EnterRoomAction enter = new EnterRoomAction(
+        access,
+        channels,
+        rooms,
+        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+        new RoomBootstrapDefinition(1, 3)
+    );
+    public final Map<UUID, CollectingPacketOutput> outputs = new ConcurrentHashMap<>();
+    public CollectingPacketOutput lastOutput;
     public final LeaveRoomAction leave = new LeaveRoomAction(rooms);
     public final RequestRoomStartAction start = new RequestRoomStartAction(access, channels, rooms);
-    public final RoomPacketHandler handler = new RoomPacketHandler(access, create, leave, start, rooms);
+    public final RoomPacketHandler handler = new RoomPacketHandler(access, create, enter, leave, start, rooms);
 
     public UUID player(long id, int channel) {
         var character = CharacterFixtures.character(id, new AccountId(id), AccountGender.FEMALE, "Hero" + id);
@@ -72,9 +84,10 @@ public final class RoomScenario implements AutoCloseable {
 
     public RoomParticipant owner(UUID id) {
         var actor = access.selectedCharacter(id).orElseThrow();
-        var character = characters.stored.stream().filter(value -> value.id().equals(actor.characterId()))
+        var character = characters.stored.stream()
+            .filter(value -> value.id().equals(actor.characterId()))
             .findFirst().orElseThrow();
-        return new RoomParticipant(id, character, 0, RoomTeam.BLUE, 3);
+        return new RoomParticipant(id, character, 3);
     }
 
     public static CreateRoomCommand command() {
@@ -95,9 +108,15 @@ public final class RoomScenario implements AutoCloseable {
                     access,
                     channels,
                     rooms,
-                    characters,
-                    InventoryFixtures.catalog(),
+                    new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomTitleFilter(List.of()),
+                    new RoomBootstrapDefinition(1, 3)
+                ),
+                new EnterRoomAction(
+                    access,
+                    channels,
+                    rooms,
+                    new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomBootstrapDefinition(1, 3)
                 ),
                 new LeaveRoomAction(rooms),
@@ -105,6 +124,12 @@ public final class RoomScenario implements AutoCloseable {
                 rooms
             )
         );
+    }
+
+    public RoomReply handle(UUID id, int type, byte[] root) {
+        lastOutput = new CollectingPacketOutput();
+        outputs.put(id, lastOutput);
+        return handler.handle(id, type, root, lastOutput);
     }
 
     public static byte[] leave(int room, int reason) {

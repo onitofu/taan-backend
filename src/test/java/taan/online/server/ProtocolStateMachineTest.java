@@ -129,6 +129,7 @@ class ProtocolStateMachineTest {
 
             for (String[] transition : new String[][]{
                 {"ROOM_CREATED", "ROOM"},
+                {"ROOM_ENTERED", "ROOM"},
                 {"ROOM_LEFT", "CHANNEL_SELECTED"},
                 {"CHANNEL_MOVED", "CHANNEL_SELECTED"},
                 {"LOBBY_ENTERED", "LOBBY"},

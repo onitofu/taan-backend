@@ -72,12 +72,28 @@ class RoomArchitectureTest {
             "taan.online.room.service..",
             "taan.online.room.model..",
             "taan.online.room.protocol..",
+            "taan.online.room.view..",
             "taan.online.channel.service..",
             "taan.online.character.controller..",
             "taan.online.character.model..",
             "taan.online.character.protocol.packet..",
             "taan.online.account.model..",
             "taan.online.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule VIEW_DEPENDENCIES = classes().that().resideInAPackage("taan.online.room.view..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.room.view..",
+            "taan.online.room.service..",
+            "taan.online.room.model..",
+            "taan.online.room.protocol..",
+            "taan.online.protocol",
+            "taan.online.character.controller..",
+            "taan.online.character.model..",
+            "taan.online.character.protocol.packet..",
+            "taan.online.account.model.."
         );
 
     @ArchTest

@@ -69,6 +69,7 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.ROOM_ENTER, phase),
             entry(ProtocolEvent.ROOM_LEAVE, phase),
             entry(ProtocolEvent.ROOM_CREATED, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_ENTERED, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_LEFT, ProtocolPhase.CHANNEL_SELECTED),
             entry(ProtocolEvent.ROOM_LEAVE_REPLAYED, phase),
             entry(ProtocolEvent.ROOM_REQUEST_COMPLETED, phase),

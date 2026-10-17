@@ -2,6 +2,7 @@ package taan.online.room.controller;
 
 public enum RoomReplyOutcome {
     CREATED,
+    ENTERED,
     ENTRY_REJECTED,
     CREATE_REJECTED,
     LEFT,

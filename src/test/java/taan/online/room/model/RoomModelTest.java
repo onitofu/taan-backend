@@ -61,15 +61,9 @@ class RoomModelTest {
         assertEquals(65535, new RoomBootstrapDefinition(65535, 65535).weaponId());
         assertEquals(0, new RoomBootstrapDefinition(1, 0).weaponId());
 
-        for (int[] values : List.of(new int[]{-1, 3}, new int[]{8, 3}, new int[]{0, -1}, new int[]{0, 65536})) {
-            assertThrows(
-                IllegalArgumentException.class,
-                () -> new RoomParticipant(id, character, values[0], RoomTeam.BLUE, values[1])
-            );
-        }
-
-        var owner = new RoomParticipant(id, character, 7, RoomTeam.RED, 65535);
-        assertEquals(RoomTeam.RED, owner.team());
+        assertThrows(IllegalArgumentException.class, () -> new RoomParticipant(id, character, -1));
+        assertThrows(IllegalArgumentException.class, () -> new RoomParticipant(id, character, 65536));
+        var owner = new RoomParticipant(id, character, 65535);
 
         for (int[] values : List.of(new int[]{1, 7}, new int[]{0, 8}, new int[]{65536, 8})) {
             assertThrows(

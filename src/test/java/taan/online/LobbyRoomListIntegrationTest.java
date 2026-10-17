@@ -80,9 +80,9 @@ class LobbyRoomListIntegrationTest {
                 observer.send(ChannelFixtures.enter(0));
 
                 assertEquals(List.of(roomA, roomB), ids(bootstrap(observer)));
-                observer.sendTogether(root("enter-empty-password"), SelectionFixtures.cash(0, 0));
+                observer.sendTogether(RoomEntryFixtures.enter(65535), SelectionFixtures.cash(0, 0));
 
-                assertEquals(0, new RoomResponseCodec().enterFail(observer.read()).reason());
+                assertEquals(4, new RoomResponseCodec().enterFail(observer.read()).reason());
                 assertArrayEquals(SelectionFixtures.cash(0, 0), observer.read());
                 ownerA.disconnect();
 
