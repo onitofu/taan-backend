@@ -4,6 +4,8 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    APPEARANCE_UPDATED("room.appearance.updated", Level.DEBUG, "Room appearance updated"),
+    APPEARANCE_FAILED("room.appearance.failed", Level.ERROR, "Room appearance update failed"),
     EXPEL_SUCCEEDED("room.expel.succeeded", Level.INFO, "Room participant expelled"),
     EXPEL_REJECTED("room.expel.rejected", Level.DEBUG, "Room expulsion rejected"),
     EXPEL_FAILED("room.expel.failed", Level.ERROR, "Room expulsion failed"),

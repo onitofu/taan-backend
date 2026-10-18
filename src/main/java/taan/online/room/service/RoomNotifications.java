@@ -82,6 +82,27 @@ final class RoomNotifications {
         }
     }
 
+    static void appearanceUpdated(List<RoomSubscription> subscriptions, RoomSnapshot room, UUID actor) {
+        var participant = room.slots().stream().map(slot -> slot.participant()).filter(value -> value != null)
+            .filter(value -> value.sessionId().equals(actor)).findFirst().orElseThrow();
+        int index = room.slots().stream().filter(slot -> participant.equals(slot.participant()))
+            .findFirst().orElseThrow().index();
+        log(RoomLogEvent.APPEARANCE_UPDATED, room, participant, "EQUIPMENT_COMMITTED");
+        update(subscriptions, room, null, index, false);
+    }
+
+    static void appearanceFailed(RoomSubscription subscription, Throwable failure) {
+        var member = subscription.membership();
+        LOG.failure(
+            RoomLogEvent.APPEARANCE_FAILED,
+            failure,
+            sessionId(member.sessionId()),
+            channelId(member.channelId()),
+            roomId(member.roomId().value())
+        );
+        subscription.output().close("ROOM_APPEARANCE_FAILED");
+    }
+
     static void expelled(RoomSubscription target, RoomParticipant participant) {
         try {
             target.output().expelled(participant.character().accountId()).whenComplete(

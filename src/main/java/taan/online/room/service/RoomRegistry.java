@@ -10,6 +10,9 @@ import java.util.UUID;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
+import taan.online.inventory.model.CharacterInventory;
+import taan.online.inventory.service.model.InventoryActor;
+import taan.online.inventory.service.model.InventoryMoveContext;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
@@ -24,9 +27,7 @@ import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
-import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomTeamResult;
-import taan.online.room.service.model.ChangeRoomWeaponOutcome;
 import taan.online.room.service.model.ChangeRoomWeaponResult;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
@@ -43,9 +44,7 @@ import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSnapshot;
-import taan.online.room.service.model.SetRoomReadyOutcome;
 import taan.online.room.service.model.SetRoomReadyResult;
-import taan.online.room.service.model.SlotAvailabilityOutcome;
 import taan.online.room.service.model.SlotAvailabilityResult;
 
 public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
@@ -83,6 +82,30 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
     public synchronized Optional<RoomEntryTarget> entryTarget(ChannelMembershipSnapshot context, int requestedId) {
         return RoomEntryTarget.find(rooms.values(), context.channelId(), requestedId);
+    }
+
+    public synchronized InventoryMoveContext inventoryContext(InventoryActor actor) {
+        return RoomControlChecks.inventoryContext(
+            actor,
+            phase,
+            memberships.get(actor.sessionId()),
+            channels.membership(actor.sessionId()).orElse(null),
+            room(actor.sessionId())
+        );
+    }
+
+    public synchronized void refreshEquipment(InventoryMoveContext context, CharacterInventory equipment) {
+        if (!context.equipmentChangesAllowed() || context.roomAdmissionId() == null
+            || !context.equals(inventoryContext(context.actor()))) {
+            return;
+        }
+
+        RoomControlOperations.refreshEquipment(
+            room(context.actor().sessionId()),
+            memberships.get(context.actor().sessionId()),
+            List.copyOf(memberships.values()),
+            equipment
+        );
     }
 
     public synchronized CreateRoomResult create(
@@ -238,19 +261,10 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized SlotAvailabilityResult setSlotAvailability(UUID id, int index, RoomSlotState desiredState) {
-        String rejection = controlRejection(id);
-
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? SlotAvailabilityOutcome.IGNORED
-                : SlotAvailabilityOutcome.REJECTED;
-            return new SlotAvailabilityResult(outcome, rejection);
-        }
-
-        var subscription = memberships.get(id);
-        var room = rooms.get(subscription.membership().roomId());
         return RoomControlOperations.setSlotAvailability(
-            room,
-            subscription,
+            controlRejection(id),
+            room(id),
+            memberships.get(id),
             List.copyOf(memberships.values()),
             index,
             desiredState
@@ -258,47 +272,30 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized ChangeRoomTeamResult changeTeam(UUID id, RoomTeam desiredTeam) {
-        String rejection = controlRejection(id);
-
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomTeamOutcome.IGNORED
-                : ChangeRoomTeamOutcome.REJECTED;
-            return new ChangeRoomTeamResult(outcome, rejection);
-        }
-
-        var subscription = memberships.get(id);
-        var room = rooms.get(subscription.membership().roomId());
-        return RoomControlOperations.changeTeam(room, subscription, List.copyOf(memberships.values()), desiredTeam);
+        return RoomControlOperations.changeTeam(
+            controlRejection(id),
+            room(id),
+            memberships.get(id),
+            List.copyOf(memberships.values()),
+            desiredTeam
+        );
     }
 
     public synchronized SetRoomReadyResult setReady(UUID id, boolean ready) {
-        String rejection = controlRejection(id);
-
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? SetRoomReadyOutcome.IGNORED
-                : SetRoomReadyOutcome.REJECTED;
-            return new SetRoomReadyResult(outcome, rejection);
-        }
-
-        var subscription = memberships.get(id);
-        var room = rooms.get(subscription.membership().roomId());
-        return RoomControlOperations.setReady(room, subscription, List.copyOf(memberships.values()), ready);
+        return RoomControlOperations.setReady(
+            controlRejection(id),
+            room(id),
+            memberships.get(id),
+            List.copyOf(memberships.values()),
+            ready
+        );
     }
 
     public synchronized ChangeRoomWeaponResult changeWeapon(UUID id, long characterId, int weaponId) {
-        String rejection = controlRejection(id);
-
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomWeaponOutcome.IGNORED
-                : ChangeRoomWeaponOutcome.REJECTED;
-            return new ChangeRoomWeaponResult(outcome, rejection);
-        }
-
-        var subscription = memberships.get(id);
-        var room = rooms.get(subscription.membership().roomId());
         return RoomControlOperations.changeWeapon(
-            room,
-            subscription,
+            controlRejection(id),
+            room(id),
+            memberships.get(id),
             List.copyOf(memberships.values()),
             characterId,
             weaponId
@@ -436,6 +433,11 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         memberships.put(participant.sessionId(), subscription);
         receipts.remove(participant.sessionId());
         return subscription;
+    }
+
+    private Room room(UUID id) {
+        var subscription = memberships.get(id);
+        return subscription == null ? null : rooms.get(subscription.membership().roomId());
     }
 
     private String controlRejection(UUID id) {

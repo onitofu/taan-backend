@@ -14,11 +14,14 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import taan.online.inventory.logging.InventoryLogEvent;
 import taan.online.inventory.model.InventoryKind;
+import taan.online.inventory.model.InventoryMove;
 import taan.online.inventory.model.InventoryMoveOutcome;
+import taan.online.inventory.model.InventoryState;
 import taan.online.inventory.model.ItemCatalog;
 import taan.online.inventory.repository.InventoryRepository;
 import taan.online.inventory.repository.InventoryTransaction;
 import taan.online.inventory.service.model.InventoryActor;
+import taan.online.inventory.service.model.InventoryMoveContext;
 import taan.online.inventory.service.model.MoveInventoryItemCommand;
 import taan.online.inventory.service.model.MoveInventoryItemResult;
 import taan.online.logging.EventLogger;
@@ -29,15 +32,18 @@ public final class MoveInventoryItemAction {
     private final SelectedInventoryAccess sessions;
     private final InventoryRepository inventories;
     private final ItemCatalog catalog;
+    private final InventoryMoveContextAccess contexts;
 
     public MoveInventoryItemAction(
         SelectedInventoryAccess sessions,
         InventoryRepository inventories,
-        ItemCatalog catalog
+        ItemCatalog catalog,
+        InventoryMoveContextAccess contexts
     ) {
         this.sessions = sessions;
         this.inventories = inventories;
         this.catalog = catalog;
+        this.contexts = contexts;
     }
 
     public MoveInventoryItemResult execute(UUID id, MoveInventoryItemCommand command) {
@@ -49,10 +55,11 @@ public final class MoveInventoryItemAction {
         }
 
         var actor = selected.orElseThrow();
+        var context = contexts.capture(actor);
         MoveInventoryItemResult result;
 
         try (var transaction = inventories.beginTransaction(actor.accountId(), actor.characterId())) {
-            result = executeLocked(actor, command, transaction);
+            result = executeLocked(context, command, transaction);
         }
 
         var outcome = result.outcome();
@@ -86,14 +93,21 @@ public final class MoveInventoryItemAction {
             return closed();
         }
 
+        if (outcome == InventoryMoveOutcome.MOVED) {
+            result.inventories().stream().filter(value -> value.kind() == InventoryKind.EQUIPMENT)
+                .findFirst().ifPresent(equipment -> contexts.equipmentChanged(context, equipment));
+        }
+
         return result;
     }
 
     private MoveInventoryItemResult executeLocked(
-        InventoryActor actor,
+        InventoryMoveContext context,
         MoveInventoryItemCommand command,
         InventoryTransaction transaction
     ) {
+        var actor = context.actor();
+
         if (!current(actor)) {
             return closed();
         }
@@ -104,9 +118,21 @@ public final class MoveInventoryItemAction {
         var outcome = command.accountId() == actor.accountId().value()
             ? decision.outcome() : InventoryMoveOutcome.ACCOUNT_MISMATCH;
 
+        var before = state;
+        var move = command.move();
+        boolean equipmentChange = state.inventories().stream().anyMatch(
+            value -> value.kind() == InventoryKind.EQUIPMENT
+                && (value.id().value() == move.sourceInventoryId()
+                    || value.id().value() == move.destinationInventoryId())
+        );
+
         if (outcome == InventoryMoveOutcome.MOVED) {
             if (!current(actor)) {
                 return closed();
+            }
+
+            if (equipmentChange && (!context.equipmentChangesAllowed() || !contexts.current(context))) {
+                return snapshots(before, InventoryMoveOutcome.STATE_RESTRICTED, move);
             }
 
             transaction.apply(decision.placements());
@@ -115,11 +141,17 @@ public final class MoveInventoryItemAction {
             if (!current(actor)) {
                 return closed();
             }
+
+            if (equipmentChange && !contexts.current(context)) {
+                return snapshots(before, InventoryMoveOutcome.STATE_RESTRICTED, move);
+            }
         }
 
         transaction.commit();
+        return snapshots(state, outcome, move);
+    }
 
-        var move = command.move();
+    private MoveInventoryItemResult snapshots(InventoryState state, InventoryMoveOutcome outcome, InventoryMove move) {
         var snapshots = state.inventories().stream().filter(value -> value.kind() != InventoryKind.JEWEL_BOX)
             .filter(
                 value -> outcome == InventoryMoveOutcome.NO_CHANGE ? value.id().value() == move.sourceInventoryId()

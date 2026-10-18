@@ -63,6 +63,7 @@ import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
+import taan.online.room.service.RoomInventoryMoveContextAccess;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
@@ -126,16 +127,6 @@ public final class Application implements AutoCloseable {
             new JdbcInventoryRepository(dataSource, config.socketTimeoutSeconds())
         );
         var inventoryAccess = new SessionInventoryAccess(sessions);
-        var inventoryDispatcher = new InventoryRequestDispatcher(
-            new MoveInventoryItemPacketHandler(
-                new MoveInventoryItemAction(
-                    inventoryAccess,
-                    new JdbcInventoryRepository(dataSource, config.socketTimeoutSeconds()),
-                    itemCatalog
-                ),
-                inventoryAccess
-            )
-        );
         var access = new SessionCharacterAccess(sessions);
         var definitions = new CharacterDefinitionLoader();
         var names = definitions.nameFilter(Application.class.getResourceAsStream("/character/name-filters.txt"));
@@ -157,6 +148,17 @@ public final class Application implements AutoCloseable {
             maps
         );
         rooms = new RoomRegistry(channels, maps);
+        var inventoryDispatcher = new InventoryRequestDispatcher(
+            new MoveInventoryItemPacketHandler(
+                new MoveInventoryItemAction(
+                    inventoryAccess,
+                    new JdbcInventoryRepository(dataSource, config.socketTimeoutSeconds()),
+                    itemCatalog,
+                    new RoomInventoryMoveContextAccess(rooms)
+                ),
+                inventoryAccess
+            )
+        );
         var roomCharacters = new RoomCharacterLoader(characters, itemCatalog);
         var roomDispatcher = new RoomRequestDispatcher(
             new RoomPacketHandler(

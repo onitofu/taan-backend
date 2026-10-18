@@ -35,6 +35,7 @@ import taan.online.character.service.ListCharactersAction;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.network.FrameEncoder;
+import taan.online.room.service.RoomInventoryMoveContextAccess;
 import taan.online.room.service.RoomRegistry;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
@@ -164,7 +165,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
             selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride,
             lobbyOverride == null ? SelectionFixtures.lobby(sessions, channels, rooms) : lobbyOverride,
-            InventoryFixtures.dispatcher(sessions, inventories),
+            InventoryFixtures.dispatcher(sessions, inventories, new RoomInventoryMoveContextAccess(rooms)),
             RoomScenario.dispatcher(sessions, channels, characters, rooms),
             64,
             1048576,

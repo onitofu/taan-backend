@@ -22,7 +22,9 @@ import taan.online.inventory.protocol.packet.Inventory;
 import taan.online.inventory.protocol.packet.InventoryItemData;
 import taan.online.inventory.repository.InventoryRepository;
 import taan.online.inventory.repository.TestInventoryRepository;
+import taan.online.inventory.service.InventoryMoveContextAccess;
 import taan.online.inventory.service.MoveInventoryItemAction;
+import taan.online.inventory.service.TestInventoryMoveContextAccess;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.MoveInventoryItemCommand;
 import taan.online.server.InventoryRequestDispatcher;
@@ -76,10 +78,18 @@ public final class InventoryFixtures {
     }
 
     public static InventoryRequestDispatcher dispatcher(SessionRegistry sessions, InventoryRepository repository) {
+        return dispatcher(sessions, repository, new TestInventoryMoveContextAccess());
+    }
+
+    public static InventoryRequestDispatcher dispatcher(
+        SessionRegistry sessions,
+        InventoryRepository repository,
+        InventoryMoveContextAccess contexts
+    ) {
         var access = new SessionInventoryAccess(sessions);
         return new InventoryRequestDispatcher(
             new MoveInventoryItemPacketHandler(
-                new MoveInventoryItemAction(access, repository, catalog()),
+                new MoveInventoryItemAction(access, repository, catalog(), contexts),
                 access
             )
         );

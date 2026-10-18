@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterAppearance;
+import taan.online.character.model.GameCharacter;
 
 public final class Room {
     private final RoomId id;
@@ -174,6 +176,36 @@ public final class Room {
                 return change;
             }
         );
+    }
+
+    public boolean updateAppearance(UUID sessionId, CharacterAppearance appearance) {
+        if (state != RoomState.WAITING) {
+            throw new IllegalStateException("Room appearance cannot be changed");
+        }
+
+        var slot = slots.stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().sessionId().equals(sessionId)).findFirst().orElseThrow();
+        var participant = slot.participant();
+        var character = participant.character();
+
+        if (character.appearance().equals(appearance)) {
+            return false;
+        }
+
+        var changed = new GameCharacter(
+            character.id(),
+            character.accountId(),
+            character.name(),
+            character.level(),
+            character.gender(),
+            appearance,
+            character.createdAt()
+        );
+        slots.set(
+            slot.index(),
+            new RoomSlot(slot.index(), slot.state(), new RoomParticipant(sessionId, changed, participant.weaponId()))
+        );
+        return true;
     }
 
     public boolean changeSettings(RoomMode mode, RoomRule rule, int mapId, RoomMapCatalog maps) {

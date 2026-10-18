@@ -32,6 +32,7 @@ import taan.online.inventory.model.InventoryMoveOutcome;
 import taan.online.inventory.model.ItemCatalog;
 import taan.online.inventory.model.ItemPlacement;
 import taan.online.inventory.service.MoveInventoryItemAction;
+import taan.online.inventory.service.TestInventoryMoveContextAccess;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.MoveInventoryItemCommand;
 import taan.online.persistence.DatabaseMigrator;
@@ -115,7 +116,12 @@ class InventoryPersistenceIntegrationTest {
         );
         var actor = new InventoryActor(UUID.randomUUID(), owner.id(), character, AccountGender.MALE);
         var repository = new JdbcInventoryRepository(database.source(), 5);
-        var action = new MoveInventoryItemAction(id -> Optional.of(actor), repository, InventoryFixtures.catalog());
+        var action = new MoveInventoryItemAction(
+            id -> Optional.of(actor),
+            repository,
+            InventoryFixtures.catalog(),
+            new TestInventoryMoveContextAccess()
+        );
         var command = new MoveInventoryItemCommand(
             owner.id().value(),
             new InventoryMove(
@@ -211,7 +217,8 @@ class InventoryPersistenceIntegrationTest {
                 database.source(),
                 5
             ),
-            InventoryFixtures.catalog()
+            InventoryFixtures.catalog(),
+            new TestInventoryMoveContextAccess()
         );
         var barrier = new CyclicBarrier(2);
 
