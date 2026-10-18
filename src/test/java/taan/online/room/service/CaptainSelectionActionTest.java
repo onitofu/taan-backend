@@ -51,6 +51,7 @@ class CaptainSelectionActionTest {
             assertTrue(b.notices.contains("Starting a match is currently unavailable."));
             scenario.enter.execute(extra, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(extra, true);
+            scenario.rooms.setReady(guest, true);
 
             assertEquals(RoomStartOutcome.MATCH_UNAVAILABLE, action.execute(owner).outcome());
             assertTrue(scenario.rooms.current(owner).isPresent());
@@ -133,10 +134,7 @@ class CaptainSelectionActionTest {
                 SlotAvailabilityOutcome.REJECTED,
                 scenario.rooms.setSlotAvailability(owner, 1, RoomSlotState.CLOSED).outcome()
             );
-            assertEquals(
-                ChangeRoomSettingsOutcome.REJECTED,
-                scenario.rooms.changeSettings(owner, 2, 1, 0).outcome()
-            );
+            assertEquals(ChangeRoomSettingsOutcome.REJECTED, scenario.rooms.changeSettings(owner, 2, 1, 0).outcome());
             assertEquals(
                 "ROOM_UNAVAILABLE",
                 scenario.enter.execute(entrant, 1, "", new RecordingRoomOutput()).reason()

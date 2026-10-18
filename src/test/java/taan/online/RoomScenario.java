@@ -57,7 +57,8 @@ public final class RoomScenario implements AutoCloseable {
     public final SessionChannelAccess access = new SessionChannelAccess(sessions);
     public final ChannelRegistry channels = SelectionFixtures.registry(access);
     public final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
-    public final MatchRegistry matches = new MatchRegistry(MatchFixtures.definitions());
+    public final TestMatchScheduler matchTimers = new TestMatchScheduler();
+    public final MatchRegistry matches = MatchFixtures.registry(matchTimers);
     public final RoomRegistry rooms = new RoomRegistry(
         channels,
         new RoomIdPool(),

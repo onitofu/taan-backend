@@ -108,28 +108,17 @@ class MatchRoomGuardTest {
 
                 assertEquals(
                     EnterRoomOutcome.NOT_FOUND,
-                    rooms.enter(
-                        context,
-                        target,
-                        f.scenario.owner(extra),
-                        "",
-                        new RecordingRoomOutput()
-                    ).outcome()
+                    rooms.enter(context, target, f.scenario.owner(extra), "", new RecordingRoomOutput()).outcome()
                 );
                 assertEquals(
                     EnterRoomOutcome.NOT_FOUND,
-                    f.scenario.enter.execute(
-                        foreign,
-                        1,
-                        "",
-                        new RecordingRoomOutput()
-                    ).outcome()
+                    f.scenario.enter.execute(foreign, 1, "", new RecordingRoomOutput()).outcome()
                 );
                 assertEquals(
                     "NO_MATCHING_ROOM",
                     f.scenario.quickJoin.execute(extra, 0xffff, new RecordingRoomOutput()).reason()
                 );
-                assertEquals(RoomStartOutcome.REJECTED, rooms.requestStart(f.owner).outcome());
+                assertEquals(RoomStartOutcome.ALREADY_STARTED, rooms.requestStart(f.owner).outcome());
                 assertEquals(ExpelRoomParticipantOutcome.REJECTED, rooms.expel(f.owner, 2).outcome());
                 assertEquals(SetRoomReadyOutcome.REJECTED, rooms.setReady(f.players.get(1), false).outcome());
                 assertEquals(ChangeRoomTeamOutcome.REJECTED, rooms.changeTeam(f.owner, RoomTeam.RED).outcome());
@@ -137,11 +126,7 @@ class MatchRoomGuardTest {
                 assertEquals(ChangeRoomSettingsOutcome.REJECTED, rooms.changeSettings(f.owner, 2, 0, 2).outcome());
                 assertEquals(
                     SlotAvailabilityOutcome.REJECTED,
-                    rooms.setSlotAvailability(
-                        f.owner,
-                        7,
-                        RoomSlotState.CLOSED
-                    ).outcome()
+                    rooms.setSlotAvailability(f.owner, 7, RoomSlotState.CLOSED).outcome()
                 );
                 assertFalse(inventory.capture(actor).equipmentChangesAllowed());
                 assertFalse(inventory.current(beforeEquipment));

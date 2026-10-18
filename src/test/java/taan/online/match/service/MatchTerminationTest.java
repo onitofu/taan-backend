@@ -72,13 +72,15 @@ class MatchTerminationTest {
                     assertEquals(1, f.outputs.get(1).ends);
                 }
             );
-            var result = new TerminateMatchAction(rooms).execute(owner, context);
+            var result = new TerminateMatchAction(rooms.matchAccess()).execute(owner, context);
 
             assertTrue(result.delivery().toCompletableFuture().isDone());
             assertFalse(f.outputs.get(1).delivery.isDone());
             assertEquals(f.token, rooms.matchContext(owner).token());
-            assertTrue(new ConsumeMatchResultAction(rooms, f.room.scenario.matches).execute(owner, context));
-            assertNull(new TerminateMatchAction(rooms).execute(owner, context).termination());
+            assertTrue(
+                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(owner, context)
+            );
+            assertNull(new TerminateMatchAction(rooms.matchAccess()).execute(owner, context).termination());
         }
     }
 

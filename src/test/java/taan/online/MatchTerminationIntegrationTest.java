@@ -180,7 +180,7 @@ class MatchTerminationIntegrationTest {
         assertTrue(rooms.commitMatch(token).token().equals(token));
 
         if (loaded) {
-            assertTrue(rooms.previewStarted(token));
+            MatchFixtures.loaded(RuntimeRoomTestAccess.matches(rooms), token);
         }
 
         return token;

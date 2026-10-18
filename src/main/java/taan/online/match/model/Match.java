@@ -1,6 +1,9 @@
 package taan.online.match.model;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -21,6 +24,11 @@ public final class Match {
     private final MatchDefinitions definitions;
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
+    private final int firstTurnSlot;
+    private final Map<UUID, MapSpawnDefinition> placements = new HashMap<>();
+    private final Set<UUID> delivered = new HashSet<>();
+    private long phaseRevision;
+    private long deadlineNanos;
     private MatchPhase phase = MatchPhase.RESERVED;
 
     public Match(
@@ -33,7 +41,8 @@ public final class Match {
         RoomRule rule,
         MatchDefinitions definitions,
         List<MatchParticipant> participants,
-        CaptainSelectionResult captains
+        CaptainSelectionResult captains,
+        int firstTurnSlot
     ) {
         this.id = Objects.requireNonNull(id);
         this.roomId = Objects.requireNonNull(roomId);
@@ -45,6 +54,7 @@ public final class Match {
         this.definitions = Objects.requireNonNull(definitions);
         this.participants = List.copyOf(participants);
         this.captains = captains;
+        this.firstTurnSlot = firstTurnSlot;
         validate();
     }
 
@@ -74,7 +84,7 @@ public final class Match {
             teams.add(participant.team());
         }
 
-        if (!sessions.contains(ownerSessionId) || teams.size() != 2
+        if (!slots.contains(firstTurnSlot) || !sessions.contains(ownerSessionId) || teams.size() != 2
             || mode.requiresCaptainSelection() != (captains != null)) {
             throw new IllegalArgumentException("Invalid match ownership or teams");
         }
@@ -129,22 +139,113 @@ public final class Match {
         return phase;
     }
 
-    public boolean commit() {
+    public int firstTurnSlot() {
+        return firstTurnSlot;
+    }
+
+    public int initialWindRaw() {
+        return 0;
+    }
+
+    public Map<UUID, MapSpawnDefinition> placements() {
+        return Map.copyOf(placements);
+    }
+
+    public long phaseRevision() {
+        return phaseRevision;
+    }
+
+    public long deadlineNanos() {
+        return deadlineNanos;
+    }
+
+    public boolean expired(long now) {
+        return phase != MatchPhase.RESERVED && now - deadlineNanos >= 0;
+    }
+
+    public boolean commit(long now, long timeoutNanos) {
         if (phase != MatchPhase.RESERVED) {
             return false;
         }
 
         phase = MatchPhase.LOADING;
+        phaseRevision++;
+        deadlineNanos = now + timeoutNanos;
         return true;
     }
 
-    public boolean previewStarted() {
+    public String loadingDone(UUID session, int slot, int x, int y) {
+        var actor = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElse(null);
+
+        if (actor == null || actor.slotIndex() != slot) {
+            return "FOREIGN_SLOT";
+        }
+
+        var accepted = placements.get(session);
+
+        if (accepted != null) {
+            return accepted.settledX() == x && accepted.settledY() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
+        }
+
         if (phase != MatchPhase.LOADING) {
+            return "INVALID_PHASE";
+        }
+
+        int side = actor.team() == RoomTeam.BLUE ? 1 : 2;
+        var placement = definitions.map().spawns().stream()
+            .filter(value -> value.valid() && (value.side() == 0 || value.side() == side))
+            .filter(value -> value.settledX() == x && value.settledY() == y).findFirst().orElse(null);
+
+        if (placement == null) {
+            return "INVALID_POSITION";
+        }
+
+        placements.put(session, placement);
+        return "ACCEPTED";
+    }
+
+    public boolean deliveryCompleted(UUID session) {
+        if (phase != MatchPhase.LOADING && phase != MatchPhase.SYNCHRONIZING
+            || participants.stream().noneMatch(value -> value.sessionId().equals(session))) {
+            return false;
+        }
+
+        return delivered.add(session);
+    }
+
+    public boolean beginSynchronization() {
+        if (phase != MatchPhase.LOADING || placements.size() != participants.size()
+            || delivered.size() != participants.size()) {
+            return false;
+        }
+
+        phase = MatchPhase.SYNCHRONIZING;
+        phaseRevision++;
+        delivered.clear();
+        return true;
+    }
+
+    public boolean previewStarted(long now, long timeoutNanos) {
+        if (phase != MatchPhase.SYNCHRONIZING || delivered.size() != participants.size()) {
             return false;
         }
 
         phase = MatchPhase.PREVIEW;
+        phaseRevision++;
+        deadlineNanos = now + timeoutNanos;
+        delivered.clear();
         return true;
+    }
+
+    public boolean confirmsPosition(UUID session, int slot, int x, int y, int facing) {
+        if (phase != MatchPhase.SYNCHRONIZING && phase != MatchPhase.PREVIEW) {
+            return false;
+        }
+
+        var actor = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElse(null);
+        var placement = placements.get(session);
+        return actor != null && actor.slotIndex() == slot && actor.facing() == facing
+            && placement.settledX() == x && placement.settledY() == y;
     }
 
     public boolean beginTermination() {

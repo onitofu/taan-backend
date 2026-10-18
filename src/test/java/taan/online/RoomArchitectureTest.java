@@ -22,7 +22,7 @@ class RoomArchitectureTest {
     static final ArchRule START_OPERATIONS_OWNER = classes().that().haveSimpleName("RoomStartOperations")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.room\\.service\\."
-                + "(RoomRegistry|RoomStartOperations|RoomMatchOperations|RoomDepartureOperations)"
+                + "(RoomRegistry|RoomStartOperations|RoomMatchOperations|RoomDepartureOperations|RoomMatchCoordinator)"
         );
 
     @ArchTest

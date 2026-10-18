@@ -28,14 +28,14 @@ class MatchTerminalOwnershipTest {
     @Test
     void dispatchesOnlyThePreparedTerminalOnceAndNeverCallsOutputsUnderTheMatchLock() {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
-            var matches = new MatchRegistry(MatchFixtures.definitions());
+            var matches = MatchFixtures.registry();
             var draft = f.draft();
             var token = draft.token();
             matches.reserve(draft);
-            assertFalse(matches.previewStarted(token));
+            assertEquals(MatchPhase.RESERVED, matches.current(token).orElseThrow().phase());
             matches.commit(token);
-            assertTrue(matches.previewStarted(token));
-            assertFalse(matches.previewStarted(token));
+            MatchFixtures.loaded(matches, token);
+            assertEquals(MatchPhase.PREVIEW, matches.current(token).orElseThrow().phase());
             var output = new TestMatchOutput();
             output.onEnd = () -> assertFalse(Thread.holdsLock(matches));
             matches.subscribe(f.owner, output);
@@ -55,7 +55,7 @@ class MatchTerminalOwnershipTest {
 
             assertEquals(1, output.ends);
             assertNull(matches.prepareTermination(token, RoomMatchEndReason.GIVE_UP, null));
-            assertFalse(matches.previewStarted(token));
+            assertTrue(matches.current(token).isEmpty());
             var member = draft.participants().getFirst().membership();
             var otherAdmission = new RoomMembership(
                 member.sessionId(),
@@ -93,8 +93,7 @@ class MatchTerminalOwnershipTest {
             var rooms = f.room.scenario.rooms;
             var context = rooms.matchContext(f.room.owner);
             var token = f.token;
-            assertFalse(rooms.previewStarted(token));
-            assertFalse(rooms.previewStarted(new RoomMatchToken(new RoomId(999), token.generation(), token.matchId())));
+            assertEquals(token, rooms.matchContext(f.room.owner).token());
             assertNull(
                 rooms.terminateMatch(
                     new RoomMatchToken(token.roomId(), UUID.randomUUID(), token.matchId()),
@@ -152,7 +151,14 @@ class MatchTerminalOwnershipTest {
             f.room.scenario.sessions.close(new SessionId(f.room.owner));
 
             assertNull(f.room.scenario.rooms.matchContext(f.room.owner));
-            assertFalse(f.room.scenario.rooms.previewStarted(f.token));
+            assertTrue(
+                f.room.scenario.rooms.matchAccess().loadingDone(
+                    new RoomMatchContext(f.room.scenario.rooms.membership(f.room.owner).orElseThrow(), f.token),
+                    0,
+                    97,
+                    685
+                ).toCompletableFuture().isDone()
+            );
             assertEquals(MatchPhase.LOADING, f.room.scenario.matches.current(f.token).orElseThrow().phase());
         }
     }
@@ -167,16 +173,16 @@ class MatchTerminalOwnershipTest {
         }
 
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
-            var matches = new MatchRegistry(MatchFixtures.definitions());
+            var matches = MatchFixtures.registry();
             var draft = f.draft();
             matches.reserve(draft);
             matches.commit(draft.token());
-            matches.previewStarted(draft.token());
+            MatchFixtures.loaded(matches, draft.token());
             var old = matches.prepareTermination(draft.token(), RoomMatchEndReason.GIVE_UP, null);
             var next = f.draft();
             matches.reserve(next);
             matches.commit(next.token());
-            matches.previewStarted(next.token());
+            MatchFixtures.loaded(matches, next.token());
             var terminal = matches.prepareTermination(next.token(), RoomMatchEndReason.GIVE_UP, null);
             matches.cancel(old.token(), "STALE_CALLBACK");
 

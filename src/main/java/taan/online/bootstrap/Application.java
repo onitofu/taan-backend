@@ -10,6 +10,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.random.RandomGenerator;
+import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.LoggerFactory;
@@ -96,6 +101,7 @@ public final class Application implements AutoCloseable {
     private final ChannelRegistry channels;
     private final RoomRegistry rooms;
     private final ScheduledRoomSelectionScheduler selectionScheduler;
+    private final ScheduledMatchScheduler matchScheduler;
     private final ItemCatalog itemCatalog = new ItemCatalog();
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
@@ -161,14 +167,34 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/match/jungle-spawns.csv"),
             Application.class.getResourceAsStream("/match/weapons.csv")
         );
-        var matches = new MatchRegistry(matchDefinitions);
+        matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
+        var matches = new MatchRegistry(
+            matchDefinitions,
+            new MatchBootstrapSettings(
+                TimeUnit.SECONDS.toNanos(config.matchLoadingTimeoutSeconds()),
+                TimeUnit.SECONDS.toNanos(config.matchPreviewTimeoutSeconds()),
+                config.matchReportsPerSecond()
+            ),
+            matchScheduler,
+            System::nanoTime,
+            RandomGenerator.getDefault(),
+            new WarningLogLimiter(
+                LoggerFactory.getLogger(MatchRegistry.class),
+                config.logWarnBurst(),
+                Duration.ofSeconds(config.logWarnIntervalSeconds()),
+                System::nanoTime
+            )
+        );
         rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
         var matchDispatcher = new MatchRequestDispatcher(
             new MatchPacketHandler(
-                rooms,
+                rooms.matchAccess(),
                 matches,
-                new TerminateMatchAction(rooms),
-                new ConsumeMatchResultAction(rooms, matches)
+                new TerminateMatchAction(rooms.matchAccess()),
+                new ConsumeMatchResultAction(rooms.matchAccess(), matches),
+                new ConfirmMatchLoadingAction(rooms.matchAccess()),
+                new ConfirmMatchPositionAction(rooms.matchAccess()),
+                new ReportMatchEnemiesAction(rooms.matchAccess())
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(
@@ -326,6 +352,7 @@ public final class Application implements AutoCloseable {
             server.close();
             rooms.close();
             selectionScheduler.close();
+            matchScheduler.close();
             terminated.countDown();
 
             LOG.log(ServerLogEvent.STOPPED);

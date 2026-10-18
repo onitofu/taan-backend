@@ -21,8 +21,12 @@ public final class TerminateMatchAction {
     }
 
     public RoomMatchTerminationResult execute(UUID id, RoomMatchContext context) {
+        return execute(id, context, RoomMatchEndReason.GIVE_UP);
+    }
+
+    public RoomMatchTerminationResult execute(UUID id, RoomMatchContext context, RoomMatchEndReason reason) {
         var result = context != null && context.membership().sessionId().equals(id)
-            ? rooms.terminateMatch(context, RoomMatchEndReason.GIVE_UP) : RoomMatchTerminationResult.ignored();
+            ? rooms.terminateMatch(context, reason) : RoomMatchTerminationResult.ignored();
 
         if (result.termination() == null) {
             LOG.log(MatchLogEvent.TERMINATION_IGNORED, sessionId(id), reason("STALE_CONTEXT"));

@@ -24,13 +24,28 @@ class MatchTerminalPhaseTest {
                 snapshot.rule(),
                 MatchFixtures.definitions(),
                 snapshot.participants(),
-                null
+                null,
+                snapshot.firstTurnSlot()
             );
 
-            assertFalse(match.previewStarted());
-            assertTrue(match.commit());
-            assertTrue(match.previewStarted());
-            assertFalse(match.previewStarted());
+            assertFalse(match.previewStarted(0, 20_000_000_000L));
+            assertTrue(match.commit(0, 30_000_000_000L));
+            assertFalse(match.beginSynchronization());
+
+            for (var member : snapshot.participants()) {
+                match.deliveryCompleted(member.sessionId());
+                match.loadingDone(
+                    member.sessionId(),
+                    member.slotIndex(),
+                    member.spawn().settledX(),
+                    member.spawn().settledY()
+                );
+            }
+
+            assertTrue(match.beginSynchronization());
+            snapshot.participants().forEach(member -> match.deliveryCompleted(member.sessionId()));
+            assertTrue(match.previewStarted(0, 20_000_000_000L));
+            assertFalse(match.previewStarted(0, 20_000_000_000L));
             assertTrue(match.beginTermination());
             assertFalse(match.beginTermination());
             assertTrue(match.cancel());

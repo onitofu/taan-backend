@@ -8,6 +8,7 @@ import static taan.online.RoomFixtures.integer;
 import static taan.online.RoomFixtures.root;
 
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
@@ -15,6 +16,9 @@ import taan.online.bootstrap.Application;
 import taan.online.lobby.protocol.codec.LobbyRoomListCodec;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.TurnStartCodec;
 
 class RoomCaptainIntegrationTest {
     @Test
@@ -88,19 +92,29 @@ class RoomCaptainIntegrationTest {
                         owner.send(root("PqGameSession_ChallengeChief-native"));
                         assertEquals(1001, wire.cancelChief(owner.read()).characterId());
                         owner.sendTogether(root("start-empty"), root("start-empty"));
-                        assertEquals(
-                            "Starting a match is currently unavailable.",
-                            new NoticeMessageCodec().decode(owner.read()).message()
-                        );
-                        assertEquals(
-                            "The room is not ready to start.",
-                            new NoticeMessageCodec().decode(owner.read()).message()
-                        );
-                        assertEquals(
-                            "Starting a match is currently unavailable.",
-                            new NoticeMessageCodec().decode(guest.read()).message()
-                        );
+                        wire.slot(owner.read());
+                        wire.slot(owner.read());
+                        var started = new StartGameCodec().decode(owner.read());
+                        wire.slot(guest.read());
+                        wire.slot(guest.read());
+                        assertEquals(started, new StartGameCodec().decode(guest.read()));
+                        assertEquals(List.of(255, 0, 2), started.teamLeaderSlots());
+                        assertEquals(2, lists.update(observer.read()).rooms().getFirst().state());
+                        owner.send(MatchFixtures.root("native-policy-v4-loading-1"));
+                        guest.send(MatchFixtures.root("native-policy-v4-loading-0"));
+                        new SetPosCodec().decode(owner.read());
+                        new SetPosCodec().decode(guest.read());
+                        var firstTurn = new TurnStartCodec().decode(owner.read());
+                        assertEquals(firstTurn, new TurnStartCodec().decode(guest.read()));
+                        owner.send(MatchFixtures.root("give-up-empty"));
+                        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), owner.read());
+                        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), guest.read());
+                        assertFalse(wire.ready(owner.read()).ready());
+                        assertFalse(wire.ready(guest.read()).ready());
                         assertEquals(1, lists.update(observer.read()).rooms().getFirst().state());
+                        guest.send(RoomScenario.ready(1));
+                        wire.ready(owner.read());
+                        wire.ready(guest.read());
                         cash(guest);
                         cash(observer);
                     }

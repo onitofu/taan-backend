@@ -12,6 +12,7 @@ import taan.online.RoomEntryFixtures;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
 import taan.online.MatchFixtures;
+import taan.online.TestMatchScheduler;
 import taan.online.match.service.MatchRegistry;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
@@ -29,7 +30,8 @@ final class RoomConnectionWorld implements AutoCloseable {
     final SessionRegistry sessions = new SessionRegistry();
     final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
     final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
-    final MatchRegistry matches = new MatchRegistry(MatchFixtures.definitions());
+    final TestMatchScheduler matchTimers = new TestMatchScheduler();
+    final MatchRegistry matches = MatchFixtures.registry(matchTimers);
     final RoomRegistry rooms = new RoomRegistry(
         channels,
         new RoomIdPool(),

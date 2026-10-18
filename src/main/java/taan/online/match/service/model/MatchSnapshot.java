@@ -1,6 +1,8 @@
 package taan.online.match.service.model;
 
 import java.util.List;
+import java.util.Map;
+import taan.online.match.model.MapSpawnDefinition;
 import java.util.UUID;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchDefinitions;
@@ -23,10 +25,16 @@ public record MatchSnapshot(
     MatchDefinitions definitions,
     List<MatchParticipant> participants,
     CaptainSelectionResult captains,
-    MatchPhase phase
+    MatchPhase phase,
+    int firstTurnSlot,
+    int initialWindRaw,
+    Map<UUID, MapSpawnDefinition> placements,
+    long phaseRevision,
+    long deadlineNanos
 ) {
     public MatchSnapshot {
         participants = List.copyOf(participants);
+        placements = Map.copyOf(placements);
     }
 
     public static MatchSnapshot from(Match match) {
@@ -41,7 +49,12 @@ public record MatchSnapshot(
             match.definitions(),
             match.participants(),
             match.captains(),
-            match.phase()
+            match.phase(),
+            match.firstTurnSlot(),
+            match.initialWindRaw(),
+            match.placements(),
+            match.phaseRevision(),
+            match.deadlineNanos()
         );
     }
 }

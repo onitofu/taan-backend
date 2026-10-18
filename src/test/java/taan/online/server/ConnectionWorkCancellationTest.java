@@ -21,7 +21,6 @@ import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
 import taan.online.RoomScenario;
 import taan.online.MatchFixtures;
-import taan.online.match.service.MatchRegistry;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -179,7 +178,7 @@ class ConnectionWorkCancellationTest {
         var characters = new TestCharacterRepository();
         var access = new SessionCharacterAccess(sessions);
         var channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
-        var matches = new MatchRegistry(MatchFixtures.definitions());
+        var matches = MatchFixtures.registry();
         var rooms = new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler(), matches);
         var handler = new ConnectionContext(
             workers,
@@ -214,12 +213,7 @@ class ConnectionWorkCancellationTest {
             SelectionFixtures.dispatcher(sessions, characters),
             SelectionFixtures.lobby(sessions, channels),
             InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
-            RoomScenario.dispatcher(
-                sessions,
-                channels,
-                characters,
-                rooms
-            ),
+            RoomScenario.dispatcher(sessions, channels, characters, rooms),
             MatchFixtures.dispatcher(rooms, matches),
             64,
             1048576,

@@ -15,6 +15,9 @@ import taan.online.LogCapture;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.ConsumeMatchResultAction;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
@@ -167,13 +170,16 @@ class MatchConnectionTest {
     @Test
     void closesTheFailingRequesterAndLogsUnexpectedMatchFailuresOnceWithoutSecrets() throws Exception {
         try (var world = new RoomConnectionWorld(); var logs = new LogCapture()) {
-            var access = new FailingRoomMatchAccess(world.rooms);
+            var access = new FailingRoomMatchAccess(world.rooms.matchAccess());
             var dispatcher = new MatchRequestDispatcher(
                 new MatchPacketHandler(
                     access,
                     world.matches,
                     new TerminateMatchAction(access),
-                    new ConsumeMatchResultAction(access, world.matches)
+                    new ConsumeMatchResultAction(access, world.matches),
+                    new ConfirmMatchLoadingAction(access),
+                    new ConfirmMatchPositionAction(access),
+                    new ReportMatchEnemiesAction(access)
                 )
             );
             var owner = world.client(1, dispatcher);
@@ -242,7 +248,7 @@ class MatchConnectionTest {
         world.rooms.commitMatch(token);
 
         if (phase == MatchPhase.PREVIEW) {
-            assertTrue(world.rooms.previewStarted(token));
+            MatchFixtures.loaded(world.matches, token);
         }
 
         return token;

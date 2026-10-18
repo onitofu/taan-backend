@@ -54,12 +54,13 @@ import taan.online.room.service.model.SetCaptainCandidateResult;
 import taan.online.room.service.model.SetRoomReadyResult;
 import taan.online.room.service.model.SlotAvailabilityResult;
 
-public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, AutoCloseable {
+public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private final ChannelRegistry channels;
     private final RoomIdPool ids;
     private final RoomMapCatalog maps;
     private final RoomStartOperations starts;
     private final RoomMatchOperations matches;
+    private final RoomMatchCoordinator matchCoordinator;
     private final RoomDepartureOperations departures;
     private final Map<RoomId, Room> rooms = new HashMap<>();
     private final Map<UUID, RoomSubscription> memberships = new HashMap<>();
@@ -114,6 +115,7 @@ public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, A
             new AdvanceCaptainSelectionAction(this)
         );
         matches = new RoomMatchOperations(channels, rooms, memberships, starts, lifecycle, this::changed);
+        matchCoordinator = new RoomMatchCoordinator(this, matches, starts, () -> phase, this::controlRejection);
         departures = new RoomDepartureOperations(
             channels,
             ids,
@@ -124,6 +126,10 @@ public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, A
             matches,
             this::publish
         );
+    }
+
+    public RoomMatchAccess matchAccess() {
+        return matchCoordinator;
     }
 
     public synchronized RoomMatchReservationResult reserveMatch(UUID id) {
@@ -138,22 +144,14 @@ public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, A
         return matches.rollback(token, reason);
     }
 
-    @Override
     public synchronized RoomMatchContext matchContext(UUID id) {
         return matches.context(id, phase);
     }
 
-    @Override
-    public synchronized boolean previewStarted(RoomMatchToken token) {
-        return matches.previewStarted(token);
-    }
-
-    @Override
     public synchronized RoomMatchTerminationResult terminateMatch(RoomMatchContext context, RoomMatchEndReason reason) {
         return matches.terminate(context, reason, phase);
     }
 
-    @Override
     public synchronized RoomMatchTerminationResult terminateMatch(RoomMatchToken token, RoomMatchEndReason reason) {
         return matches.terminate(token, reason, null);
     }
@@ -163,7 +161,7 @@ public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, A
     }
 
     public synchronized RoomStartResult requestStart(UUID id) {
-        return starts.start(id, controlRejection(id));
+        return matchCoordinator.start(id);
     }
 
     public synchronized SetCaptainCandidateResult setCaptainCandidate(UUID id, long characterId, boolean candidate) {

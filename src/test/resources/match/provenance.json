@@ -26,6 +26,11 @@
       "origin": "UNKNOWN"
     },
     {
+      "first-turn-slot2-grant0-policy-example.root.hex": "88ab9085ee2388623beae2b614130eef11a32e6d2304246818c31cbf7b6a2b55",
+      "original_file": "bootstrap-protocol.md",
+      "origin": "UNKNOWN"
+    },
+    {
       "give-up-empty.root.hex": "381a743edbd4d3e860b451aeb7b498e86210b0b408187d1c85fb149bae7305c1",
       "original_file": "give-up-empty.root.hex",
       "origin": "UNKNOWN"
@@ -76,6 +81,11 @@
       "origin": "UNKNOWN"
     },
     {
+      "scenario-native-c2s.root.hex": "e6c10854e6e484153b57784e7a3923fe48b27022ac1a8cedd122262e425b5309",
+      "original_file": "scenario-native-c2s.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
       "slot0-gameplay-prelude.root.hex": "5a2bf5699b2d7413612aa06368426ee48d10cf39cde9785c2db1474a443bd01f",
       "original_file": "match-slot-0-prelude.bin",
       "origin": "UNKNOWN"
@@ -83,6 +93,11 @@
     {
       "slot2-gameplay-prelude.root.hex": "70cbcb15239181a964652075eefe91520eb17c23359844a4746d0bbf121ef260",
       "original_file": "match-slot-2-prelude.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "start-cannon-two-player-policy.root.hex": "07df4adc6b02ac4a3f5527555d6e31aac01685302214da679edd8fb130330be9",
+      "original_file": "bootstrap-protocol.md",
       "origin": "UNKNOWN"
     }
   ]

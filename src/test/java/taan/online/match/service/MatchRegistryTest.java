@@ -32,7 +32,7 @@ class MatchRegistryTest {
     @Test
     void makesReservationIdempotentButRejectsConflictingRoomAndMatchIdentities() {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
-            var registry = new MatchRegistry(MatchFixtures.definitions());
+            var registry = MatchFixtures.registry();
             var draft = f.draft();
             var token = draft.token();
 
@@ -73,7 +73,7 @@ class MatchRegistryTest {
     @Test
     void rejectsUnsupportedWeaponsMapAndForgedAdmissionWithoutCreatingRuntime() {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM); var logs = new LogCapture()) {
-            var registry = new MatchRegistry(MatchFixtures.definitions());
+            var registry = MatchFixtures.registry();
             var draft = f.draft();
             var p = draft.participants().getFirst();
             var member = p.membership();
@@ -140,26 +140,14 @@ class MatchRegistryTest {
             );
             assertEquals(
                 "INVALID_SETUP",
-                registry.reserve(
-                    new RoomMatchDraft(
-                        token,
-                        1,
-                        f.owner,
-                        settings,
-                        List.of(),
-                        null
-                    )
-                ).reason()
+                registry.reserve(new RoomMatchDraft(token, 1, f.owner, settings, List.of(), null)).reason()
             );
             assertTrue(registry.current(token).isEmpty());
             assertTrue(logs.text().contains("match.reservation.rejected"));
             assertFalse(logs.text().contains("Hero"));
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new RoomMatchParticipant(
-                    member,
-                    new RoomSlot(0, RoomSlotState.OPEN, null)
-                )
+                () -> new RoomMatchParticipant(member, new RoomSlot(0, RoomSlotState.OPEN, null))
             );
             assertThrows(
                 IllegalArgumentException.class,
@@ -182,7 +170,7 @@ class MatchRegistryTest {
     void refusesToBindTheSameSessionAccountOrCharacterToAnotherMatch() {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
             var draft = f.draft();
-            var registry = new MatchRegistry(MatchFixtures.definitions());
+            var registry = MatchFixtures.registry();
             registry.reserve(draft);
             var a = draft.participants().get(0);
             var b = draft.participants().get(1);
@@ -204,14 +192,7 @@ class MatchRegistryTest {
                 assertEquals(
                     "PARTICIPANT_IN_MATCH",
                     registry.reserve(
-                        new RoomMatchDraft(
-                            token,
-                            1,
-                            session,
-                            draft.settings(),
-                            List.of(first, second),
-                            null
-                        )
+                        new RoomMatchDraft(token, 1, session, draft.settings(), List.of(first, second), null)
                     ).reason()
                 );
                 assertTrue(registry.current(token).isEmpty());
@@ -230,14 +211,7 @@ class MatchRegistryTest {
             assertEquals(
                 RESERVED,
                 registry.reserve(
-                    new RoomMatchDraft(
-                        token,
-                        1,
-                        session,
-                        draft.settings(),
-                        List.of(separate, separateOther),
-                        null
-                    )
+                    new RoomMatchDraft(token, 1, session, draft.settings(), List.of(separate, separateOther), null)
                 ).outcome()
             );
             assertTrue(registry.current(draft.token()).isPresent());

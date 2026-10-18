@@ -176,7 +176,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         channels = sharedChannels == null ? SelectionFixtures.registry(
             new SessionChannelAccess(sessions)
         ) : sharedChannels;
-        var matches = sharedMatches == null ? new MatchRegistry(MatchFixtures.definitions()) : sharedMatches;
+        var matches = sharedMatches == null ? MatchFixtures.registry() : sharedMatches;
         rooms = sharedRooms == null ? new RoomRegistry(
             channels,
             RoomScenario.maps(),

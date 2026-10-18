@@ -80,7 +80,14 @@ class MatchArchitectureTest {
             "taan.online.match.view..",
             "taan.online.match.service..",
             "taan.online.match.protocol..",
-            "taan.online.protocol.."
+            "taan.online.protocol..",
+            "taan.online.match.model..",
+            "taan.online.room.model..",
+            "taan.online.room.protocol..",
+            "taan.online.character.model..",
+            "taan.online.character.controller..",
+            "taan.online.character.protocol.packet..",
+            "taan.online.account.model.."
         );
 
     @ArchTest
@@ -106,7 +113,8 @@ class MatchArchitectureTest {
     @ArchTest
     static final ArchRule ROOM_MATCH_OWNER = classes().that().haveSimpleName("RoomMatchOperations")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.room\\.service\\.(RoomRegistry|RoomMatchOperations|RoomDepartureOperations)"
+            "taan\\.online\\.room\\.service\\."
+                + "(RoomRegistry|RoomMatchOperations|RoomDepartureOperations|RoomMatchCoordinator)"
         );
 
     @ArchTest
