@@ -58,6 +58,7 @@ import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
+import taan.online.room.service.ExpelRoomParticipantAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
@@ -170,6 +171,7 @@ public final class Application implements AutoCloseable {
                 ),
                 new EnterRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
                 new QuickJoinRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
+                new ExpelRoomParticipantAction(rooms),
                 new ChangeRoomSettingsAction(rooms),
                 new ChangeRoomTeamAction(rooms),
                 new ChangeRoomWeaponAction(rooms),

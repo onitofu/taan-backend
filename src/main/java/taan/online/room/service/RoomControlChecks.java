@@ -3,8 +3,11 @@ package taan.online.room.service;
 import java.util.UUID;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
+import taan.online.room.model.Room;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSlotState;
+import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSnapshot;
@@ -42,6 +45,26 @@ final class RoomControlChecks {
         }
 
         return room.slots().get(index).participant() != null ? "OCCUPIED_SLOT" : null;
+    }
+
+    static String expel(Room room, UUID actor, RoomParticipant target) {
+        if (!room.ownerSessionId().equals(actor)) {
+            return "NOT_OWNER";
+        }
+
+        if (room.state() != RoomState.WAITING) {
+            return "ROOM_UNAVAILABLE";
+        }
+
+        if (target == null) {
+            return "TARGET_NOT_FOUND";
+        }
+
+        return room.owner().character().accountId().equals(target.character().accountId()) ? "OWN_ACCOUNT" : null;
+    }
+
+    static boolean pending(RoomLeaveReceipt receipt) {
+        return receipt != null && receipt.awaitingAcknowledgement();
     }
 
     static boolean inactive(String rejection) {

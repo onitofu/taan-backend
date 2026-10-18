@@ -26,6 +26,7 @@ import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionReady;
+import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
@@ -35,6 +36,7 @@ import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
+import taan.online.room.service.ExpelRoomParticipantAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
@@ -48,6 +50,7 @@ import taan.online.room.service.model.ChangeRoomWeaponOutcome;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.EnterRoomOutcome;
+import taan.online.room.service.model.ExpelRoomParticipantOutcome;
 import taan.online.room.service.model.SetRoomReadyOutcome;
 import taan.online.room.service.model.SlotAvailabilityOutcome;
 import taan.online.room.view.ProtocolRoomView;
@@ -59,6 +62,7 @@ public final class RoomPacketHandler {
     private final CreateRoomAction create;
     private final EnterRoomAction enter;
     private final QuickJoinRoomAction quickJoin;
+    private final ExpelRoomParticipantAction expel;
     private final ChangeRoomSettingsAction settings;
     private final ChangeRoomTeamAction changeTeam;
     private final ChangeRoomWeaponAction changeWeapon;
@@ -73,6 +77,7 @@ public final class RoomPacketHandler {
         CreateRoomAction create,
         EnterRoomAction enter,
         QuickJoinRoomAction quickJoin,
+        ExpelRoomParticipantAction expel,
         ChangeRoomSettingsAction settings,
         ChangeRoomTeamAction changeTeam,
         ChangeRoomWeaponAction changeWeapon,
@@ -86,6 +91,7 @@ public final class RoomPacketHandler {
         this.create = create;
         this.enter = enter;
         this.quickJoin = quickJoin;
+        this.expel = expel;
         this.settings = settings;
         this.changeTeam = changeTeam;
         this.changeWeapon = changeWeapon;
@@ -102,6 +108,16 @@ public final class RoomPacketHandler {
         }
 
         var codec = new RoomRequestCodec();
+
+        if (type == PqGameSessionUserExpel.TYPE_ID) {
+            var result = expel.execute(id, codec.expel(root).targetCharacterId());
+
+            if (result.outcome() == ExpelRoomParticipantOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
+                return ignored();
+            }
+
+            return new RoomReply(RoomReplyOutcome.EXPEL_COMPLETED, CompletableFuture.completedFuture(null));
+        }
 
         if (type == PqGameSessionChangeMap.TYPE_ID || type == PqGameSessionChangeGameOption.TYPE_ID) {
             ChangeRoomSettingsResult result;

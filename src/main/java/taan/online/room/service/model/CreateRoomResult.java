@@ -9,6 +9,10 @@ public record CreateRoomResult(
     String reason,
     CompletionStage<Void> delivery
 ) {
+    public static CreateRoomResult rejected(String reason) {
+        return new CreateRoomResult(CreateRoomOutcome.REJECTED, null, reason);
+    }
+
     public CreateRoomResult(CreateRoomOutcome outcome, RoomSnapshot room, String reason) {
         this(outcome, room, reason, CompletableFuture.completedFuture(null));
     }

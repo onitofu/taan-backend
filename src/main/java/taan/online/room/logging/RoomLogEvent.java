@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    EXPEL_SUCCEEDED("room.expel.succeeded", Level.INFO, "Room participant expelled"),
+    EXPEL_REJECTED("room.expel.rejected", Level.DEBUG, "Room expulsion rejected"),
+    EXPEL_FAILED("room.expel.failed", Level.ERROR, "Room expulsion failed"),
     SETTINGS_SET("room.settings.set", Level.DEBUG, "Room settings accepted"),
     SETTINGS_REJECTED("room.settings.rejected", Level.DEBUG, "Room settings rejected"),
     SETTINGS_FAILED("room.settings.failed", Level.ERROR, "Room settings failed"),

@@ -22,6 +22,7 @@ import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
+import taan.online.room.protocol.packet.PcGameSessionUserExpel;
 import taan.online.room.service.RoomPresenceOutput;
 import taan.online.room.service.model.RoomSnapshot;
 
@@ -105,6 +106,11 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
         }
 
         return output.send(batch);
+    }
+
+    @Override
+    public CompletionStage<Void> expelled(AccountId targetAccountId) {
+        return output.send(List.of(codec.encode(new PcGameSessionUserExpel("", "", targetAccountId.value()))));
     }
 
     @Override

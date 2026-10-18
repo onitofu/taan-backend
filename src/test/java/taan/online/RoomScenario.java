@@ -27,11 +27,13 @@ import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionReady;
+import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
+import taan.online.room.service.ExpelRoomParticipantAction;
 import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
@@ -82,6 +84,7 @@ public final class RoomScenario implements AutoCloseable {
         create,
         enter,
         quickJoin,
+        new ExpelRoomParticipantAction(rooms),
         new ChangeRoomSettingsAction(rooms),
         new ChangeRoomTeamAction(rooms),
         new ChangeRoomWeaponAction(rooms),
@@ -109,6 +112,11 @@ public final class RoomScenario implements AutoCloseable {
 
     public void lobby(UUID id) {
         channels.enter(id, RoomListingFixtures.view(id, channels, rooms, new CollectingPacketOutput()));
+    }
+
+    public static byte[] expel(long targetCharacterId) {
+        return new BinaryWriter().unsignedInt(PqGameSessionUserExpel.TYPE_ID).unsignedInt(targetCharacterId)
+            .toByteArray();
     }
 
     public static RoomMapCatalog maps() {
@@ -163,6 +171,7 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomBootstrapDefinition(1, 3)
                 ),
+                new ExpelRoomParticipantAction(rooms),
                 new ChangeRoomSettingsAction(rooms),
                 new ChangeRoomTeamAction(rooms),
                 new ChangeRoomWeaponAction(rooms),

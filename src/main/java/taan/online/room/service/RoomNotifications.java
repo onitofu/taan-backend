@@ -14,6 +14,9 @@ import static taan.online.logging.LogField.roomMode;
 import static taan.online.logging.LogField.roomRule;
 import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.slotIndex;
+import static taan.online.logging.LogField.targetAccountId;
+import static taan.online.logging.LogField.targetCharacterId;
+import static taan.online.logging.LogField.targetSessionId;
 import static taan.online.logging.LogField.team;
 import static taan.online.logging.LogField.weaponId;
 
@@ -33,6 +36,11 @@ import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
+import taan.online.room.service.model.ExpelRoomParticipantOutcome;
+import taan.online.room.service.model.ExpelRoomParticipantResult;
+import taan.online.room.service.model.LeaveRoomOutcome;
+import taan.online.room.service.model.LeaveRoomResult;
+import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomSnapshot;
 
@@ -72,6 +80,80 @@ final class RoomNotifications {
         for (var recipient : recipients) {
             deliver(recipient, () -> recipient.output().update(snapshot, List.of(changedSlot), ownerChanged));
         }
+    }
+
+    static void expelled(RoomSubscription target, RoomParticipant participant) {
+        try {
+            target.output().expelled(participant.character().accountId()).whenComplete(
+                (ignored, failure) -> {
+                    if (failure != null) {
+                        expelDeliveryFailed(target, failure);
+                    }
+                }
+            );
+        } catch (RuntimeException failure) {
+            expelDeliveryFailed(target, failure);
+        }
+    }
+
+    private static void expelDeliveryFailed(RoomSubscription target, Throwable failure) {
+        var member = target.membership();
+        LOG.failure(
+            RoomLogEvent.NOTIFICATION_FAILED,
+            failure,
+            roomId(member.roomId().value()),
+            channelId(member.channelId()),
+            recipientSessionId(member.sessionId())
+        );
+        target.output().close("ROOM_NOTIFICATION_FAILED");
+    }
+
+    static ExpelRoomParticipantResult expelRejected(UUID actor, String rejection) {
+        LOG.log(RoomLogEvent.EXPEL_REJECTED, sessionId(actor), reason(rejection));
+        var outcome = RoomControlChecks.inactive(rejection) || rejection.equals("NO_MEMBERSHIP")
+            ? ExpelRoomParticipantOutcome.IGNORED : ExpelRoomParticipantOutcome.REJECTED;
+        return new ExpelRoomParticipantResult(outcome, rejection);
+    }
+
+    static void expelLog(RoomSnapshot room, RoomParticipant actor, RoomParticipant target, int slot) {
+        LOG.log(
+            RoomLogEvent.EXPEL_SUCCEEDED,
+            sessionId(actor.sessionId()),
+            accountId(actor.character().accountId().value()),
+            characterId(actor.character().id().value()),
+            channelId(room.channelId()),
+            roomId(room.id().value()),
+            targetSessionId(target.sessionId()),
+            targetAccountId(target.character().accountId().value()),
+            targetCharacterId(target.character().id().value()),
+            slotIndex(slot),
+            outcome("EXPELLED")
+        );
+    }
+
+    static LeaveRoomResult leaveRejected(UUID id, String rejection) {
+        LOG.log(RoomLogEvent.LEAVE_REJECTED, sessionId(id), reason(rejection));
+        return new LeaveRoomResult(LeaveRoomOutcome.REJECTED);
+    }
+
+    static LeaveRoomResult leaveReplayed(UUID id, RoomLeaveReceipt receipt) {
+        LOG.log(RoomLogEvent.LEAVE_REPLAYED, sessionId(id), roomId(receipt.membership().roomId().value()));
+        return new LeaveRoomResult(
+            receipt.awaitingAcknowledgement() ? LeaveRoomOutcome.LEFT : LeaveRoomOutcome.REPLAYED
+        );
+    }
+
+    static void departure(
+        List<RoomSubscription> recipients,
+        RoomSnapshot previous,
+        RoomSnapshot current,
+        UUID removed,
+        int slot,
+        String closeReason
+    ) {
+        boolean ownerChanged = !previous.ownerSessionId().equals(current.ownerSessionId());
+        update(recipients, current, removed, slot, ownerChanged);
+        ownerChanged(recipients, previous, current, ownerChanged, closeReason);
     }
 
     static CompletionStage<Void> slotAvailability(

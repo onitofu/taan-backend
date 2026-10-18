@@ -1,5 +1,10 @@
 package taan.online.room.service.model;
 
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
@@ -20,6 +25,24 @@ public record RoomListing(
     int mapId,
     boolean protectedRoom
 ) {
+    public static Map<Integer, List<RoomListing>> replaceChannel(
+        Map<Integer, List<RoomListing>> previous,
+        Collection<Room> rooms,
+        int channelId
+    ) {
+        var updated = new HashMap<>(previous);
+        var snapshot = rooms.stream().filter(room -> room.channelId() == channelId)
+            .sorted(Comparator.comparingInt(room -> room.id().value())).map(RoomListing::from).toList();
+
+        if (snapshot.isEmpty()) {
+            updated.remove(channelId);
+        } else {
+            updated.put(channelId, snapshot);
+        }
+
+        return Map.copyOf(updated);
+    }
+
     public static RoomListing from(Room room) {
         return new RoomListing(
             room.id(),

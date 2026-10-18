@@ -79,6 +79,7 @@ class ProtocolStateMachineTest {
         ProtocolEvent.ROOM_SLOT_AVAILABILITY,
         ProtocolEvent.ROOM_CHANGE_TEAM,
         ProtocolEvent.ROOM_CHANGE_WEAPON,
+        ProtocolEvent.ROOM_EXPEL,
         ProtocolEvent.ROOM_SETTINGS,
         ProtocolEvent.ROOM_READY
     );
@@ -164,6 +165,7 @@ class ProtocolStateMachineTest {
             "ROOM_SLOT_AVAILABILITY",
             "ROOM_CHANGE_TEAM",
             "ROOM_CHANGE_WEAPON",
+            "ROOM_EXPEL",
             "ROOM_SETTINGS",
             "ROOM_READY"
         }) {

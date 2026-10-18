@@ -91,6 +91,16 @@
       "origin": "SYNTHETIC"
     },
     {
+      "PcGameSession_UserExpel-guest.frame.hex": "e532afd26562d8cc3b1b0ce6e33f2e488a24bcea0339e500ccd44c905075693e",
+      "original_file": "events.jsonl",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PcGameSession_UserExpel-local.frame.hex": "0929d1b0a8be519b2864a3f6beaf1b579012c689043934a8f3fa356f08603b30",
+      "original_file": "events.jsonl",
+      "origin": "UNKNOWN"
+    },
+    {
       "PqChangeMap-map2.frame.hex": "42fe63fd8487a9c7fa3098e39cef87a0724c33fcb438a812a03503615d69abdf",
       "original_file": "room-settings-schema.json",
       "origin": "SYNTHETIC"
@@ -102,6 +112,11 @@
     },
     {
       "PqGameSession_OpenCloseSlot-open.frame.hex": "e09d40c3f9abe8438ae301fdee1e1711763a6651e901d811151bed38f82d570c",
+      "original_file": "events.jsonl",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PqGameSession_UserExpel-native.frame.hex": "4a284a97fcb8fe598920854dfcf34e445a00a992c03b2c02b74971781b9271d5",
       "original_file": "events.jsonl",
       "origin": "UNKNOWN"
     },

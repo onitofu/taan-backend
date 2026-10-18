@@ -63,6 +63,18 @@ public final class LogField {
         return new LogField("roomCount", value);
     }
 
+    public static LogField targetSessionId(UUID value) {
+        return new LogField("targetSessionId", value);
+    }
+
+    public static LogField targetAccountId(long value) {
+        return new LogField("targetAccountId", value);
+    }
+
+    public static LogField targetCharacterId(long value) {
+        return new LogField("targetCharacterId", value);
+    }
+
     public static LogField recipientSessionId(UUID value) {
         return new LogField("recipientSessionId", value);
     }
