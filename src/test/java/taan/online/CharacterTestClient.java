@@ -31,8 +31,17 @@ public final class CharacterTestClient implements AutoCloseable {
 
         send(TestFixtures.login(name, TestFixtures.CREDENTIAL));
         byte[] reply = read();
+        var identity = ByteBuffer.wrap(reply).order(ByteOrder.LITTLE_ENDIAN);
 
-        assertEquals(1, reply[4]);
+        assertEquals(0x1995045a, identity.getInt());
+        assertEquals(1, identity.get());
+        long localAccount = Integer.toUnsignedLong(identity.getInt());
+
+        assertTrue(localAccount > 0);
+        assertEquals(0, identity.getInt());
+        assertEquals(1, identity.getInt());
+        assertEquals(0x19500459, identity.getInt());
+        assertEquals(localAccount, Integer.toUnsignedLong(identity.getInt()));
         return reply;
     }
 

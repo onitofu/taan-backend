@@ -73,8 +73,8 @@ class RoomConnectionTest {
             harness.channel().writeInbound(root("create-unprotected"));
             harness.run();
 
-            assertEquals(2, new RoomResponseCodec().initialize(read(harness)).info().roomId());
-            harness.channel().writeInbound(leave(first.info().roomId(), 0));
+            assertEquals(1, new RoomResponseCodec().initialize(read(harness)).info().roomId());
+            harness.channel().writeInbound(leave(999, 0));
             harness.run();
 
             assertEquals(0, new RoomResponseCodec().leave(read(harness)).success());

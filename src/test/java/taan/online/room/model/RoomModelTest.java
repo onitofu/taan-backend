@@ -104,7 +104,7 @@ class RoomModelTest {
     }
 
     @Test
-    void allocatesTheWholeWireRangeAndReusesOnlyReleasedIdsAfterWrapping() {
+    void allocatesTheWholeWireRangeAndReusesReleasedIdsInAscendingOrder() {
         var pool = new RoomIdPool();
 
         for (int id = 1; id <= 65535; id++) {
@@ -121,5 +121,26 @@ class RoomModelTest {
         pool.release(new RoomId(2));
 
         assertEquals(2, pool.allocate().orElseThrow().value());
+    }
+
+    @Test
+    void reusesTheLowestFreeIdBeforeAllocatingAHigherNumber() {
+        var pool = new RoomIdPool();
+
+        assertEquals(1, pool.allocate().orElseThrow().value());
+        assertEquals(2, pool.allocate().orElseThrow().value());
+        assertEquals(3, pool.allocate().orElseThrow().value());
+
+        pool.release(new RoomId(2));
+
+        assertEquals(2, pool.allocate().orElseThrow().value());
+        assertEquals(4, pool.allocate().orElseThrow().value());
+
+        pool.release(new RoomId(3));
+        pool.release(new RoomId(1));
+
+        assertEquals(1, pool.allocate().orElseThrow().value());
+        assertEquals(3, pool.allocate().orElseThrow().value());
+        assertEquals(5, pool.allocate().orElseThrow().value());
     }
 }

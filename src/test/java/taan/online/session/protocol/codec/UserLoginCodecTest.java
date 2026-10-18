@@ -33,7 +33,7 @@ class UserLoginCodecTest {
         var codec = new UserLoginResponseCodec();
 
         assertArrayEquals(
-            TestFixtures.fixture("login-success-empty-female.root.hex"),
+            TestFixtures.fixture("login-success-empty-female-local-account1.root.hex"),
             codec.encode(new PrUserLogin(true, 1, 2, 0))
         );
 
@@ -42,6 +42,33 @@ class UserLoginCodecTest {
                 TestFixtures.fixture("login-failure-code" + code + ".root.hex"),
                 codec.encode(new PrUserLogin(false, 0, 0, code))
             );
+        }
+    }
+
+    @Test
+    void changesOnlyTheLocalIdentityOfTheLegacySyntheticLoginResponse() {
+        byte[] legacy = TestFixtures.fixture("login-success-empty-female.root.hex");
+        byte[] current = new UserLoginResponseCodec().encode(new PrUserLogin(true, 1, 2, 0));
+
+        assertEquals(0, ByteBuffer.wrap(legacy).order(ByteOrder.LITTLE_ENDIAN).getInt(5));
+        assertEquals(1, ByteBuffer.wrap(current).order(ByteOrder.LITTLE_ENDIAN).getInt(5));
+        assertArrayEquals(Arrays.copyOfRange(legacy, 0, 5), Arrays.copyOfRange(current, 0, 5));
+        assertArrayEquals(Arrays.copyOfRange(legacy, 9, legacy.length), Arrays.copyOfRange(current, 9, current.length));
+    }
+
+    @Test
+    void usesTheVerifiedAccountAsBothLocalIdentityAndAccountInfoIdentity() {
+        for (long account : new long[]{1, 17, 0xffff_ffffL}) {
+            byte[] response = new UserLoginResponseCodec().encode(new PrUserLogin(true, account, 2, 0));
+            var input = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN);
+
+            assertEquals(0x1995045a, input.getInt());
+            assertEquals(1, input.get());
+            assertEquals(account, Integer.toUnsignedLong(input.getInt()));
+            assertEquals(0, input.getInt());
+            assertEquals(1, input.getInt());
+            assertEquals(0x19500459, input.getInt());
+            assertEquals(account, Integer.toUnsignedLong(input.getInt()));
         }
     }
 

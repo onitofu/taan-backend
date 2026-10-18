@@ -81,7 +81,7 @@ class RoomLifecycleIntegrationTest {
                 client.send(root("create-unprotected"));
                 var second = initialize(client.read(), account.id().value(), character);
 
-                assertNotEquals(first.info().roomId(), second.info().roomId());
+                assertEquals(first.info().roomId(), second.info().roomId());
                 assertEquals(expected, second.slots().getFirst().occupant().appearance());
                 client.disconnect();
             }
@@ -92,7 +92,7 @@ class RoomLifecycleIntegrationTest {
                 var reconnected = initialize(client.read(), account.id().value(), character);
 
                 assertEquals(expected, reconnected.slots().getFirst().occupant().appearance());
-                assertEquals(3, reconnected.info().roomId());
+                assertEquals(1, reconnected.info().roomId());
                 application.close();
                 client.awaitClosure();
             }
@@ -156,6 +156,7 @@ class RoomLifecycleIntegrationTest {
 
         assertEquals(account, room.option().ownerAccountId());
         assertEquals(character, room.option().ownerCharacterId());
+        assertEquals(account, room.slots().getFirst().occupant().accountId());
         assertEquals(character, room.slots().getFirst().occupant().characterId());
         assertEquals(2, room.slots().getFirst().state());
         assertEquals(1, room.info().details().playerCount());

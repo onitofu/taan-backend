@@ -2,6 +2,7 @@ package taan.online.room.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
@@ -44,6 +45,39 @@ class CaptainSelectionRecoveryTest {
                 assertEquals(RoomStartOutcome.IGNORED, begin.execute(owner).outcome());
                 assertEquals(SetCaptainCandidateOutcome.IGNORED, candidate.execute(owner, 1, true).outcome());
             }
+        }
+    }
+
+    @Test
+    void ignoresOldTimersAfterTheSameRoomNumberIsReusedForANewSelection() {
+        try (var scenario = new RoomScenario()) {
+            var owner = scenario.player(1, 1);
+            var guest = scenario.player(2, 1);
+            var first = scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput()).room();
+            scenario.enter.execute(guest, first.id().value(), "", new RecordingRoomOutput());
+            scenario.rooms.setReady(guest, true);
+            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
+            var oldTask = scenario.timers.tasks.getFirst();
+            scenario.rooms.release(owner, "DISCONNECT");
+            scenario.rooms.release(guest, "DISCONNECT");
+            scenario.lobby(owner);
+            scenario.lobby(guest);
+            var next = scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput()).room();
+            scenario.enter.execute(guest, next.id().value(), "", new RecordingRoomOutput());
+            scenario.rooms.setReady(guest, true);
+            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
+            var current = scenario.rooms.current(owner).orElseThrow();
+            var tasks = scenario.timers.tasks.stream().toList();
+            scenario.timers.now = 11_000_000_000L;
+            oldTask.command().run();
+
+            assertEquals(first.id(), next.id());
+            assertNotEquals(first.generation(), next.generation());
+            assertEquals(current, scenario.rooms.current(owner).orElseThrow());
+            assertEquals(tasks, scenario.timers.tasks);
+            assertEquals(RoomState.CAPTAIN_SELECTION, scenario.rooms.forChannel(1).getFirst().state());
         }
     }
 
