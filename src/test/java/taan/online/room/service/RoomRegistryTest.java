@@ -154,7 +154,7 @@ class RoomRegistryTest {
             for (int index = 1; index <= 65535; index++) {
                 pool.allocate();
             }
-            try (var exhausted = new RoomRegistry(scenario.channels, pool)) {
+            try (var exhausted = new RoomRegistry(scenario.channels, pool, RoomScenario.maps())) {
                 var current = scenario.channels.membership(other).orElseThrow();
                 assertEquals(
                     "ROOM_IDS_EXHAUSTED",

@@ -9,6 +9,7 @@ import taan.online.ChannelFixtures;
 import taan.online.CharacterFixtures;
 import taan.online.RoomEntryFixtures;
 import taan.online.RoomFixtures;
+import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
 import taan.online.account.model.AccountGender;
@@ -22,7 +23,7 @@ import taan.online.session.service.SessionRegistry;
 final class RoomConnectionWorld implements AutoCloseable {
     final SessionRegistry sessions = new SessionRegistry();
     final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
-    final RoomRegistry rooms = new RoomRegistry(channels);
+    final RoomRegistry rooms = new RoomRegistry(channels, RoomScenario.maps());
     private final List<ConnectionContextTestHarness> clients = new ArrayList<>();
 
     ConnectionContextTestHarness client(long accountId) {

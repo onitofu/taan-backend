@@ -135,7 +135,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         channels = sharedChannels == null ? SelectionFixtures.registry(
             new SessionChannelAccess(sessions)
         ) : sharedChannels;
-        rooms = sharedRooms == null ? new RoomRegistry(channels) : sharedRooms;
+        rooms = sharedRooms == null ? new RoomRegistry(channels, RoomScenario.maps()) : sharedRooms;
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),

@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterId;
+import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.service.RoomPresenceOutput;
@@ -23,6 +24,9 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
     public final List<Boolean> readyValues = new ArrayList<>();
     public final List<CharacterId> weaponCharacters = new ArrayList<>();
     public final List<Integer> weaponIds = new ArrayList<>();
+    public final List<RoomSettings> settings = new ArrayList<>();
+    public final List<Boolean> settingsRejections = new ArrayList<>();
+    public Runnable onSettingsChanged = () -> { };
     public Runnable onWeaponChanged = () -> { };
     public Runnable onReady = () -> { };
     public Runnable onTeamChanged = () -> { };
@@ -75,6 +79,14 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
         weaponCharacters.add(characterId);
         weaponIds.add(weaponId);
         onWeaponChanged.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> settingsChanged(RoomSettings current, boolean rejected) {
+        settings.add(current);
+        settingsRejections.add(rejected);
+        onSettingsChanged.run();
         return CompletableFuture.completedFuture(null);
     }
 

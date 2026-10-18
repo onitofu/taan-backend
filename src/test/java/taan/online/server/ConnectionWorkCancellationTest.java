@@ -209,7 +209,7 @@ class ConnectionWorkCancellationTest {
             SelectionFixtures.dispatcher(sessions, characters),
             SelectionFixtures.lobby(sessions, channels),
             InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
-            RoomScenario.dispatcher(sessions, channels, characters, new RoomRegistry(channels)),
+            RoomScenario.dispatcher(sessions, channels, characters, new RoomRegistry(channels, RoomScenario.maps())),
             64,
             1048576,
             16384

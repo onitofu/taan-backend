@@ -2,6 +2,7 @@ package taan.online;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import taan.online.account.model.AccountGender;
@@ -13,16 +14,20 @@ import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
 import taan.online.room.model.RoomBootstrapDefinition;
+import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
+import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
+import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionReady;
+import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.CreateRoomAction;
@@ -44,7 +49,7 @@ public final class RoomScenario implements AutoCloseable {
     public final SessionRegistry sessions = new SessionRegistry();
     public final SessionChannelAccess access = new SessionChannelAccess(sessions);
     public final ChannelRegistry channels = SelectionFixtures.registry(access);
-    public final RoomRegistry rooms = new RoomRegistry(channels);
+    public final RoomRegistry rooms = new RoomRegistry(channels, RoomScenario.maps());
     public final TestCharacterRepository characters = new TestCharacterRepository();
     public final CreateRoomAction create = new CreateRoomAction(
         access,
@@ -77,6 +82,7 @@ public final class RoomScenario implements AutoCloseable {
         create,
         enter,
         quickJoin,
+        new ChangeRoomSettingsAction(rooms),
         new ChangeRoomTeamAction(rooms),
         new ChangeRoomWeaponAction(rooms),
         new SetRoomReadyAction(rooms),
@@ -103,6 +109,10 @@ public final class RoomScenario implements AutoCloseable {
 
     public void lobby(UUID id) {
         channels.enter(id, RoomListingFixtures.view(id, channels, rooms, new CollectingPacketOutput()));
+    }
+
+    public static RoomMapCatalog maps() {
+        return new RoomMapCatalog(Set.of(1, 2, 4, 9, 10, 17));
     }
 
     public static RoomSettings settings() {
@@ -153,6 +163,7 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomBootstrapDefinition(1, 3)
                 ),
+                new ChangeRoomSettingsAction(rooms),
                 new ChangeRoomTeamAction(rooms),
                 new ChangeRoomWeaponAction(rooms),
                 new SetRoomReadyAction(rooms),
@@ -168,6 +179,15 @@ public final class RoomScenario implements AutoCloseable {
         lastOutput = new CollectingPacketOutput();
         outputs.put(id, lastOutput);
         return handler.handle(id, type, root, lastOutput);
+    }
+
+    public static byte[] settings(int mapId, int gameType, int rule, int ignored) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PqGameSessionChangeGameOption.TYPE_ID))
+            .unsignedShort(mapId).unsignedShort(gameType).unsignedByte(rule).unsignedByte(ignored).toByteArray();
+    }
+
+    public static byte[] map(int mapId) {
+        return new BinaryWriter().unsignedInt(PqGameSessionChangeMap.TYPE_ID).unsignedShort(mapId).toByteArray();
     }
 
     public static byte[] weapon(long characterId, int weaponId) {

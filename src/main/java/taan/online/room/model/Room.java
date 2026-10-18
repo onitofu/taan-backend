@@ -13,7 +13,7 @@ public final class Room {
     private final RoomId id;
     private final UUID generation;
     private final int channelId;
-    private final RoomSettings settings;
+    private RoomSettings settings;
     private final RoomPassword password;
     private final List<RoomSlot> slots;
     private UUID ownerSessionId;
@@ -174,6 +174,25 @@ public final class Room {
                 return change;
             }
         );
+    }
+
+    public boolean changeSettings(RoomMode mode, RoomRule rule, int mapId, RoomMapCatalog maps) {
+        if (state != RoomState.WAITING) {
+            throw new IllegalStateException("Room settings cannot be changed");
+        }
+
+        if (!maps.contains(mapId)) {
+            throw new IllegalArgumentException("Unsupported room map");
+        }
+
+        var desired = new RoomSettings(settings.title(), mode, rule, mapId, settings.capacity());
+
+        if (settings.equals(desired)) {
+            return false;
+        }
+
+        settings = desired;
+        return true;
     }
 
     public static boolean isSelectableWeapon(int weaponId) {
