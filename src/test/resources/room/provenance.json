@@ -66,6 +66,21 @@
       "origin": "SYNTHETIC"
     },
     {
+      "PcGameSession_CancelChief.frame.hex": "2f01335f4cc7288cd84c3dcd9ffae583fefa0ed810754bb9f69df488540c9a9d",
+      "original_file": "PcGameSession_CancelChief.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PcGameSession_ChallengeChief.frame.hex": "727e27b8535fb74fddfdc92dc7ba6df0201440649d8bf3ffef858de256cd2094",
+      "original_file": "PcGameSession_ChallengeChief.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PcGameSession_ChiefDecision.frame.hex": "30fef2fb71f575d2d6e824254cd2b1eadf757cd3729b0c679ebb819ee3d528cc",
+      "original_file": "PcGameSession_ChiefDecision.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
       "PcGameSession_Init-two-players.frame.hex": "14d1c226f450a26c71a060b5574b383a1398d7784e8d6c723cf14b86cd2f6cc0",
       "original_file": "PcGameSession_Init-two-players.frame.bin",
       "origin": "SYNTHETIC"
@@ -104,6 +119,21 @@
       "PqChangeMap-map2.frame.hex": "42fe63fd8487a9c7fa3098e39cef87a0724c33fcb438a812a03503615d69abdf",
       "original_file": "room-settings-schema.json",
       "origin": "SYNTHETIC"
+    },
+    {
+      "PqGameSession_CancelChief-native.frame.hex": "3e1ee03428c37c04f7190d4d309359ffdef2b2b5ad8f42089fc839dec1126ee7",
+      "original_file": "PqGameSession_CancelChief-native.frame.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PqGameSession_ChallengeChief-native.frame.hex": "2a6906932ab632192c126ceb1dcc01a225cfd729dbd1937ee23599150b663a15",
+      "original_file": "PqGameSession_ChallengeChief-native.frame.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "PqGameSession_ChiefDecision-native.frame.hex": "9d2c422d2e2ff411e9344ae44ef21b13b4cd66586244d26b7843207930042f00",
+      "original_file": "PqGameSession_ChiefDecision-native.frame.hex",
+      "origin": "UNKNOWN"
     },
     {
       "PqGameSession_OpenCloseSlot-close.frame.hex": "8faaab1acf9d48d4e6c71cbdcfcbb36c0c142ff070da820971ae69b23816c44b",

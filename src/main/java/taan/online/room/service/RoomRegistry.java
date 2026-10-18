@@ -1,13 +1,16 @@
 package taan.online.room.service;
 
-import java.util.Comparator;
+import static taan.online.room.service.RoomControlChecks.membershipCurrent;
+import static taan.online.room.service.RoomControlChecks.participant;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import taan.online.channel.model.ChannelPresencePhase;
+import java.util.function.LongSupplier;
+import java.util.random.RandomGenerator;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
 import taan.online.inventory.model.CharacterInventory;
@@ -21,7 +24,6 @@ import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomSettings;
-import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
@@ -33,17 +35,18 @@ import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.EnterRoomResult;
-import taan.online.room.service.model.ExpelRoomParticipantOutcome;
 import taan.online.room.service.model.ExpelRoomParticipantResult;
 import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.LeaveRoomResult;
 import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
-import taan.online.room.service.model.RoomLeaveStatus;
 import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
+import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomSnapshot;
+import taan.online.room.service.model.RoomStartResult;
+import taan.online.room.service.model.SetCaptainCandidateResult;
 import taan.online.room.service.model.SetRoomReadyResult;
 import taan.online.room.service.model.SlotAvailabilityResult;
 
@@ -51,20 +54,58 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private final ChannelRegistry channels;
     private final RoomIdPool ids;
     private final RoomMapCatalog maps;
+    private final RoomStartOperations starts;
     private final Map<RoomId, Room> rooms = new HashMap<>();
     private final Map<UUID, RoomSubscription> memberships = new HashMap<>();
     private final Map<UUID, RoomLeaveReceipt> receipts = new HashMap<>();
     private volatile Map<Integer, List<RoomListing>> listings = Map.of();
     private RoomRegistryPhase phase = RoomRegistryPhase.OPEN;
 
-    public RoomRegistry(ChannelRegistry channels, RoomMapCatalog maps) {
-        this(channels, new RoomIdPool(), maps);
+    public RoomRegistry(ChannelRegistry channels, RoomMapCatalog maps, RoomSelectionScheduler scheduler) {
+        this(channels, new RoomIdPool(), maps, scheduler, System::nanoTime, RandomGenerator.getDefault());
     }
 
-    RoomRegistry(ChannelRegistry channels, RoomIdPool ids, RoomMapCatalog maps) {
+    public RoomRegistry(
+        ChannelRegistry channels,
+        RoomIdPool ids,
+        RoomMapCatalog maps,
+        RoomSelectionScheduler scheduler,
+        LongSupplier clock,
+        RandomGenerator random
+    ) {
         this.channels = channels;
         this.ids = ids;
         this.maps = Objects.requireNonNull(maps);
+        starts = new RoomStartOperations(
+            channels,
+            rooms,
+            memberships,
+            scheduler,
+            clock,
+            random,
+            this::changed,
+            new AdvanceCaptainSelectionAction(this)
+        );
+    }
+
+    public synchronized RoomStartResult beginCaptainSelection(UUID id) {
+        return starts.begin(id, controlRejection(id));
+    }
+
+    public synchronized RoomStartResult requestStart(UUID id) {
+        return starts.start(id, controlRejection(id));
+    }
+
+    public synchronized SetCaptainCandidateResult setCaptainCandidate(UUID id, long characterId, boolean candidate) {
+        return starts.candidate(id, characterId, candidate, controlRejection(id));
+    }
+
+    public synchronized void advanceCaptainSelection(RoomSelectionToken token) {
+        try {
+            starts.advance(token);
+        } catch (RuntimeException failure) {
+            starts.failed(token, failure);
+        }
     }
 
     @Override
@@ -85,6 +126,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized InventoryMoveContext inventoryContext(InventoryActor actor) {
+        starts.advance(room(actor.sessionId()));
         return RoomControlChecks.inventoryContext(
             actor,
             phase,
@@ -125,7 +167,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return CreateRoomResult.rejected("ALREADY_IN_ROOM");
         }
 
-        if (!current(context, owner)) {
+        if (!membershipCurrent(channels, context, owner)) {
             return CreateRoomResult.rejected("CHANNEL_CHANGED");
         }
 
@@ -139,7 +181,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         var ownerCharacter = owner.character().id();
         var stale = memberships.values().stream()
-            .filter(value -> participant(value).character().id().equals(ownerCharacter)).toList();
+            .filter(value -> participant(rooms, value).character().id().equals(ownerCharacter)).toList();
 
         for (var previous : stale) {
             release(previous.membership(), "STALE_SESSION");
@@ -179,11 +221,12 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return EnterRoomResult.rejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
         }
 
-        if (!current(context, participant) || !RoomControlChecks.matches(context, participant)) {
+        if (!membershipCurrent(channels, context, participant) || !RoomControlChecks.matches(context, participant)) {
             return EnterRoomResult.rejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
         }
 
         var room = rooms.get(target.id());
+        starts.advance(room);
 
         if (room == null || !room.generation().equals(target.generation()) || room.channelId() != context.channelId()
             || target.channelId() != context.channelId() || room.state() != RoomState.WAITING) {
@@ -235,29 +278,19 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return EnterRoomResult.rejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
         }
 
-        if (!current(context, participant) || !RoomControlChecks.matches(context, participant)) {
+        if (!membershipCurrent(channels, context, participant) || !RoomControlChecks.matches(context, participant)) {
             return EnterRoomResult.rejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
         }
 
-        var target = rooms.values().stream()
-            .filter(room -> room.channelId() == context.channelId() && room.state() == RoomState.WAITING)
-            .filter(room -> !room.protectedRoom() && room.playerCount() < room.settings().capacity())
-            .filter(room -> room.slots().stream().anyMatch(slot -> slot.state() == RoomSlotState.OPEN))
-            .filter(room -> !room.contains(participant))
-            .min(Comparator.comparingInt(Room::playerCount).reversed().thenComparingInt(room -> room.id().value()));
+        rooms.values().stream().filter(room -> room.channelId() == context.channelId()).toList()
+            .forEach(starts::advance);
+        var target = RoomEntryTarget.quickJoin(rooms.values(), context.channelId(), participant);
 
         if (target.isEmpty()) {
             return EnterRoomResult.rejected(EnterRoomOutcome.NOT_FOUND, "NO_MATCHING_ROOM");
         }
 
-        var room = target.orElseThrow();
-        return enter(
-            context,
-            new RoomEntryTarget(room.id(), room.generation(), room.channelId()),
-            participant,
-            "",
-            output
-        );
+        return enter(context, target.orElseThrow(), participant, "", output);
     }
 
     public synchronized SlotAvailabilityResult setSlotAvailability(UUID id, int index, RoomSlotState desiredState) {
@@ -319,52 +352,30 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         var subscription = memberships.get(id);
         var room = rooms.get(subscription.membership().roomId());
-        var result = RoomControlOperations.changeSettings(room, id, maps, mapId, gameType, rule);
-
-        if (result.outcome() == ChangeRoomSettingsOutcome.CHANGED) {
-            publish(room.channelId());
-            channels.roomChanged(room.channelId(), room.id().value());
-        }
-
-        return RoomNotifications.settingsChanged(
+        return RoomControlOperations.publishSettings(
+            room,
+            id,
+            maps,
+            mapId,
+            gameType,
+            rule,
             List.copyOf(memberships.values()),
-            subscription.membership(),
-            RoomSnapshot.from(room),
-            result
+            subscription,
+            this::changed
         );
     }
 
     public synchronized ExpelRoomParticipantResult expel(UUID id, long targetCharacterId) {
-        String rejection = controlRejection(id);
-
-        if (rejection != null) {
-            return RoomNotifications.expelRejected(id, rejection);
-        }
-
-        var snapshot = current(id).orElseThrow();
-        var slot = snapshot.slots().stream().filter(value -> value.participant() != null)
-            .filter(value -> value.participant().character().id().value() == targetCharacterId)
-            .findFirst().orElse(null);
-        var target = slot == null ? null : slot.participant();
-        rejection = RoomControlChecks.expel(rooms.get(snapshot.id()), id, target);
-
-        if (rejection == null) {
-            rejection = controlRejection(target.sessionId());
-        }
-
-        if (rejection != null) {
-            return RoomNotifications.expelRejected(id, rejection);
-        }
-
-        var subscription = memberships.get(target.sessionId());
-        RoomNotifications.expelled(subscription, target);
-        remove(subscription.membership(), "EXPELLED");
-        receipts.put(
-            target.sessionId(),
-            new RoomLeaveReceipt(subscription.membership(), RoomLeaveStatus.AWAITING_ACKNOWLEDGEMENT)
+        return RoomExpulsionOperations.expel(
+            id,
+            targetCharacterId,
+            rooms,
+            memberships,
+            receipts,
+            this::controlRejection,
+            this::remove,
+            room -> starts.cancel(room, "EXPELLED")
         );
-        RoomNotifications.expelLog(snapshot, participant(memberships.get(id)), target, slot.index());
-        return new ExpelRoomParticipantResult(ExpelRoomParticipantOutcome.EXPELLED, "EXPELLED");
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
@@ -422,14 +433,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     private RoomSubscription subscribe(Room room, RoomParticipant participant, RoomPresenceOutput output) {
-        var membership = new RoomMembership(
-            participant.sessionId(),
-            room.id(),
-            room.generation(),
-            room.channelId(),
-            UUID.randomUUID()
-        );
-        var subscription = new RoomSubscription(membership, output);
+        var subscription = RoomSubscription.create(room, participant, output);
         memberships.put(participant.sessionId(), subscription);
         receipts.remove(participant.sessionId());
         return subscription;
@@ -441,24 +445,14 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     private String controlRejection(UUID id) {
+        starts.advance(room(id));
         var subscription = memberships.get(id);
         return RoomControlChecks.rejection(
             phase,
             subscription == null ? null : subscription.membership(),
             channels.membership(id).orElse(null),
-            subscription == null ? null : participant(subscription)
+            subscription == null ? null : participant(rooms, subscription)
         );
-    }
-
-    private boolean current(ChannelMembershipSnapshot context, RoomParticipant participant) {
-        return context.phase() == ChannelPresencePhase.LOBBY
-            && channels.membership(participant.sessionId()).filter(context::equals).isPresent();
-    }
-
-    private RoomParticipant participant(RoomSubscription subscription) {
-        return rooms.get(subscription.membership().roomId()).slots().stream().map(RoomSlot::participant)
-            .filter(value -> value != null && value.sessionId().equals(subscription.membership().sessionId()))
-            .findFirst().orElseThrow();
     }
 
     private void remove(RoomMembership expected, String closeReason) {
@@ -467,6 +461,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var room = rooms.get(expected.roomId());
+        starts.cancel(room, closeReason);
         var previous = RoomSnapshot.from(room);
         var removed = room.leave(expected.sessionId()).orElseThrow();
         memberships.remove(expected.sessionId());
@@ -492,6 +487,11 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             removed.index(),
             closeReason
         );
+    }
+
+    private void changed(Room room) {
+        publish(room.channelId());
+        channels.roomChanged(room.channelId(), room.id().value());
     }
 
     private void publish(int channelId) {

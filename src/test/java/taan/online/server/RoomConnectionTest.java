@@ -48,7 +48,7 @@ class RoomConnectionTest {
             harness.run();
 
             assertEquals(
-                "Starting a match is currently unavailable.",
+                "The room is not ready to start.",
                 new NoticeMessageCodec().decode(read(harness)).message()
             );
             harness.channel().writeInbound(root("create-unprotected"));
@@ -183,6 +183,12 @@ class RoomConnectionTest {
 
                 harness.channel().writeInbound(root(creating ? "create-unprotected" : "start-empty"));
                 harness.run();
+
+                if (!creating) {
+                    assertTrue(harness.channel().isActive());
+                    assertNull(harness.channel().readOutbound());
+                    continue;
+                }
 
                 assertFalse(harness.channel().isActive());
                 String event = creating ? "room.creation.failed" : "room.operation.failed";

@@ -106,7 +106,12 @@ public final class CreateRoomAction {
 
         var settings = new RoomSettings(
             title,
-            command.gameType() == 0 ? RoomMode.ITEM : RoomMode.NO_ITEM,
+            switch (command.gameType()) {
+                case 0 -> RoomMode.ITEM;
+                case 1 -> RoomMode.NO_ITEM;
+                case 2 -> RoomMode.CAPTAIN_ITEM;
+                default -> RoomMode.CAPTAIN_NO_ITEM;
+            },
             command.rule() == 2 ? RoomRule.BONUS : RoomRule.BASIC,
             defaults.mapId(),
             8
@@ -118,8 +123,8 @@ public final class CreateRoomAction {
 
     private boolean supported(CreateRoomCommand command) {
         return command.state() == 5 && command.roomGrade() == 0 && command.gameKind() == 0
-            && (command.gameType() == 0 || command.gameType() == 1)
-            && command.rule() == (command.gameType() == 0 ? 2 : 0)
+            && (command.gameType() >= 0 && command.gameType() <= 3)
+            && command.rule() == ((command.gameType() & 1) == 0 ? 2 : 0)
             && command.playerCount() == 0 && command.capacity() == 8
             && (command.mapId() == 0 || command.mapId() == 1);
     }

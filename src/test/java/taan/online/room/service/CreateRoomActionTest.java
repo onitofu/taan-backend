@@ -17,6 +17,7 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
+import taan.online.room.service.model.RoomStartOutcome;
 import taan.online.session.model.SessionId;
 
 class CreateRoomActionTest {
@@ -45,7 +46,8 @@ class CreateRoomActionTest {
                 new CreateRoomCommand(0, 0, "Room", 0, 0, 2, 0, 8, null, 0),
                 new CreateRoomCommand(5, 1, "Room", 0, 0, 2, 0, 8, null, 0),
                 new CreateRoomCommand(5, 0, "Room", 1, 0, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 2, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, 4, 2, 0, 8, null, 0),
+                new CreateRoomCommand(5, 0, "Room", 0, -1, 0, 0, 8, null, 0),
                 new CreateRoomCommand(5, 0, "Room", 0, 0, 0, 0, 8, null, 0),
                 new CreateRoomCommand(5, 0, "Room", 0, 1, 2, 0, 8, null, 0),
                 new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 1, 8, null, 0),
@@ -156,18 +158,18 @@ class CreateRoomActionTest {
         try (var scenario = new RoomScenario()) {
             var id = scenario.player(1, 1);
 
-            assertTrue(scenario.start.execute(UUID.randomUUID()).ignored());
-            assertThrows(IllegalStateException.class, () -> scenario.start.execute(id));
+            assertEquals(RoomStartOutcome.IGNORED, scenario.start.execute(UUID.randomUUID()).outcome());
+            assertEquals(RoomStartOutcome.IGNORED, scenario.start.execute(id).outcome());
             scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
 
-            assertFalse(scenario.start.execute(id).ignored());
-            assertEquals("Starting a match is currently unavailable.", scenario.start.execute(id).message());
+            assertEquals(RoomStartOutcome.REJECTED, scenario.start.execute(id).outcome());
+            assertEquals("MISSING_TEAM", scenario.start.execute(id).reason());
             scenario.channels.move(id, new MoveToCommand(0, 2, 0, 929));
 
-            assertThrows(IllegalStateException.class, () -> scenario.start.execute(id));
+            assertEquals(RoomStartOutcome.IGNORED, scenario.start.execute(id).outcome());
             scenario.channels.release(id, "TEST");
 
-            assertThrows(IllegalStateException.class, () -> scenario.start.execute(id));
+            assertEquals(RoomStartOutcome.IGNORED, scenario.start.execute(id).outcome());
         }
     }
 

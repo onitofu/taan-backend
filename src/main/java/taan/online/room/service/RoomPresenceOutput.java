@@ -26,5 +26,11 @@ public interface RoomPresenceOutput {
 
     CompletionStage<Void> expelled(AccountId targetAccountId);
 
+    CompletionStage<Void> captainSelectionOpened();
+
+    CompletionStage<Void> captainCandidateChanged(long characterId, boolean candidate);
+
+    CompletionStage<Void> notice(String message);
+
     void close(String reason);
 }

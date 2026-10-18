@@ -17,6 +17,7 @@ import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
 import taan.online.account.model.AccountGender;
@@ -136,7 +137,11 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         channels = sharedChannels == null ? SelectionFixtures.registry(
             new SessionChannelAccess(sessions)
         ) : sharedChannels;
-        rooms = sharedRooms == null ? new RoomRegistry(channels, RoomScenario.maps()) : sharedRooms;
+        rooms = sharedRooms == null ? new RoomRegistry(
+            channels,
+            RoomScenario.maps(),
+            new TestRoomSelectionScheduler()
+        ) : sharedRooms;
         handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),

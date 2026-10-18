@@ -2,6 +2,7 @@ package taan.online;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +15,7 @@ import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
 import taan.online.room.model.RoomBootstrapDefinition;
+import taan.online.room.model.RoomIdPool;
 import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
@@ -28,6 +30,7 @@ import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionUserExpel;
+import taan.online.room.service.BeginCaptainSelectionAction;
 import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
@@ -39,6 +42,7 @@ import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetCaptainCandidateAction;
 import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.CreateRoomCommand;
@@ -51,7 +55,15 @@ public final class RoomScenario implements AutoCloseable {
     public final SessionRegistry sessions = new SessionRegistry();
     public final SessionChannelAccess access = new SessionChannelAccess(sessions);
     public final ChannelRegistry channels = SelectionFixtures.registry(access);
-    public final RoomRegistry rooms = new RoomRegistry(channels, RoomScenario.maps());
+    public final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
+    public final RoomRegistry rooms = new RoomRegistry(
+        channels,
+        new RoomIdPool(),
+        RoomScenario.maps(),
+        timers,
+        timers::nanoTime,
+        new Random(1)
+    );
     public final TestCharacterRepository characters = new TestCharacterRepository();
     public final CreateRoomAction create = new CreateRoomAction(
         access,
@@ -78,7 +90,7 @@ public final class RoomScenario implements AutoCloseable {
     public final Map<UUID, CollectingPacketOutput> outputs = new ConcurrentHashMap<>();
     public CollectingPacketOutput lastOutput;
     public final LeaveRoomAction leave = new LeaveRoomAction(rooms);
-    public final RequestRoomStartAction start = new RequestRoomStartAction(access, channels, rooms);
+    public final RequestRoomStartAction start = new RequestRoomStartAction(rooms);
     public final RoomPacketHandler handler = new RoomPacketHandler(
         access,
         create,
@@ -92,6 +104,8 @@ public final class RoomScenario implements AutoCloseable {
         new SetRoomSlotAvailabilityAction(rooms),
         leave,
         start,
+        new BeginCaptainSelectionAction(rooms),
+        new SetCaptainCandidateAction(rooms),
         rooms
     );
 
@@ -178,7 +192,9 @@ public final class RoomScenario implements AutoCloseable {
                 new SetRoomReadyAction(rooms),
                 new SetRoomSlotAvailabilityAction(rooms),
                 new LeaveRoomAction(rooms),
-                new RequestRoomStartAction(access, channels, rooms),
+                new RequestRoomStartAction(rooms),
+                new BeginCaptainSelectionAction(rooms),
+                new SetCaptainCandidateAction(rooms),
                 rooms
             )
         );

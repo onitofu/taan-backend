@@ -36,6 +36,13 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
     public final List<AccountId> expelledAccounts = new ArrayList<>();
     public Runnable onExpelled = () -> { };
     public CompletionStage<Void> expelDelivery = CompletableFuture.completedFuture(null);
+    public int captainOpenings;
+    public final List<Long> candidateCharacters = new ArrayList<>();
+    public final List<Boolean> candidateValues = new ArrayList<>();
+    public final List<String> notices = new ArrayList<>();
+    public Runnable onCaptainOpened = () -> { };
+    public Runnable onCandidate = () -> { };
+    public Runnable onNotice = () -> { };
     public String closed;
 
     @Override
@@ -98,6 +105,28 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
         expelledAccounts.add(targetAccountId);
         onExpelled.run();
         return expelDelivery;
+    }
+
+    @Override
+    public CompletionStage<Void> captainSelectionOpened() {
+        captainOpenings++;
+        onCaptainOpened.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> captainCandidateChanged(long characterId, boolean candidate) {
+        candidateCharacters.add(characterId);
+        candidateValues.add(candidate);
+        onCandidate.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> notice(String message) {
+        notices.add(message);
+        onNotice.run();
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override

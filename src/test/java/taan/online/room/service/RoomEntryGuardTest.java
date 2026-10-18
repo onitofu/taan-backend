@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
@@ -17,6 +18,7 @@ import taan.online.RoomEntryFixtures;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
@@ -209,7 +211,7 @@ class RoomEntryGuardTest {
             var channels = SelectionFixtures.registry(access);
             channels.move(a, new MoveToCommand(0, 1, 0, 929));
             channels.enter(a, RoomListingFixtures.emptyView(new CollectingPacketOutput()));
-            try (var rooms = new RoomRegistry(channels, RoomScenario.maps())) {
+            try (var rooms = new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler())) {
                 var owner = CharacterFixtures.character(1, new AccountId(1), AccountGender.MALE, "Owner");
                 int id = rooms.create(
                     channels.membership(a).orElseThrow(),
@@ -301,7 +303,14 @@ class RoomEntryGuardTest {
             for (int i = 2; i <= 65535; i++) {
                 pool.allocate();
             }
-            try (var rooms = new RoomRegistry(scenario.channels, pool, RoomScenario.maps())) {
+            try (var rooms = new RoomRegistry(
+                scenario.channels,
+                pool,
+                RoomScenario.maps(),
+                new TestRoomSelectionScheduler(),
+                System::nanoTime,
+                new Random(1)
+            )) {
                 var first = rooms.create(
                     scenario.channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),

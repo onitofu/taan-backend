@@ -8,16 +8,18 @@ import taan.online.character.model.CharacterId;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.protocol.connection.packet.PcNoticeMsg;
-import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PcGameSessionCancelChief;
+import taan.online.room.protocol.packet.PcGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PcGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PcGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
@@ -94,7 +96,7 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
     public CompletionStage<Void> settingsChanged(RoomSettings settings, boolean rejected) {
         var response = new PcGameSessionChangeGameOption(
             settings.mapId(),
-            settings.mode() == RoomMode.ITEM ? 0 : 1,
+            new RoomModeMapper().map(settings.mode()),
             settings.rule() == RoomRule.BONUS ? 2 : 0,
             255
         );
@@ -111,6 +113,23 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
     @Override
     public CompletionStage<Void> expelled(AccountId targetAccountId) {
         return output.send(List.of(codec.encode(new PcGameSessionUserExpel("", "", targetAccountId.value()))));
+    }
+
+    @Override
+    public CompletionStage<Void> captainSelectionOpened() {
+        return output.send(List.of(codec.encode(new PcGameSessionChiefDecision())));
+    }
+
+    @Override
+    public CompletionStage<Void> captainCandidateChanged(long characterId, boolean candidate) {
+        byte[] message = candidate ? codec.encode(new PcGameSessionChallengeChief(characterId))
+            : codec.encode(new PcGameSessionCancelChief(characterId));
+        return output.send(List.of(message));
+    }
+
+    @Override
+    public CompletionStage<Void> notice(String message) {
+        return output.send(List.of(new NoticeMessageCodec().encode(new PcNoticeMsg(message))));
     }
 
     @Override

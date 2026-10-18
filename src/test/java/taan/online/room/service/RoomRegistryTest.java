@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
@@ -14,6 +15,7 @@ import taan.online.CollectingPacketOutput;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
@@ -154,7 +156,14 @@ class RoomRegistryTest {
             for (int index = 1; index <= 65535; index++) {
                 pool.allocate();
             }
-            try (var exhausted = new RoomRegistry(scenario.channels, pool, RoomScenario.maps())) {
+            try (var exhausted = new RoomRegistry(
+                scenario.channels,
+                pool,
+                RoomScenario.maps(),
+                new TestRoomSelectionScheduler(),
+                System::nanoTime,
+                new Random(1)
+            )) {
                 var current = scenario.channels.membership(other).orElseThrow();
                 assertEquals(
                     "ROOM_IDS_EXHAUSTED",

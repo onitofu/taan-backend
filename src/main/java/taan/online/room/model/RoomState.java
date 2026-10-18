@@ -1,5 +1,5 @@
 package taan.online.room.model;
 
 public enum RoomState {
-    WAITING, CLOSED
+    WAITING, CAPTAIN_SELECTION, CLOSED
 }

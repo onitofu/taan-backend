@@ -16,10 +16,13 @@ import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.codec.RoomRequestCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PqGameSessionCancelChief;
+import taan.online.room.protocol.packet.PqGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PqGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -31,6 +34,7 @@ import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
+import taan.online.room.service.BeginCaptainSelectionAction;
 import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
@@ -41,6 +45,7 @@ import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetCaptainCandidateAction;
 import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
@@ -51,6 +56,8 @@ import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.ExpelRoomParticipantOutcome;
+import taan.online.room.service.model.RoomStartOutcome;
+import taan.online.room.service.model.SetCaptainCandidateOutcome;
 import taan.online.room.service.model.SetRoomReadyOutcome;
 import taan.online.room.service.model.SlotAvailabilityOutcome;
 import taan.online.room.view.ProtocolRoomView;
@@ -70,6 +77,8 @@ public final class RoomPacketHandler {
     private final SetRoomSlotAvailabilityAction slotAvailability;
     private final LeaveRoomAction leave;
     private final RequestRoomStartAction start;
+    private final BeginCaptainSelectionAction chiefDecision;
+    private final SetCaptainCandidateAction candidate;
     private final RoomRegistry rooms;
 
     public RoomPacketHandler(
@@ -85,6 +94,8 @@ public final class RoomPacketHandler {
         SetRoomSlotAvailabilityAction slotAvailability,
         LeaveRoomAction leave,
         RequestRoomStartAction start,
+        BeginCaptainSelectionAction chiefDecision,
+        SetCaptainCandidateAction candidate,
         RoomRegistry rooms
     ) {
         this.sessions = sessions;
@@ -99,6 +110,8 @@ public final class RoomPacketHandler {
         this.slotAvailability = slotAvailability;
         this.leave = leave;
         this.start = start;
+        this.chiefDecision = chiefDecision;
+        this.candidate = candidate;
         this.rooms = rooms;
     }
 
@@ -108,6 +121,23 @@ public final class RoomPacketHandler {
         }
 
         var codec = new RoomRequestCodec();
+
+        if (type == PqGameSessionChiefDecision.TYPE_ID) {
+            codec.chiefDecision(root);
+            var result = chiefDecision.execute(id);
+            return result.outcome() == RoomStartOutcome.IGNORED || !sessions.hasSelectedCharacter(id) ? ignored()
+                : new RoomReply(RoomReplyOutcome.CAPTAIN_COMPLETED, result.delivery());
+        }
+
+        if (type == PqGameSessionChallengeChief.TYPE_ID || type == PqGameSessionCancelChief.TYPE_ID) {
+            boolean requested = type == PqGameSessionChallengeChief.TYPE_ID;
+            long character = requested ? codec.challengeChief(root).characterId()
+                : codec.cancelChief(root).characterId();
+            var result = candidate.execute(id, character, requested);
+            return result.outcome() == SetCaptainCandidateOutcome.IGNORED || !sessions.hasSelectedCharacter(id)
+                ? ignored()
+                : new RoomReply(RoomReplyOutcome.CAPTAIN_COMPLETED, result.delivery());
+        }
 
         if (type == PqGameSessionUserExpel.TYPE_ID) {
             var result = expel.execute(id, codec.expel(root).targetCharacterId());
@@ -320,14 +350,11 @@ public final class RoomPacketHandler {
         codec.start(root);
         var result = start.execute(id);
 
-        if (result.ignored() || !sessions.hasSelectedCharacter(id)) {
+        if (result.outcome() == RoomStartOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
             return ignored();
         }
 
-        return new RoomReply(
-            RoomReplyOutcome.START_UNAVAILABLE,
-            output.send(List.of(new NoticeMessageCodec().encode(new PcNoticeMsg(result.message()))))
-        );
+        return new RoomReply(RoomReplyOutcome.START_COMPLETED, result.delivery());
     }
 
     public void close(UUID id, String reason) {

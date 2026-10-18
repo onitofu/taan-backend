@@ -6,6 +6,7 @@ import static taan.online.logging.LogField.team;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import taan.online.inventory.model.CharacterInventory;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
@@ -199,6 +200,31 @@ final class RoomControlOperations {
         return new ChangeRoomWeaponResult(outcome, outcome.name(), delivery);
     }
 
+    static ChangeRoomSettingsResult publishSettings(
+        Room room,
+        UUID id,
+        RoomMapCatalog maps,
+        int mapId,
+        Integer gameType,
+        Integer rule,
+        List<RoomSubscription> subscriptions,
+        RoomSubscription subscription,
+        Consumer<Room> changed
+    ) {
+        var result = changeSettings(room, id, maps, mapId, gameType, rule);
+
+        if (result.outcome() == ChangeRoomSettingsOutcome.CHANGED) {
+            changed.accept(room);
+        }
+
+        return RoomNotifications.settingsChanged(
+            subscriptions,
+            subscription.membership(),
+            RoomSnapshot.from(room),
+            result
+        );
+    }
+
     static ChangeRoomSettingsResult changeSettings(
         Room room,
         UUID id,
@@ -209,7 +235,12 @@ final class RoomControlOperations {
     ) {
         String rejection = null;
         var current = room.settings();
-        int desiredType = gameType == null ? (current.mode() == RoomMode.ITEM ? 0 : 1) : gameType;
+        int desiredType = gameType == null ? switch (current.mode()) {
+            case ITEM -> 0;
+            case NO_ITEM -> 1;
+            case CAPTAIN_ITEM -> 2;
+            case CAPTAIN_NO_ITEM -> 3;
+        } : gameType;
         int desiredRule = rule == null ? (current.rule() == RoomRule.BONUS ? 2 : 0) : rule;
 
         if (!room.ownerSessionId().equals(id)) {
@@ -218,7 +249,7 @@ final class RoomControlOperations {
             rejection = "ROOM_UNAVAILABLE";
         } else if (!maps.contains(mapId)) {
             rejection = "UNSUPPORTED_MAP";
-        } else if ((desiredType != 0 && desiredType != 1) || desiredRule != (desiredType == 0 ? 2 : 0)) {
+        } else if ((desiredType < 0 || desiredType > 3) || desiredRule != ((desiredType & 1) == 0 ? 2 : 0)) {
             rejection = "UNSUPPORTED_MODE_OR_RULE";
         }
 
@@ -227,7 +258,12 @@ final class RoomControlOperations {
         }
 
         boolean changed = room.changeSettings(
-            desiredType == 0 ? RoomMode.ITEM : RoomMode.NO_ITEM,
+            switch (desiredType) {
+                case 0 -> RoomMode.ITEM;
+                case 1 -> RoomMode.NO_ITEM;
+                case 2 -> RoomMode.CAPTAIN_ITEM;
+                default -> RoomMode.CAPTAIN_NO_ITEM;
+            },
             desiredRule == 2 ? RoomRule.BONUS : RoomRule.BASIC,
             mapId,
             maps

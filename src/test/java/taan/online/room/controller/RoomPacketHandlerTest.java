@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.RoomFixtures.root;
 import static taan.online.RoomScenario.leave;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -22,10 +24,13 @@ import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PqGameSessionCancelChief;
+import taan.online.room.protocol.packet.PqGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PqGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -34,10 +39,12 @@ import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.room.protocol.packet.PqGameSessionUserExpel;
+import taan.online.room.service.BeginCaptainSelectionAction;
 import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.ExpelRoomParticipantAction;
+import taan.online.room.service.SetCaptainCandidateAction;
 import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.RoomSnapshot;
@@ -51,6 +58,7 @@ class RoomPacketHandlerTest {
             var id = scenario.player(1, 1);
             var codec = new RoomResponseCodec();
             var reply = scenario.handle(id, PqGameSessionCreate.TYPE_ID, root("create-unprotected"));
+            var roomOutput = scenario.lastOutput;
             var init = codec.initialize(scenario.lastOutput.batches.getFirst().getFirst());
 
             assertEquals(RoomReplyOutcome.CREATED, reply.outcome());
@@ -71,10 +79,10 @@ class RoomPacketHandlerTest {
             assertEquals(0, codec.createFail(scenario.lastOutput.batches.getLast().getFirst()).reason());
             var start = scenario.handle(id, PqGameSessionStartGame.TYPE_ID, root("start-empty"));
 
-            assertEquals(RoomReplyOutcome.START_UNAVAILABLE, start.outcome());
+            assertEquals(RoomReplyOutcome.START_COMPLETED, start.outcome());
             assertEquals(
-                "Starting a match is currently unavailable.",
-                new NoticeMessageCodec().decode(scenario.lastOutput.batches.getLast().getFirst()).message()
+                "The room is not ready to start.",
+                new NoticeMessageCodec().decode(roomOutput.batches.getLast().getFirst()).message()
             );
             assertTrue(scenario.rooms.current(id).isPresent());
 
@@ -158,6 +166,9 @@ class RoomPacketHandlerTest {
             PqGameSessionQuickJoin.TYPE_ID,
             PqGameSessionLeave.TYPE_ID,
             PqGameSessionStartGame.TYPE_ID,
+            PqGameSessionChiefDecision.TYPE_ID,
+            PqGameSessionChallengeChief.TYPE_ID,
+            PqGameSessionCancelChief.TYPE_ID,
             PqGameSessionOpenCloseSlot.TYPE_ID,
             PqGameSessionChangeTeam.TYPE_ID,
             PqGameSessionReady.TYPE_ID,
@@ -191,12 +202,17 @@ class RoomPacketHandlerTest {
                     new SetRoomSlotAvailabilityAction(scenario.rooms),
                     scenario.leave,
                     scenario.start,
+                    new BeginCaptainSelectionAction(scenario.rooms),
+                    new SetCaptainCandidateAction(scenario.rooms),
                     scenario.rooms
                 );
                 byte[] request = type == PqGameSessionCreate.TYPE_ID ? root("create-unprotected")
                     : type == PqGameSessionEnter.TYPE_ID ? root("enter-empty-password")
                     : type == PqGameSessionQuickJoin.TYPE_ID ? root("quickjoin-any")
                     : type == PqGameSessionLeave.TYPE_ID ? leave(1, 0)
+                    : type == PqGameSessionChiefDecision.TYPE_ID ? root("PqGameSession_ChiefDecision-native")
+                    : type == PqGameSessionChallengeChief.TYPE_ID ? root("PqGameSession_ChallengeChief-native")
+                    : type == PqGameSessionCancelChief.TYPE_ID ? root("PqGameSession_CancelChief-native")
                     : type == PqGameSessionUserExpel.TYPE_ID ? RoomScenario.expel(1)
                     : type == PqGameSessionChangeMap.TYPE_ID ? RoomScenario.map(2)
                     : type == PqGameSessionChangeGameOption.TYPE_ID ? RoomScenario.settings(2, 0, 2, 255)
@@ -247,6 +263,8 @@ class RoomPacketHandlerTest {
                 new SetRoomSlotAvailabilityAction(scenario.rooms),
                 scenario.leave,
                 scenario.start,
+                new BeginCaptainSelectionAction(scenario.rooms),
+                new SetCaptainCandidateAction(scenario.rooms),
                 scenario.rooms
             );
 
@@ -259,6 +277,25 @@ class RoomPacketHandlerTest {
                     new CollectingPacketOutput()
                 ).outcome()
             );
+        }
+    }
+
+    @Test
+    void ignoresCaptainRequestsWhoseChannelMembershipHasAlreadyEnded() throws Exception {
+        for (String fixture : List.of(
+            "PqGameSession_ChiefDecision-native",
+            "PqGameSession_ChallengeChief-native",
+            "PqGameSession_CancelChief-native"
+        )) {
+            try (var scenario = new RoomScenario()) {
+                var id = scenario.player(1, 1);
+                scenario.create.execute(id, RoomScenario.command(), new RecordingRoomOutput());
+                scenario.channels.release(id, "DISCONNECT");
+                byte[] request = root(fixture);
+                int type = ByteBuffer.wrap(request).order(ByteOrder.LITTLE_ENDIAN).getInt();
+
+                assertEquals(RoomReplyOutcome.IGNORED, scenario.handle(id, type, request).outcome());
+            }
         }
     }
 
