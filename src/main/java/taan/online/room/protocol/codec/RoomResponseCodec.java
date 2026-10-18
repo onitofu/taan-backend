@@ -9,6 +9,7 @@ import taan.online.room.protocol.packet.GameSlotInfo;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionInit;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
+import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
@@ -17,6 +18,28 @@ import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionReady response) {
+        if (response.accountId() < 1 || response.accountId() > 0xffff_ffffL) {
+            throw new MalformedPacketException("INVALID_ROOM_READY_ACCOUNT");
+        }
+
+        return new BinaryWriter().unsignedInt(PcGameSessionReady.TYPE_ID).unsignedInt(response.accountId())
+            .unsignedByte(response.ready() ? 1 : 0).toByteArray();
+    }
+
+    public PcGameSessionReady ready(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionReady.TYPE_ID);
+        long accountId = input.unsignedInt();
+        int ready = input.unsignedByte();
+        input.finish();
+
+        if (accountId == 0 || ready > 1) {
+            throw new MalformedPacketException("INVALID_ROOM_READY");
+        }
+
+        return new PcGameSessionReady(accountId, ready == 1);
+    }
+
     public byte[] encode(PcGameSessionChangeTeam response) {
         validateTeamChange(response);
         return new BinaryWriter().unsignedInt(PcGameSessionChangeTeam.TYPE_ID).unsignedInt(response.accountId())

@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import taan.online.account.model.AccountId;
 
 public final class Room {
     private final RoomId id;
@@ -97,7 +98,7 @@ public final class Room {
     }
 
     public int playerCount() {
-        return (int) slots.stream().filter(slot -> slot.state() == RoomSlotState.OCCUPIED).count();
+        return (int) slots.stream().filter(slot -> slot.state().occupied()).count();
     }
 
     public boolean contains(RoomParticipant participant) {
@@ -125,7 +126,7 @@ public final class Room {
             throw new IllegalArgumentException("Duplicate room participant");
         }
 
-        long blue = slots.stream().filter(slot -> slot.state() == RoomSlotState.OCCUPIED)
+        long blue = slots.stream().filter(slot -> slot.state().occupied())
             .filter(slot -> slot.team() == RoomTeam.BLUE).count();
         RoomTeam preferred = blue <= playerCount() - blue ? RoomTeam.BLUE : RoomTeam.RED;
         var target = slots.stream().filter(slot -> slot.state() == RoomSlotState.OPEN)
@@ -154,6 +155,10 @@ public final class Room {
             .filter(slot -> slot.participant().sessionId().equals(sessionId)).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Room participant is not present"));
 
+        if (source.state() == RoomSlotState.READY) {
+            throw new IllegalStateException("Ready participant cannot change team");
+        }
+
         if (source.team() == desiredTeam) {
             return Optional.empty();
         }
@@ -171,8 +176,31 @@ public final class Room {
         );
     }
 
+    public boolean setReady(AccountId accountId, boolean ready) {
+        if (state != RoomState.WAITING) {
+            throw new IllegalStateException("Room readiness cannot be changed");
+        }
+
+        var slot = slots.stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().character().accountId().equals(accountId)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Room participant is not present"));
+
+        if (ready && slot.participant().sessionId().equals(ownerSessionId)) {
+            throw new IllegalStateException("Room owner cannot be ready");
+        }
+
+        var desired = ready ? RoomSlotState.READY : RoomSlotState.OCCUPIED;
+
+        if (slot.state() == desired) {
+            return false;
+        }
+
+        slots.set(slot.index(), new RoomSlot(slot.index(), desired, slot.participant()));
+        return true;
+    }
+
     public boolean setSlotAvailability(int index, RoomSlotState desiredState) {
-        if (index < 0 || index >= slots.size() || desiredState == null || desiredState == RoomSlotState.OCCUPIED) {
+        if (index < 0 || index >= slots.size() || desiredState == null || desiredState.occupied()) {
             throw new IllegalArgumentException("Invalid room slot availability");
         }
 
@@ -204,8 +232,9 @@ public final class Room {
         if (playerCount() == 0) {
             close();
         } else if (sessionId.equals(ownerSessionId)) {
-            ownerSessionId = slots.stream().map(RoomSlot::participant).filter(Objects::nonNull)
-                .findFirst().orElseThrow().sessionId();
+            var promoted = slots.stream().filter(slot -> slot.state().occupied()).findFirst().orElseThrow();
+            ownerSessionId = promoted.participant().sessionId();
+            slots.set(promoted.index(), new RoomSlot(promoted.index(), RoomSlotState.OCCUPIED, promoted.participant()));
         }
 
         return Optional.of(removed);

@@ -68,5 +68,6 @@ class RoomSlotAvailabilityTest {
         var view = new ProtocolRoomView(new CollectingPacketOutput());
 
         assertThrows(IllegalArgumentException.class, () -> view.slotAvailability(0, RoomSlotState.OCCUPIED));
+        assertThrows(IllegalArgumentException.class, () -> view.slotAvailability(0, RoomSlotState.READY));
     }
 }

@@ -21,6 +21,7 @@ import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
@@ -29,6 +30,7 @@ import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.server.RoomRequestDispatcher;
@@ -74,6 +76,7 @@ public final class RoomScenario implements AutoCloseable {
         enter,
         quickJoin,
         new ChangeRoomTeamAction(rooms),
+        new SetRoomReadyAction(rooms),
         new SetRoomSlotAvailabilityAction(rooms),
         leave,
         start,
@@ -148,6 +151,7 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomBootstrapDefinition(1, 3)
                 ),
                 new ChangeRoomTeamAction(rooms),
+                new SetRoomReadyAction(rooms),
                 new SetRoomSlotAvailabilityAction(rooms),
                 new LeaveRoomAction(rooms),
                 new RequestRoomStartAction(access, channels, rooms),
@@ -160,6 +164,10 @@ public final class RoomScenario implements AutoCloseable {
         lastOutput = new CollectingPacketOutput();
         outputs.put(id, lastOutput);
         return handler.handle(id, type, root, lastOutput);
+    }
+
+    public static byte[] ready(int value) {
+        return new BinaryWriter().unsignedInt(PqGameSessionReady.TYPE_ID).unsignedByte(value).toByteArray();
     }
 
     public static byte[] team(int value) {

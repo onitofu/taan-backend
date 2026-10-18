@@ -3,7 +3,10 @@ package taan.online.room.service;
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.characterId;
+import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.previousSlotIndex;
+import static taan.online.logging.LogField.ready;
+import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.recipientSessionId;
 import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.sessionId;
@@ -16,8 +19,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import taan.online.account.model.AccountId;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
+import taan.online.room.model.RoomId;
+import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.service.model.RoomMembership;
@@ -93,6 +99,102 @@ final class RoomNotifications {
         var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
             .toList();
         return broadcast(recipients, sender.sessionId(), output -> output.teamChanged(change));
+    }
+
+    static CompletionStage<Void> readyChanged(
+        List<RoomSubscription> subscriptions,
+        RoomMembership sender,
+        AccountId account,
+        boolean ready
+    ) {
+        var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
+            .toList();
+        return broadcast(recipients, sender.sessionId(), output -> output.readyChanged(account, ready));
+    }
+
+    static void ownerChanged(
+        List<RoomSubscription> subscriptions,
+        RoomSnapshot previous,
+        RoomSnapshot current,
+        boolean changed,
+        String closeReason
+    ) {
+        if (!changed) {
+            return;
+        }
+
+        log(RoomLogEvent.OWNER_CHANGED, current, current.owner(), closeReason);
+        boolean wasReady = previous.slots().stream().anyMatch(
+            slot -> slot.state() == RoomSlotState.READY
+                && slot.participant().sessionId().equals(current.ownerSessionId())
+        );
+
+        if (wasReady) {
+            var owner = subscriptions.stream()
+                .filter(value -> value.membership().sessionId().equals(current.ownerSessionId())).findFirst()
+                .orElseThrow();
+            readyChanged(subscriptions, owner.membership(), current.owner().character().accountId(), false);
+            readyLog(RoomLogEvent.READY_RESET, current, current.ownerSessionId(), false, "CHANGED", "OWNER_CHANGED");
+        }
+    }
+
+    static void availabilityLog(
+        int channel,
+        RoomId room,
+        RoomParticipant actor,
+        int index,
+        RoomSlotState desiredState,
+        String result
+    ) {
+        LOG.log(
+            desiredState == RoomSlotState.OPEN ? RoomLogEvent.SLOT_OPENED : RoomLogEvent.SLOT_CLOSED,
+            sessionId(actor.sessionId()),
+            accountId(actor.character().accountId().value()),
+            characterId(actor.character().id().value()),
+            channelId(channel),
+            roomId(room.value()),
+            slotIndex(index),
+            outcome(result)
+        );
+    }
+
+    static void readyLog(
+        RoomLogEvent event,
+        RoomSnapshot room,
+        UUID actor,
+        boolean value,
+        String result,
+        String resetReason
+    ) {
+        var slot = room.slots().stream().filter(item -> item.participant() != null)
+            .filter(item -> item.participant().sessionId().equals(actor)).findFirst().orElseThrow();
+        LOG.log(
+            event,
+            sessionId(actor),
+            accountId(slot.participant().character().accountId().value()),
+            characterId(slot.participant().character().id().value()),
+            channelId(room.channelId()),
+            roomId(room.id().value()),
+            slotIndex(slot.index()),
+            ready(value),
+            reason(resetReason),
+            outcome(result)
+        );
+    }
+
+    static void log(RoomLogEvent event, RoomSnapshot room, RoomParticipant actor, String closeReason) {
+        int slot = room.slots().stream().filter(value -> actor.equals(value.participant()))
+            .findFirst().orElseThrow().index();
+        LOG.log(
+            event,
+            sessionId(actor.sessionId()),
+            accountId(actor.character().accountId().value()),
+            characterId(actor.character().id().value()),
+            channelId(room.channelId()),
+            roomId(room.id().value()),
+            slotIndex(slot),
+            reason(closeReason)
+        );
     }
 
     private static CompletionStage<Void> broadcast(

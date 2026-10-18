@@ -91,6 +91,7 @@ class RoomSlotAvailabilityTest {
 
             assertEquals(REJECTED, action.execute(owner, 1, null).outcome());
             assertEquals(REJECTED, action.execute(owner, 1, RoomSlotState.OCCUPIED).outcome());
+            assertEquals(REJECTED, action.execute(owner, 1, RoomSlotState.READY).outcome());
             assertTrue(output.availabilitySlots.isEmpty());
             assertEquals(OPEN, scenario.rooms.current(owner).orElseThrow().slots().get(1).state());
             assertTrue(logs.text().contains("room.slot.availability.rejected"));

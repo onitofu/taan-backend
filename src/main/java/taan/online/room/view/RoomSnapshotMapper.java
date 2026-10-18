@@ -4,7 +4,6 @@ import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSlot;
-import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.packet.GameSessionDetails;
 import taan.online.room.protocol.packet.GameSessionInfo;
@@ -17,7 +16,7 @@ import taan.online.room.service.model.RoomSnapshot;
 public final class RoomSnapshotMapper {
     public PcGameSessionInit map(RoomSnapshot room) {
         var settings = room.settings();
-        int count = (int) room.slots().stream().filter(slot -> slot.state() == RoomSlotState.OCCUPIED).count();
+        int count = (int) room.slots().stream().filter(slot -> slot.state().occupied()).count();
         var details = new GameSessionDetails(
             0,
             settings.title().value(),
@@ -66,6 +65,7 @@ public final class RoomSnapshotMapper {
             case OPEN -> 0;
             case CLOSED -> 1;
             case OCCUPIED -> 2;
+            case READY -> 3;
         };
         return new GameSlotInfo(source.index(), state, occupant);
     }

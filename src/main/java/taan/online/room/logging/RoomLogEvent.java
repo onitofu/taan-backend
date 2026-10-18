@@ -4,6 +4,10 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    READY_SET("room.ready.set", Level.DEBUG, "Room readiness accepted"),
+    READY_REJECTED("room.ready.rejected", Level.DEBUG, "Room readiness rejected"),
+    READY_RESET("room.ready.reset", Level.DEBUG, "Room readiness reset"),
+    READY_FAILED("room.ready.failed", Level.ERROR, "Room readiness failed"),
     TEAM_CHANGED("room.team.changed", Level.DEBUG, "Room team changed"),
     TEAM_UNCHANGED("room.team.unchanged", Level.DEBUG, "Room team unchanged"),
     TEAM_CHANGE_REJECTED("room.team.change.rejected", Level.DEBUG, "Room team change rejected"),

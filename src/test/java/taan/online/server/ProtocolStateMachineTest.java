@@ -77,7 +77,8 @@ class ProtocolStateMachineTest {
         ProtocolEvent.ROOM_LEAVE,
         ProtocolEvent.ROOM_START,
         ProtocolEvent.ROOM_SLOT_AVAILABILITY,
-        ProtocolEvent.ROOM_CHANGE_TEAM
+        ProtocolEvent.ROOM_CHANGE_TEAM,
+        ProtocolEvent.ROOM_READY
     );
 
     @Test
@@ -159,7 +160,8 @@ class ProtocolStateMachineTest {
             "ROOM_LEAVE",
             "ROOM_START",
             "ROOM_SLOT_AVAILABILITY",
-            "ROOM_CHANGE_TEAM"
+            "ROOM_CHANGE_TEAM",
+            "ROOM_READY"
         }) {
             expected.put("ROOM/" + event, new String[]{"ROOM", event, "PROCESS", "ROOM"});
         }

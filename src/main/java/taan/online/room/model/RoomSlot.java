@@ -6,7 +6,7 @@ public record RoomSlot(int index, RoomSlotState state, RoomParticipant participa
     public RoomSlot {
         Objects.requireNonNull(state);
 
-        if (index < 0 || index > 7 || (state == RoomSlotState.OCCUPIED) != (participant != null)) {
+        if (index < 0 || index > 7 || state.occupied() != (participant != null)) {
             throw new IllegalArgumentException("Invalid room slot");
         }
     }

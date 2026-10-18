@@ -7,9 +7,17 @@ import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestCodec {
+    public PqGameSessionReady ready(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionReady.TYPE_ID);
+        var request = new PqGameSessionReady(input.unsignedByte());
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionChangeTeam changeTeam(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionChangeTeam.TYPE_ID);
         var request = new PqGameSessionChangeTeam(input.unsignedByte());
