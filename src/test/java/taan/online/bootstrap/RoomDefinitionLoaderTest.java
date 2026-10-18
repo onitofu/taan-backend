@@ -17,7 +17,7 @@ class RoomDefinitionLoaderTest {
         var loader = new RoomDefinitionLoader();
 
         assertEquals(
-            new RoomBootstrapDefinition(1, 3),
+            new RoomBootstrapDefinition(1, 0),
             loader.defaults(getClass().getResourceAsStream("/room/bootstrap.properties"), RoomScenario.maps())
         );
         assertTrue(
@@ -27,7 +27,7 @@ class RoomDefinitionLoaderTest {
         assertThrows(IllegalArgumentException.class, () -> loader.defaults(input("map.id=1"), RoomScenario.maps()));
         assertThrows(
             IllegalArgumentException.class,
-            () -> loader.defaults(input("map.id=x\nweapon.id=3"), RoomScenario.maps())
+            () -> loader.defaults(input("map.id=x\nweapon.id=0"), RoomScenario.maps())
         );
         assertThrows(IllegalArgumentException.class, () -> loader.titleFilter(input("word\n")));
         assertThrows(NullPointerException.class, () -> loader.defaults(null, RoomScenario.maps()));
@@ -37,7 +37,7 @@ class RoomDefinitionLoaderTest {
     @Test
     void propagatesReadAndCloseFailuresWithoutSilentlyUsingDefaults() throws Exception {
         var loader = new RoomDefinitionLoader();
-        byte[] defaults = "map.id=1\nweapon.id=3".getBytes(StandardCharsets.UTF_8);
+        byte[] defaults = "map.id=1\nweapon.id=0".getBytes(StandardCharsets.UTF_8);
         byte[] filters = getClass().getResourceAsStream("/character/name-filters.txt").readAllBytes();
 
         assertThrows(

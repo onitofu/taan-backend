@@ -44,6 +44,14 @@ public final class BinaryWriter {
         return this;
     }
 
+    public BinaryWriter signedInt(int value) {
+        return unsignedInt(Integer.toUnsignedLong(value));
+    }
+
+    public BinaryWriter float32(float value) {
+        return signedInt(Float.floatToRawIntBits(value));
+    }
+
     public BinaryWriter wideString(String value) {
         try {
             var encoded = StandardCharsets.UTF_16LE.newEncoder().encode(CharBuffer.wrap(value));

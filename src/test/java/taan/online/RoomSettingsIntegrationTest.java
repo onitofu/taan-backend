@@ -87,7 +87,7 @@ class RoomSettingsIntegrationTest {
                 wire.slot(owner.read());
                 observer.read();
                 observer.read();
-                guest.send(weapon(1002, 200));
+                guest.send(weapon(1002, 0));
                 wire.changeWeapon(owner.read());
                 wire.changeWeapon(guest.read());
                 guest.send(ready(1));
@@ -134,7 +134,7 @@ class RoomSettingsIntegrationTest {
                 assertEquals(1, init.info().details().gameType());
                 assertEquals(0, init.info().details().rule());
                 assertEquals(3, init.slots().get(2).state());
-                assertEquals(200, init.slots().get(2).occupant().weaponId());
+                assertEquals(0, init.slots().get(2).occupant().weaponId());
                 owner.disconnect();
                 wire.slot(observer.read());
                 wire.option(observer.read());
@@ -144,7 +144,7 @@ class RoomSettingsIntegrationTest {
 
                 assertEquals(new PcGameSessionChangeGameOption(17, 0, 2, 255), wire.settings(observer.read()));
                 assertEquals(17, wire.settings(guest.read()).mapId());
-                guest.send(weapon(1002, 11));
+                guest.send(weapon(1002, 0));
                 cash(guest);
                 cash(observer);
                 guest.send(Arrays.copyOf(map(1), 7));

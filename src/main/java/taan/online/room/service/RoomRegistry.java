@@ -42,6 +42,8 @@ import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
+import taan.online.room.service.model.RoomMatchReservationResult;
+import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomSnapshot;
@@ -55,6 +57,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private final RoomIdPool ids;
     private final RoomMapCatalog maps;
     private final RoomStartOperations starts;
+    private final RoomMatchOperations matches;
+    private final RoomDepartureOperations departures;
     private final Map<RoomId, Room> rooms = new HashMap<>();
     private final Map<UUID, RoomSubscription> memberships = new HashMap<>();
     private final Map<UUID, RoomLeaveReceipt> receipts = new HashMap<>();
@@ -62,7 +66,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     private RoomRegistryPhase phase = RoomRegistryPhase.OPEN;
 
     public RoomRegistry(ChannelRegistry channels, RoomMapCatalog maps, RoomSelectionScheduler scheduler) {
-        this(channels, new RoomIdPool(), maps, scheduler, System::nanoTime, RandomGenerator.getDefault());
+        this(channels, maps, scheduler, null);
     }
 
     public RoomRegistry(
@@ -72,6 +76,27 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         RoomSelectionScheduler scheduler,
         LongSupplier clock,
         RandomGenerator random
+    ) {
+        this(channels, ids, maps, scheduler, clock, random, null);
+    }
+
+    public RoomRegistry(
+        ChannelRegistry channels,
+        RoomMapCatalog maps,
+        RoomSelectionScheduler scheduler,
+        RoomMatchLifecycle lifecycle
+    ) {
+        this(channels, new RoomIdPool(), maps, scheduler, System::nanoTime, RandomGenerator.getDefault(), lifecycle);
+    }
+
+    public RoomRegistry(
+        ChannelRegistry channels,
+        RoomIdPool ids,
+        RoomMapCatalog maps,
+        RoomSelectionScheduler scheduler,
+        LongSupplier clock,
+        RandomGenerator random,
+        RoomMatchLifecycle lifecycle
     ) {
         this.channels = channels;
         this.ids = ids;
@@ -86,6 +111,20 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             this::changed,
             new AdvanceCaptainSelectionAction(this)
         );
+        matches = new RoomMatchOperations(channels, rooms, memberships, starts, lifecycle, this::changed);
+        departures = new RoomDepartureOperations(channels, ids, rooms, memberships, starts, matches, this::publish);
+    }
+
+    public synchronized RoomMatchReservationResult reserveMatch(UUID id) {
+        return matches.reserve(id, controlRejection(id));
+    }
+
+    public synchronized RoomMatchReservationResult commitMatch(RoomMatchToken token) {
+        return matches.commit(token);
+    }
+
+    public synchronized RoomMatchReservationResult rollbackMatch(RoomMatchToken token, String reason) {
+        return matches.rollback(token, reason);
     }
 
     public synchronized RoomStartResult beginCaptainSelection(UUID id) {
@@ -126,14 +165,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized InventoryMoveContext inventoryContext(InventoryActor actor) {
-        starts.advance(room(actor.sessionId()));
-        return RoomControlChecks.inventoryContext(
-            actor,
-            phase,
-            memberships.get(actor.sessionId()),
-            channels.membership(actor.sessionId()).orElse(null),
-            room(actor.sessionId())
-        );
+        return matches.inventoryContext(actor, phase);
     }
 
     public synchronized void refreshEquipment(InventoryMoveContext context, CharacterInventory equipment) {
@@ -143,7 +175,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         RoomControlOperations.refreshEquipment(
-            room(context.actor().sessionId()),
+            departures.room(context.actor().sessionId()),
             memberships.get(context.actor().sessionId()),
             List.copyOf(memberships.values()),
             equipment
@@ -296,7 +328,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     public synchronized SlotAvailabilityResult setSlotAvailability(UUID id, int index, RoomSlotState desiredState) {
         return RoomControlOperations.setSlotAvailability(
             controlRejection(id),
-            room(id),
+            departures.room(id),
             memberships.get(id),
             List.copyOf(memberships.values()),
             index,
@@ -307,7 +339,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     public synchronized ChangeRoomTeamResult changeTeam(UUID id, RoomTeam desiredTeam) {
         return RoomControlOperations.changeTeam(
             controlRejection(id),
-            room(id),
+            departures.room(id),
             memberships.get(id),
             List.copyOf(memberships.values()),
             desiredTeam
@@ -317,7 +349,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     public synchronized SetRoomReadyResult setReady(UUID id, boolean ready) {
         return RoomControlOperations.setReady(
             controlRejection(id),
-            room(id),
+            departures.room(id),
             memberships.get(id),
             List.copyOf(memberships.values()),
             ready
@@ -327,7 +359,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     public synchronized ChangeRoomWeaponResult changeWeapon(UUID id, long characterId, int weaponId) {
         return RoomControlOperations.changeWeapon(
             controlRejection(id),
-            room(id),
+            departures.room(id),
             memberships.get(id),
             List.copyOf(memberships.values()),
             characterId,
@@ -439,13 +471,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         return subscription;
     }
 
-    private Room room(UUID id) {
-        var subscription = memberships.get(id);
-        return subscription == null ? null : rooms.get(subscription.membership().roomId());
-    }
-
     private String controlRejection(UUID id) {
-        starts.advance(room(id));
+        starts.advance(departures.room(id));
         var subscription = memberships.get(id);
         return RoomControlChecks.rejection(
             phase,
@@ -456,37 +483,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     private void remove(RoomMembership expected, String closeReason) {
-        if (membership(expected.sessionId()).filter(expected::equals).isEmpty()) {
-            return;
-        }
-
-        var room = rooms.get(expected.roomId());
-        starts.cancel(room, closeReason);
-        var previous = RoomSnapshot.from(room);
-        var removed = room.leave(expected.sessionId()).orElseThrow();
-        memberships.remove(expected.sessionId());
-        RoomNotifications.log(RoomLogEvent.LEFT, previous, removed.participant(), closeReason);
-
-        if (room.playerCount() == 0) {
-            rooms.remove(room.id());
-            ids.release(room.id());
-            publish(room.channelId());
-            channels.roomsReplaced(room.channelId());
-            RoomNotifications.log(RoomLogEvent.DESTROYED, previous, removed.participant(), "EMPTY");
-            return;
-        }
-
-        var result = RoomSnapshot.from(room);
-        publish(room.channelId());
-        channels.roomChanged(room.channelId(), room.id().value());
-        RoomNotifications.departure(
-            List.copyOf(memberships.values()),
-            previous,
-            result,
-            expected.sessionId(),
-            removed.index(),
-            closeReason
-        );
+        departures.remove(expected, closeReason);
     }
 
     private void changed(Room room) {

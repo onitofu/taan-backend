@@ -26,6 +26,15 @@ public final class BinaryReader {
         return Integer.toUnsignedLong(data.getInt());
     }
 
+    public int signedInt() {
+        require(4);
+        return data.getInt();
+    }
+
+    public float float32() {
+        return Float.intBitsToFloat(signedInt());
+    }
+
     public int unsignedShort() {
         require(2);
         return Short.toUnsignedInt(data.getShort());

@@ -44,7 +44,8 @@ class RoomOutputValidatorTest {
             room.settings(),
             owner.sessionId(),
             room.slots(),
-            false
+            false,
+            room.state()
         );
         int bytes = new RoomResponseCodec().encode(new RoomSnapshotMapper().map(snapshot)).length;
         var env = TestFixtures.environment();

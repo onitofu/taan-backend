@@ -3,6 +3,7 @@ package taan.online.room.view;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSlot;
+import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.packet.GameSessionDetails;
 import taan.online.room.protocol.packet.GameSessionInfo;
@@ -28,7 +29,7 @@ public final class RoomSnapshotMapper {
             settings.mapId()
         );
         return new PcGameSessionInit(
-            new GameSessionInfo(room.id().value(), 1, details),
+            new GameSessionInfo(room.id().value(), room.state() == RoomState.WAITING ? 1 : 2, details),
             option(room),
             room.slots().stream().map(this::slot).toList(),
             0,

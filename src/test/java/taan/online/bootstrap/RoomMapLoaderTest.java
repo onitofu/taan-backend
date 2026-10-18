@@ -16,7 +16,7 @@ class RoomMapLoaderTest {
         assertEquals(RoomScenario.maps(), loader.maps(getClass().getResourceAsStream("/room/maps.csv")));
         assertThrows(
             IllegalArgumentException.class,
-            () -> loader.defaults(input("map.id=200\nweapon.id=3"), RoomScenario.maps())
+            () -> loader.defaults(input("map.id=200\nweapon.id=0"), RoomScenario.maps())
         );
 
         for (String text : new String[]{

@@ -21,7 +21,8 @@ class RoomArchitectureTest {
     @ArchTest
     static final ArchRule START_OPERATIONS_OWNER = classes().that().haveSimpleName("RoomStartOperations")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.room\\.service\\.(RoomRegistry|RoomStartOperations)"
+            "taan\\.online\\.room\\.service\\."
+                + "(RoomRegistry|RoomStartOperations|RoomMatchOperations|RoomDepartureOperations)"
         );
 
     @ArchTest
@@ -43,7 +44,8 @@ class RoomArchitectureTest {
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
             "taan.online.room.protocol.packet..",
-            "taan.online.character.protocol.packet.."
+            "taan.online.character.protocol.packet..",
+            "taan.online.protocol.option.packet.."
         );
 
     @ArchTest

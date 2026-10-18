@@ -46,7 +46,7 @@ class QuickJoinRoomActionTest {
             assertEquals(1, ownerOutput.initializations.size());
             assertEquals(List.of(1), ownerOutput.changedSlots.getLast());
             assertEquals(reads + 1, scenario.characters.transactions);
-            assertEquals(3, joined.slots().get(1).participant().weaponId());
+            assertEquals(0, joined.slots().get(1).participant().weaponId());
             scenario.rooms.release(joiner, "LEFT");
             scenario.rooms.release(third, "LEFT");
             scenario.lobby(joiner);

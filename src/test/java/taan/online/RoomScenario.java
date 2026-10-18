@@ -12,6 +12,7 @@ import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.protocol.BinaryWriter;
+import taan.online.match.service.MatchRegistry;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
 import taan.online.room.model.RoomBootstrapDefinition;
@@ -56,13 +57,15 @@ public final class RoomScenario implements AutoCloseable {
     public final SessionChannelAccess access = new SessionChannelAccess(sessions);
     public final ChannelRegistry channels = SelectionFixtures.registry(access);
     public final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
+    public final MatchRegistry matches = new MatchRegistry(MatchFixtures.definitions());
     public final RoomRegistry rooms = new RoomRegistry(
         channels,
         new RoomIdPool(),
         RoomScenario.maps(),
         timers,
         timers::nanoTime,
-        new Random(1)
+        new Random(1),
+        matches
     );
     public final TestCharacterRepository characters = new TestCharacterRepository();
     public final CreateRoomAction create = new CreateRoomAction(
@@ -71,21 +74,21 @@ public final class RoomScenario implements AutoCloseable {
         rooms,
         new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
         new RoomTitleFilter(List.of("denied")),
-        new RoomBootstrapDefinition(1, 3)
+        new RoomBootstrapDefinition(1, 0)
     );
     public final EnterRoomAction enter = new EnterRoomAction(
         access,
         channels,
         rooms,
         new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-        new RoomBootstrapDefinition(1, 3)
+        new RoomBootstrapDefinition(1, 0)
     );
     public final QuickJoinRoomAction quickJoin = new QuickJoinRoomAction(
         access,
         channels,
         rooms,
         new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-        new RoomBootstrapDefinition(1, 3)
+        new RoomBootstrapDefinition(1, 0)
     );
     public final Map<UUID, CollectingPacketOutput> outputs = new ConcurrentHashMap<>();
     public CollectingPacketOutput lastOutput;
@@ -146,7 +149,7 @@ public final class RoomScenario implements AutoCloseable {
         var character = characters.stored.stream()
             .filter(value -> value.id().equals(actor.characterId()))
             .findFirst().orElseThrow();
-        return new RoomParticipant(id, character, 3);
+        return new RoomParticipant(id, character, 0);
     }
 
     public static CreateRoomCommand command() {
@@ -169,21 +172,21 @@ public final class RoomScenario implements AutoCloseable {
                     rooms,
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomTitleFilter(List.of()),
-                    new RoomBootstrapDefinition(1, 3)
+                    new RoomBootstrapDefinition(1, 0)
                 ),
                 new EnterRoomAction(
                     access,
                     channels,
                     rooms,
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-                    new RoomBootstrapDefinition(1, 3)
+                    new RoomBootstrapDefinition(1, 0)
                 ),
                 new QuickJoinRoomAction(
                     access,
                     channels,
                     rooms,
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-                    new RoomBootstrapDefinition(1, 3)
+                    new RoomBootstrapDefinition(1, 0)
                 ),
                 new ExpelRoomParticipantAction(rooms),
                 new ChangeRoomSettingsAction(rooms),

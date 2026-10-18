@@ -29,26 +29,20 @@ class RoomWeaponTest {
             var before = room.slots();
             var character = before.get(2).participant().character();
 
-            for (int weapon = 0; weapon <= 11; weapon++) {
-                assertTrue(Room.isSelectableWeapon(weapon));
-                assertTrue(room.changeWeapon(guest, weapon));
-                assertFalse(room.changeWeapon(guest, weapon));
-                assertEquals(weapon, room.slots().get(2).participant().weaponId());
-                assertSame(character, room.slots().get(2).participant().character());
-            }
-
-            assertTrue(room.changeWeapon(guest, 200));
-            assertEquals(3, before.get(2).participant().weaponId());
+            assertTrue(Room.isSelectableWeapon(0));
+            assertFalse(room.changeWeapon(guest, 0));
+            assertSame(character, room.slots().get(2).participant().character());
+            assertEquals(0, before.get(2).participant().weaponId());
             room.changeTeam(guest, RoomTeam.BLUE);
 
-            assertEquals(200, room.slots().get(1).participant().weaponId());
+            assertEquals(0, room.slots().get(1).participant().weaponId());
             room.setReady(new AccountId(2), true);
             room.leave(owner);
 
             assertEquals(guest, room.ownerSessionId());
-            assertEquals(200, room.slots().get(1).participant().weaponId());
+            assertEquals(0, room.slots().get(1).participant().weaponId());
             assertEquals(RoomSlotState.OCCUPIED, room.slots().get(1).state());
-            assertTrue(room.changeWeapon(guest, 0));
+            assertFalse(room.changeWeapon(guest, 0));
         }
     }
 
@@ -67,7 +61,7 @@ class RoomWeaponTest {
             );
             room.enter(scenario.owner(guest), "");
 
-            for (int value : new int[]{-1, 12, 100, 199, 201, 300, 65535, 65536}) {
+            for (int value : new int[]{-1, 1, 2, 3, 11, 12, 100, 199, 200, 201, 300, 65535, 65536}) {
                 assertFalse(Room.isSelectableWeapon(value));
                 assertThrows(IllegalArgumentException.class, () -> room.changeWeapon(guest, value));
                 assertThrows(IllegalArgumentException.class, () -> new RoomBootstrapDefinition(1, value));
@@ -76,12 +70,12 @@ class RoomWeaponTest {
             assertThrows(IllegalArgumentException.class, () -> room.changeWeapon(UUID.randomUUID(), 0));
             room.setReady(new AccountId(2), true);
 
-            assertThrows(IllegalStateException.class, () -> room.changeWeapon(guest, 3));
+            assertThrows(IllegalStateException.class, () -> room.changeWeapon(guest, 0));
             room.setReady(new AccountId(2), false);
             room.close();
 
             assertThrows(IllegalStateException.class, () -> room.changeWeapon(guest, 0));
-            assertEquals(3, room.slots().get(2).participant().weaponId());
+            assertEquals(0, room.slots().get(2).participant().weaponId());
         }
     }
 }

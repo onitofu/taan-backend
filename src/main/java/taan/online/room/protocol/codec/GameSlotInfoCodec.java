@@ -4,6 +4,7 @@ import taan.online.character.protocol.codec.CharacterAppearCodec;
 import taan.online.protocol.BinaryReader;
 import taan.online.protocol.BinaryWriter;
 import taan.online.protocol.MalformedPacketException;
+import taan.online.protocol.option.codec.OptionListCodec;
 import taan.online.room.protocol.packet.GameSlotInfo;
 import taan.online.room.protocol.packet.GameSlotOccupant;
 
@@ -30,14 +31,17 @@ public final class GameSlotInfoCodec {
         var appearance = input.unsignedByte() == 0 ? null : new CharacterAppearCodec().decode(input);
         int weapon = input.unsignedShort();
 
-        if (input.unsignedByte() != 0) {
-            throw new MalformedPacketException("UNSUPPORTED_ROOM_SLOT_EXTRA");
+        int presence = input.unsignedByte();
+
+        if (presence > 1) {
+            throw new MalformedPacketException("INVALID_ROOM_OPTIONS_PRESENCE");
         }
 
+        var options = presence == 0 ? null : new OptionListCodec().decode(input);
         return new GameSlotInfo(
             index,
             state,
-            new GameSlotOccupant(account, character, name, affiliation, level, team, appearance, weapon)
+            new GameSlotOccupant(account, character, name, affiliation, level, team, appearance, weapon, options)
         );
     }
 
@@ -63,7 +67,11 @@ public final class GameSlotInfoCodec {
             new CharacterAppearCodec().encode(output, person.appearance());
         }
 
-        output.unsignedShort(person.weaponId()).unsignedByte(0);
+        output.unsignedShort(person.weaponId()).unsignedByte(person.options() == null ? 0 : 1);
+
+        if (person.options() != null) {
+            new OptionListCodec().encode(output, person.options());
+        }
     }
 
     private void validate(int index, int state) {

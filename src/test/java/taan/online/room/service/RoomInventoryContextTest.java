@@ -41,7 +41,7 @@ class RoomInventoryContextTest {
             scenario.enter.execute(guest, 1, "", b);
             scenario.enter.execute(observer, 1, "", c);
             scenario.create.execute(foreign, RoomScenario.command(), d);
-            scenario.rooms.changeWeapon(guest, 2, 200);
+            scenario.rooms.changeWeapon(guest, 2, 0);
             scenario.rooms.setReady(observer, true);
             var original = scenario.rooms.current(guest).orElseThrow();
             var access = new RoomInventoryMoveContextAccess(scenario.rooms);
@@ -58,7 +58,7 @@ class RoomInventoryContextTest {
             assertTrue(d.updates.isEmpty());
             assertEquals(original.slots().get(1), changed.slots().get(1));
             assertEquals(RoomSlotState.READY, changed.slots().get(1).state());
-            assertEquals(200, changed.slots().get(2).participant().weaponId());
+            assertEquals(0, changed.slots().get(2).participant().weaponId());
             assertEquals(original.settings(), changed.settings());
             assertEquals(original.ownerSessionId(), changed.ownerSessionId());
             assertEquals(listings, scenario.rooms.forChannel(1));

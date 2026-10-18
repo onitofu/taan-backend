@@ -45,6 +45,7 @@ class RoomWeaponConnectionTest {
             world.request(guest, weapon(1001, 11));
             world.request(guest, weapon(1002, 100));
 
+            assertArrayEquals(RoomFixtures.root("03-ChangeWeapon.reply"), read(guest));
             assertNull(guest.channel().readOutbound());
             assertNull(owner.channel().readOutbound());
             assertTrue(guest.channel().isActive());

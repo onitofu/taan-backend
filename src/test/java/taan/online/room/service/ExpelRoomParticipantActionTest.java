@@ -80,7 +80,7 @@ class ExpelRoomParticipantActionTest {
             scenario.rooms.release(token, "LATE_OLD_CLEANUP");
 
             assertEquals(next, scenario.rooms.membership(guest).orElseThrow());
-            assertEquals(3, scenario.rooms.current(owner).orElseThrow().slots().get(2).participant().weaponId());
+            assertEquals(0, scenario.rooms.current(owner).orElseThrow().slots().get(2).participant().weaponId());
             assertTrue(logs.text().contains("room.expel.succeeded"));
             assertTrue(logs.text().contains("targetAccountId=\"2\""));
             assertFalse(logs.text().contains("Hero2"));

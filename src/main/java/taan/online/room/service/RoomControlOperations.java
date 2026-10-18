@@ -185,7 +185,11 @@ final class RoomControlOperations {
         }
 
         if (!Room.isSelectableWeapon(weaponId)) {
-            return new ChangeRoomWeaponResult(ChangeRoomWeaponOutcome.REJECTED, "UNSUPPORTED_WEAPON");
+            var delivery = RoomNotifications.deliver(
+                subscription,
+                () -> subscription.output().weaponChanged(actor.character().id(), actor.weaponId())
+            );
+            return new ChangeRoomWeaponResult(ChangeRoomWeaponOutcome.REJECTED, "UNSUPPORTED_WEAPON", delivery);
         }
 
         boolean changed = room.changeWeapon(id, weaponId);
