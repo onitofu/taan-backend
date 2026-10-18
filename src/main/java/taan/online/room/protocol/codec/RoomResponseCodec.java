@@ -6,9 +6,12 @@ import taan.online.protocol.BinaryReader;
 import taan.online.protocol.BinaryWriter;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.protocol.packet.GameSlotInfo;
+import taan.online.room.protocol.packet.PcGameSessionCancelChief;
+import taan.online.room.protocol.packet.PcGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PcGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PcGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PcGameSessionInit;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionReady;
@@ -21,6 +24,44 @@ import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionChiefDecision response) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionChiefDecision.TYPE_ID))
+            .toByteArray();
+    }
+
+    public PcGameSessionChiefDecision chiefDecision(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionChiefDecision.TYPE_ID);
+        var message = new PcGameSessionChiefDecision();
+        input.finish();
+        return message;
+    }
+
+    public byte[] encode(PcGameSessionChallengeChief response) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionChallengeChief.TYPE_ID))
+            .unsignedInt(response.characterId())
+            .toByteArray();
+    }
+
+    public PcGameSessionChallengeChief challengeChief(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionChallengeChief.TYPE_ID);
+        var message = new PcGameSessionChallengeChief(input.unsignedInt());
+        input.finish();
+        return message;
+    }
+
+    public byte[] encode(PcGameSessionCancelChief response) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionCancelChief.TYPE_ID))
+            .unsignedInt(response.characterId())
+            .toByteArray();
+    }
+
+    public PcGameSessionCancelChief cancelChief(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionCancelChief.TYPE_ID);
+        var message = new PcGameSessionCancelChief(input.unsignedInt());
+        input.finish();
+        return message;
+    }
+
     public byte[] encode(PcGameSessionUserExpel response) {
         return new BinaryWriter().unsignedInt(PcGameSessionUserExpel.TYPE_ID).wideString(response.text0())
             .wideString(response.text1()).unsignedInt(response.targetAccountId()).toByteArray();

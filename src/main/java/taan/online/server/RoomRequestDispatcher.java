@@ -5,10 +5,13 @@ import taan.online.logging.LogEvent;
 import taan.online.protocol.PacketOutput;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.logging.RoomLogEvent;
+import taan.online.room.protocol.packet.PqGameSessionCancelChief;
+import taan.online.room.protocol.packet.PqGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PqGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -33,7 +36,7 @@ public final class RoomRequestDispatcher {
             case EXPEL_COMPLETED, SETTINGS_UPDATED, SETTINGS_REJECTED, WEAPON_UPDATED, WEAPON_REJECTED,
                 READY_UPDATED, READY_REJECTED,
                 CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED,
-                LEAVE_REJECTED, START_UNAVAILABLE,
+                LEAVE_REJECTED, START_COMPLETED, CAPTAIN_COMPLETED,
                 SLOT_AVAILABILITY_UPDATED, SLOT_AVAILABILITY_REJECTED, TEAM_CHANGED, TEAM_UNCHANGED, TEAM_REJECTED ->
                 ProtocolEvent.ROOM_REQUEST_COMPLETED;
             case LEFT -> ProtocolEvent.ROOM_LEFT;
@@ -48,7 +51,9 @@ public final class RoomRequestDispatcher {
     }
 
     static boolean accepts(int type) {
-        return type == PqGameSessionUserExpel.TYPE_ID || type == PqGameSessionCreate.TYPE_ID
+        return type == PqGameSessionChiefDecision.TYPE_ID || type == PqGameSessionChallengeChief.TYPE_ID
+            || type == PqGameSessionCancelChief.TYPE_ID || type == PqGameSessionUserExpel.TYPE_ID
+            || type == PqGameSessionCreate.TYPE_ID
             || type == PqGameSessionEnter.TYPE_ID
             || type == PqGameSessionQuickJoin.TYPE_ID || type == PqGameSessionLeave.TYPE_ID
             || type == PqGameSessionStartGame.TYPE_ID || type == PqGameSessionOpenCloseSlot.TYPE_ID
@@ -58,6 +63,15 @@ public final class RoomRequestDispatcher {
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PqGameSessionChiefDecision.TYPE_ID || type == PqGameSessionChallengeChief.TYPE_ID
+            || type == PqGameSessionCancelChief.TYPE_ID) {
+            return RoomLogEvent.CAPTAIN_FAILED;
+        }
+
+        if (type == PqGameSessionStartGame.TYPE_ID) {
+            return RoomLogEvent.START_FAILED;
+        }
+
         if (type == PqGameSessionUserExpel.TYPE_ID) {
             return RoomLogEvent.EXPEL_FAILED;
         }

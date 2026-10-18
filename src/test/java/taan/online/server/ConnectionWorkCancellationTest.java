@@ -23,6 +23,7 @@ import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
 import taan.online.account.model.CredentialVerifier;
@@ -209,7 +210,12 @@ class ConnectionWorkCancellationTest {
             SelectionFixtures.dispatcher(sessions, characters),
             SelectionFixtures.lobby(sessions, channels),
             InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
-            RoomScenario.dispatcher(sessions, channels, characters, new RoomRegistry(channels, RoomScenario.maps())),
+            RoomScenario.dispatcher(
+                sessions,
+                channels,
+                characters,
+                new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler())
+            ),
             64,
             1048576,
             16384

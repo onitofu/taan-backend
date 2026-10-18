@@ -53,7 +53,7 @@ class RoomSettingsChangeTest {
 
             for (int map : maps.mapIds()) {
                 for (var mode : RoomMode.values()) {
-                    var rule = mode == RoomMode.ITEM ? RoomRule.BONUS : RoomRule.BASIC;
+                    var rule = mode.usesItems() ? RoomRule.BONUS : RoomRule.BASIC;
                     boolean expected = room.settings().mapId() != map || room.settings().mode() != mode;
                     assertEquals(expected, room.changeSettings(mode, rule, map, maps));
                     var accepted = room.settings();

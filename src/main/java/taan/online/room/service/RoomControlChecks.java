@@ -1,12 +1,16 @@
 package taan.online.room.service;
 
+import java.util.Map;
 import java.util.UUID;
 import taan.online.channel.model.ChannelPresencePhase;
+import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.InventoryMoveContext;
 import taan.online.room.model.Room;
+import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomParticipant;
+import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.service.model.RoomLeaveReceipt;
@@ -16,6 +20,21 @@ import taan.online.room.service.model.RoomSnapshot;
 
 final class RoomControlChecks {
     private RoomControlChecks() {
+    }
+
+    static boolean membershipCurrent(
+        ChannelRegistry channels,
+        ChannelMembershipSnapshot context,
+        RoomParticipant participant
+    ) {
+        return context.phase() == ChannelPresencePhase.LOBBY
+            && channels.membership(participant.sessionId()).filter(context::equals).isPresent();
+    }
+
+    static RoomParticipant participant(Map<RoomId, Room> rooms, RoomSubscription subscription) {
+        return rooms.get(subscription.membership().roomId()).slots().stream().map(RoomSlot::participant)
+            .filter(value -> value != null && value.sessionId().equals(subscription.membership().sessionId()))
+            .findFirst().orElseThrow();
     }
 
     static String rejection(
@@ -76,7 +95,7 @@ final class RoomControlChecks {
             return "NOT_OWNER";
         }
 
-        if (room.state() != RoomState.WAITING) {
+        if (room.state() == RoomState.CLOSED) {
             return "ROOM_UNAVAILABLE";
         }
 

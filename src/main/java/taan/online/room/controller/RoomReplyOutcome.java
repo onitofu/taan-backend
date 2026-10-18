@@ -21,6 +21,7 @@ public enum RoomReplyOutcome {
     LEFT,
     LEAVE_REJECTED,
     LEAVE_REPLAYED,
-    START_UNAVAILABLE,
+    START_COMPLETED,
+    CAPTAIN_COMPLETED,
     IGNORED
 }

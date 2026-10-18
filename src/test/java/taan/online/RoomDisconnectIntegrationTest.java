@@ -148,7 +148,7 @@ class RoomDisconnectIntegrationTest {
                 assertEquals(1, lists.update(observer.read()).rooms().getFirst().playerCount());
                 guest.send(root("start-empty"));
                 assertEquals(
-                    "Starting a match is currently unavailable.",
+                    "The room is not ready to start.",
                     new NoticeMessageCodec().decode(guest.read()).message()
                 );
                 cash(foreign);

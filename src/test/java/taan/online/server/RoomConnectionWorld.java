@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import taan.online.ChannelFixtures;
 import taan.online.CharacterFixtures;
 import taan.online.RoomEntryFixtures;
@@ -12,9 +13,11 @@ import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.service.ChannelRegistry;
+import taan.online.room.model.RoomIdPool;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
 import taan.online.session.service.SessionChannelAccess;
@@ -23,7 +26,15 @@ import taan.online.session.service.SessionRegistry;
 final class RoomConnectionWorld implements AutoCloseable {
     final SessionRegistry sessions = new SessionRegistry();
     final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
-    final RoomRegistry rooms = new RoomRegistry(channels, RoomScenario.maps());
+    final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
+    final RoomRegistry rooms = new RoomRegistry(
+        channels,
+        new RoomIdPool(),
+        RoomScenario.maps(),
+        timers,
+        timers::nanoTime,
+        new Random(1)
+    );
     private final List<ConnectionContextTestHarness> clients = new ArrayList<>();
 
     ConnectionContextTestHarness client(long accountId) {

@@ -4,6 +4,15 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    CAPTAIN_OPENED("room.captain.opened", Level.DEBUG, "Captain selection opened"),
+    CAPTAIN_CANDIDATE_SET("room.captain.candidate_set", Level.DEBUG, "Captain candidature processed"),
+    CAPTAIN_FINALIZED("room.captain.finalized", Level.DEBUG, "Team captain selected"),
+    CAPTAIN_CANCELLED("room.captain.cancelled", Level.DEBUG, "Captain selection cancelled"),
+    CAPTAIN_EXPIRED("room.captain.expired", Level.DEBUG, "Captain selection expired"),
+    CAPTAIN_FAILED("room.captain.failed", Level.ERROR, "Captain selection failed"),
+    START_CHECKED("room.start.checked", Level.DEBUG, "Room start validated"),
+    START_DEFERRED("room.start.deferred", Level.DEBUG, "Match start deferred"),
+    START_FAILED("room.start.failed", Level.ERROR, "Room start failed"),
     APPEARANCE_UPDATED("room.appearance.updated", Level.DEBUG, "Room appearance updated"),
     APPEARANCE_FAILED("room.appearance.failed", Level.ERROR, "Room appearance update failed"),
     EXPEL_SUCCEEDED("room.expel.succeeded", Level.INFO, "Room participant expelled"),

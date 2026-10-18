@@ -19,6 +19,18 @@ class RoomArchitectureTest {
     );
 
     @ArchTest
+    static final ArchRule START_OPERATIONS_OWNER = classes().that().haveSimpleName("RoomStartOperations")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.room\\.service\\.(RoomRegistry|RoomStartOperations)"
+        );
+
+    @ArchTest
+    static final ArchRule EXPULSION_OPERATIONS_OWNER = classes().that().haveSimpleName("RoomExpulsionOperations")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.room\\.service\\.(RoomRegistry|RoomExpulsionOperations)"
+        );
+
+    @ArchTest
     static final ArchRule PASSWORD_ENCAPSULATION = noClasses().that().resideInAnyPackage(
         "taan.online.room.service.model..",
         "taan.online.room.protocol..",

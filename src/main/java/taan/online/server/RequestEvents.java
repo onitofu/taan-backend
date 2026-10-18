@@ -14,10 +14,13 @@ import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.protocol.connection.packet.PqKeepAlive;
+import taan.online.room.protocol.packet.PqGameSessionCancelChief;
+import taan.online.room.protocol.packet.PqGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PqGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -61,6 +64,9 @@ final class RequestEvents {
             case PqGameSessionOpenCloseSlot.TYPE_ID -> ProtocolEvent.ROOM_SLOT_AVAILABILITY;
             case PqGameSessionLeave.TYPE_ID -> ProtocolEvent.ROOM_LEAVE;
             case PqGameSessionStartGame.TYPE_ID -> ProtocolEvent.ROOM_START;
+            case PqGameSessionChiefDecision.TYPE_ID -> ProtocolEvent.ROOM_CHIEF_DECISION;
+            case PqGameSessionChallengeChief.TYPE_ID, PqGameSessionCancelChief.TYPE_ID ->
+                ProtocolEvent.ROOM_CAPTAIN_CANDIDATE;
             case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
             case PqKeepAlive.TYPE_ID -> ProtocolEvent.KEEP_ALIVE;
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");

@@ -20,6 +20,8 @@ public final class Room {
     private final List<RoomSlot> slots;
     private UUID ownerSessionId;
     private RoomState state = RoomState.WAITING;
+    private CaptainSelection captainSelection;
+    private Long captainRetryAfterNanos;
 
     public Room(
         RoomId id,
@@ -309,6 +311,7 @@ public final class Room {
             return Optional.empty();
         }
 
+        finishCaptainSelection();
         var removed = previous.orElseThrow();
         slots.set(removed.index(), new RoomSlot(removed.index(), RoomSlotState.OPEN, null));
 
@@ -323,6 +326,54 @@ public final class Room {
         return Optional.of(removed);
     }
 
+    public String startRejection(UUID actor) {
+        if (!ownerSessionId.equals(actor)) {
+            return "NOT_OWNER";
+        }
+
+        if (state == RoomState.CLOSED) {
+            return "ROOM_UNAVAILABLE";
+        }
+
+        var occupied = slots.stream().filter(slot -> slot.participant() != null).toList();
+
+        if (occupied.stream().noneMatch(slot -> slot.team() == RoomTeam.BLUE)
+            || occupied.stream().noneMatch(slot -> slot.team() == RoomTeam.RED)) {
+            return "MISSING_TEAM";
+        }
+
+        return occupied.stream().anyMatch(
+            slot -> !slot.participant().sessionId().equals(ownerSessionId) && slot.state() != RoomSlotState.READY
+        ) ? "PARTICIPANT_NOT_READY" : null;
+    }
+
+    public CaptainSelection captainSelection() {
+        return captainSelection;
+    }
+
+    public boolean captainSelectionAvailable(long now) {
+        return captainRetryAfterNanos == null || now - captainRetryAfterNanos >= 0;
+    }
+
+    public void beginCaptainSelection(UUID selectionId, long now) {
+        if (state != RoomState.WAITING || !settings.mode().requiresCaptainSelection()
+            || startRejection(ownerSessionId) != null || !captainSelectionAvailable(now)) {
+            throw new IllegalStateException("Captain selection is not available");
+        }
+
+        captainSelection = new CaptainSelection(selectionId, now);
+        captainRetryAfterNanos = captainSelection.selectionDeadlineNanos();
+        state = RoomState.CAPTAIN_SELECTION;
+    }
+
+    public void finishCaptainSelection() {
+        captainSelection = null;
+
+        if (state == RoomState.CAPTAIN_SELECTION) {
+            state = RoomState.WAITING;
+        }
+    }
+
     public RoomState state() {
         return state;
     }
@@ -332,6 +383,7 @@ public final class Room {
             return false;
         }
 
+        captainSelection = null;
         state = RoomState.CLOSED;
         return true;
     }

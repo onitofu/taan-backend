@@ -1,10 +1,13 @@
 package taan.online.room.protocol.codec;
 
 import taan.online.protocol.BinaryReader;
+import taan.online.room.protocol.packet.PqGameSessionCancelChief;
+import taan.online.room.protocol.packet.PqGameSessionChallengeChief;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
+import taan.online.room.protocol.packet.PqGameSessionChiefDecision;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -15,6 +18,27 @@ import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 
 public final class RoomRequestCodec {
+    public PqGameSessionChiefDecision chiefDecision(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionChiefDecision.TYPE_ID);
+        var message = new PqGameSessionChiefDecision();
+        input.finish();
+        return message;
+    }
+
+    public PqGameSessionChallengeChief challengeChief(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionChallengeChief.TYPE_ID);
+        var message = new PqGameSessionChallengeChief(input.unsignedInt());
+        input.finish();
+        return message;
+    }
+
+    public PqGameSessionCancelChief cancelChief(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionCancelChief.TYPE_ID);
+        var message = new PqGameSessionCancelChief(input.unsignedInt());
+        input.finish();
+        return message;
+    }
+
     public PqGameSessionUserExpel expel(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionUserExpel.TYPE_ID);
         var request = new PqGameSessionUserExpel(input.unsignedInt());

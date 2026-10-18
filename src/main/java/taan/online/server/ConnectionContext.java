@@ -55,18 +55,6 @@ import taan.online.protocol.connection.codec.FirstAcceptCodec;
 import taan.online.protocol.connection.packet.PcFirstAccept;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.room.logging.RoomLogEvent;
-import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
-import taan.online.room.protocol.packet.PqGameSessionChangeMap;
-import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
-import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
-import taan.online.room.protocol.packet.PqGameSessionCreate;
-import taan.online.room.protocol.packet.PqGameSessionEnter;
-import taan.online.room.protocol.packet.PqGameSessionLeave;
-import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
-import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
-import taan.online.room.protocol.packet.PqGameSessionReady;
-import taan.online.room.protocol.packet.PqGameSessionStartGame;
-import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 import taan.online.server.logging.ConnectionLogEvent;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.logging.SessionLogEvent;
@@ -271,11 +259,11 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                     || LobbyRequestDispatcher.accepts(request.type())) {
                     LOG.failure(
                         CharacterRequestDispatcher.accepts(request.type())
-                            ? CharacterRequestDispatcher.failureEvent(request.type())
-                            : LobbyRequestDispatcher.accepts(request.type()) ? LobbyRequestDispatcher.failureEvent(
-                                request.type()
-                            )
-                                : SelectedCharacterRequestDispatcher.failureEvent(request.type()),
+                        ? CharacterRequestDispatcher.failureEvent(request.type())
+                        : LobbyRequestDispatcher.accepts(request.type()) ? LobbyRequestDispatcher.failureEvent(
+                            request.type()
+                        )
+                            : SelectedCharacterRequestDispatcher.failureEvent(request.type()),
                         failure,
                         durationMs(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
                     );
@@ -473,16 +461,10 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
 
         if (task != null && task.cancel()) {
             executor.remove(task);
-            LogEvent event = switch (pending.peekFirst().type()) {
+            int type = pending.peekFirst().type();
+            LogEvent event = RoomRequestDispatcher.accepts(type) ? RoomLogEvent.REQUEST_CANCELLED : switch (type) {
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
-                case PqGameSessionUserExpel.TYPE_ID, PqGameSessionChangeMap.TYPE_ID,
-                    PqGameSessionChangeGameOption.TYPE_ID,
-                    PqGameSessionChangeWeapon.TYPE_ID,
-                    PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
-                    PqGameSessionChangeTeam.TYPE_ID, PqGameSessionReady.TYPE_ID, PqGameSessionLeave.TYPE_ID,
-                    PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID ->
-                    RoomLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,
                     PqSelectCharacter.TYPE_ID, PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID ->
                     CharacterLogEvent.REQUEST_CANCELLED;

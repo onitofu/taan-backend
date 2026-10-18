@@ -53,6 +53,7 @@ import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.room.controller.RoomPacketHandler;
+import taan.online.room.service.BeginCaptainSelectionAction;
 import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
@@ -65,6 +66,7 @@ import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
 import taan.online.room.service.RoomInventoryMoveContextAccess;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetCaptainCandidateAction;
 import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.server.ConnectionContext;
@@ -88,6 +90,7 @@ public final class Application implements AutoCloseable {
     private final PGSimpleDataSource dataSource;
     private final ChannelRegistry channels;
     private final RoomRegistry rooms;
+    private final ScheduledRoomSelectionScheduler selectionScheduler;
     private final ItemCatalog itemCatalog = new ItemCatalog();
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
@@ -147,7 +150,8 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/room/bootstrap.properties"),
             maps
         );
-        rooms = new RoomRegistry(channels, maps);
+        selectionScheduler = new ScheduledRoomSelectionScheduler(config.maxConnections());
+        rooms = new RoomRegistry(channels, maps, selectionScheduler);
         var inventoryDispatcher = new InventoryRequestDispatcher(
             new MoveInventoryItemPacketHandler(
                 new MoveInventoryItemAction(
@@ -180,7 +184,9 @@ public final class Application implements AutoCloseable {
                 new SetRoomReadyAction(rooms),
                 new SetRoomSlotAvailabilityAction(rooms),
                 new LeaveRoomAction(rooms),
-                new RequestRoomStartAction(channelAccess, channels, rooms),
+                new RequestRoomStartAction(rooms),
+                new BeginCaptainSelectionAction(rooms),
+                new SetCaptainCandidateAction(rooms),
                 rooms
             )
         );
@@ -299,6 +305,7 @@ public final class Application implements AutoCloseable {
         } finally {
             server.close();
             rooms.close();
+            selectionScheduler.close();
             terminated.countDown();
 
             LOG.log(ServerLogEvent.STOPPED);

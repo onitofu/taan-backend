@@ -12,6 +12,7 @@ import taan.online.RecordingRoomOutput;
 import taan.online.RoomListingFixtures;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
+import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
@@ -31,7 +32,7 @@ class RoomRegistryStaleSessionTest {
         var actor = access.players.get(first);
         var character = CharacterFixtures.character(1, new AccountId(1), AccountGender.MALE, "Hero1");
 
-        try (var rooms = new RoomRegistry(channels, RoomScenario.maps())) {
+        try (var rooms = new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler())) {
             var old = rooms.create(
                 channels.membership(first).orElseThrow(),
                 RoomScenario.settings(),

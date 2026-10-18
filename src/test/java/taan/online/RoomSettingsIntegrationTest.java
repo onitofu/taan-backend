@@ -213,8 +213,8 @@ class RoomSettingsIntegrationTest {
                     map(202),
                     map(300),
                     map(500),
-                    settings(1, 2, 2, 255),
-                    settings(1, 3, 0, 255),
+                    settings(1, 2, 0, 255),
+                    settings(1, 3, 2, 255),
                     settings(1, 0, 0, 255),
                     settings(1, 1, 2, 255)
                 }) {

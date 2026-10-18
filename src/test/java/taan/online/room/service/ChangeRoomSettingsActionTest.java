@@ -103,7 +103,7 @@ class ChangeRoomSettingsActionTest {
                 assertEquals("UNSUPPORTED_MAP", action.changeMap(owner, map).reason());
             }
 
-            for (int[] pair : new int[][]{{0, 0}, {0, 1}, {1, 2}, {2, 2}, {3, 0}, {65535, 255}}) {
+            for (int[] pair : new int[][]{{-1, 0}, {0, 0}, {0, 1}, {1, 2}, {2, 0}, {3, 2}, {4, 2}, {65535, 255}}) {
                 assertEquals("UNSUPPORTED_MODE_OR_RULE", action.execute(owner, 1, pair[0], pair[1]).reason());
             }
 

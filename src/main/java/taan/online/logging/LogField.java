@@ -111,6 +111,10 @@ public final class LogField {
         return new LogField("slotIndex", value);
     }
 
+    public static LogField selectionId(UUID value) {
+        return new LogField("selectionId", value);
+    }
+
     public static LogField roomId(int value) {
         return new LogField("roomId", value);
     }

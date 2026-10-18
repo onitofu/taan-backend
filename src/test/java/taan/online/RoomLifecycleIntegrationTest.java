@@ -69,7 +69,7 @@ class RoomLifecycleIntegrationTest {
                 client.send(root("start-empty"));
 
                 assertEquals(
-                    "Starting a match is currently unavailable.",
+                    "The room is not ready to start.",
                     new NoticeMessageCodec().decode(client.read()).message()
                 );
                 client.sendTogether(leave(first.info().roomId(), 0), leave(first.info().roomId(), 0));
