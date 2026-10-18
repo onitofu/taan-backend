@@ -21,6 +21,16 @@
       "origin": "UNKNOWN"
     },
     {
+      "03-ChangeWeapon.reply.frame.hex": "253817f22c3f11d222bc8be0c47c81acdebf0865874a0a8d0cf71c056e1e306b",
+      "original_file": "03-ChangeWeapon.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "03-ChangeWeapon.request.frame.hex": "5a9986f8791a2271e5aeb53289e39d0c0add443cc98ec5154c1a33007fb9d176",
+      "original_file": "03-ChangeWeapon.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
       "05-ChangeTeam.reply.frame.hex": "b832ddebb385bd008a4035dc7e6db345aaeb55ec6ac023f3aeb9a4f064d83ee2",
       "original_file": "05-ChangeTeam.reply.frame.bin",
       "origin": "UNKNOWN"

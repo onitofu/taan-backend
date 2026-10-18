@@ -5,7 +5,6 @@ import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.sessionId;
-import static taan.online.logging.LogField.team;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -31,6 +30,8 @@ import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomTeamResult;
+import taan.online.room.service.model.ChangeRoomWeaponOutcome;
+import taan.online.room.service.model.ChangeRoomWeaponResult;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
@@ -245,25 +246,13 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var subscription = memberships.get(id);
         var member = subscription.membership();
         var room = rooms.get(member.roomId());
-
-        if (room.state() != RoomState.WAITING) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "ROOM_UNAVAILABLE");
-        }
-
-        rejection = RoomControlChecks.availability(RoomSnapshot.from(room), id, index, desiredState);
-
-        if (rejection != null) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, rejection);
-        }
-
-        var actor = participant(subscription);
-        boolean changed = room.setSlotAvailability(index, desiredState);
-        var outcome = changed ? SlotAvailabilityOutcome.CHANGED : SlotAvailabilityOutcome.UNCHANGED;
-        var recipients = List.copyOf(memberships.values());
-        var delivery = RoomNotifications.slotAvailability(recipients, member, index, desiredState, changed);
-
-        RoomNotifications.availabilityLog(room.channelId(), room.id(), actor, index, desiredState, outcome.name());
-        return new SlotAvailabilityResult(outcome, outcome.name(), delivery);
+        return RoomControlOperations.setSlotAvailability(
+            room,
+            subscription,
+            List.copyOf(memberships.values()),
+            index,
+            desiredState
+        );
     }
 
     public synchronized ChangeRoomTeamResult changeTeam(UUID id, RoomTeam desiredTeam) {
@@ -278,33 +267,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var subscription = memberships.get(id);
         var member = subscription.membership();
         var room = rooms.get(member.roomId());
-
-        if (desiredTeam == null || room.state() != RoomState.WAITING) {
-            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "INVALID_TEAM_OR_PHASE");
-        }
-
-        var source = room.slots().stream().filter(slot -> slot.participant() != null)
-            .filter(slot -> slot.participant().sessionId().equals(id)).findFirst().orElseThrow();
-
-        if (source.state() == RoomSlotState.READY) {
-            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "PARTICIPANT_READY");
-        }
-
-        if (source.team() == desiredTeam) {
-            LOG.log(RoomLogEvent.TEAM_UNCHANGED, sessionId(id), roomId(room.id().value()), team(desiredTeam.name()));
-            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.UNCHANGED, "ALREADY_ON_TEAM");
-        }
-
-        var changed = room.changeTeam(id, desiredTeam);
-
-        if (changed.isEmpty()) {
-            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "NO_OPEN_TEAM_SLOT");
-        }
-
-        var change = changed.orElseThrow();
-        var recipients = List.copyOf(memberships.values());
-        var delivery = RoomNotifications.teamChanged(recipients, member, change);
-        return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.CHANGED, "CHANGED", delivery);
+        return RoomControlOperations.changeTeam(room, subscription, List.copyOf(memberships.values()), desiredTeam);
     }
 
     public synchronized SetRoomReadyResult setReady(UUID id, boolean ready) {
@@ -319,26 +282,27 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var subscription = memberships.get(id);
         var member = subscription.membership();
         var room = rooms.get(member.roomId());
+        return RoomControlOperations.setReady(room, subscription, List.copyOf(memberships.values()), ready);
+    }
 
-        if (room.state() != RoomState.WAITING) {
-            return new SetRoomReadyResult(SetRoomReadyOutcome.REJECTED, "ROOM_UNAVAILABLE");
+    public synchronized ChangeRoomWeaponResult changeWeapon(UUID id, long characterId, int weaponId) {
+        String rejection = controlRejection(id);
+
+        if (rejection != null) {
+            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomWeaponOutcome.IGNORED
+                : ChangeRoomWeaponOutcome.REJECTED;
+            return new ChangeRoomWeaponResult(outcome, rejection);
         }
 
-        var account = participant(subscription).character().accountId();
-
-        if (ready && room.ownerSessionId().equals(id)) {
-            var delivery = RoomNotifications.deliver(
-                subscription,
-                () -> subscription.output().readyChanged(account, false)
-            );
-            return new SetRoomReadyResult(SetRoomReadyOutcome.REJECTED, "OWNER_CANNOT_BE_READY", delivery);
-        }
-
-        boolean changed = room.setReady(account, ready);
-        var outcome = changed ? SetRoomReadyOutcome.CHANGED : SetRoomReadyOutcome.UNCHANGED;
-        var delivery = RoomNotifications.readyChanged(List.copyOf(memberships.values()), member, account, ready);
-        RoomNotifications.readyLog(RoomLogEvent.READY_SET, RoomSnapshot.from(room), id, ready, outcome.name(), null);
-        return new SetRoomReadyResult(outcome, outcome.name(), delivery);
+        var subscription = memberships.get(id);
+        var room = rooms.get(subscription.membership().roomId());
+        return RoomControlOperations.changeWeapon(
+            room,
+            subscription,
+            List.copyOf(memberships.values()),
+            characterId,
+            weaponId
+        );
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {

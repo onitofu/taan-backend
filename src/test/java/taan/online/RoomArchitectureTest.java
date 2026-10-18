@@ -12,6 +12,13 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class RoomArchitectureTest {
     @ArchTest
+    static final ArchRule CONTROL_OPERATIONS_OWNER = classes().that().haveFullyQualifiedName(
+        "taan.online.room.service.RoomControlOperations"
+    ).should().onlyBeAccessed().byClassesThat().haveNameMatching(
+        "taan\\.online\\.room\\.service\\.(RoomRegistry|RoomControlOperations)"
+    );
+
+    @ArchTest
     static final ArchRule PASSWORD_ENCAPSULATION = noClasses().that().resideInAnyPackage(
         "taan.online.room.service.model..",
         "taan.online.room.protocol..",
