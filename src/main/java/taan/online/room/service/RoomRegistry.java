@@ -1,11 +1,5 @@
 package taan.online.room.service;
 
-import static taan.online.logging.LogField.channelId;
-import static taan.online.logging.LogField.outcome;
-import static taan.online.logging.LogField.reason;
-import static taan.online.logging.LogField.roomId;
-import static taan.online.logging.LogField.sessionId;
-
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -13,11 +7,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
-import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
@@ -40,10 +32,13 @@ import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.EnterRoomResult;
+import taan.online.room.service.model.ExpelRoomParticipantOutcome;
+import taan.online.room.service.model.ExpelRoomParticipantResult;
 import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.LeaveRoomResult;
 import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
+import taan.online.room.service.model.RoomLeaveStatus;
 import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
@@ -54,8 +49,6 @@ import taan.online.room.service.model.SlotAvailabilityOutcome;
 import taan.online.room.service.model.SlotAvailabilityResult;
 
 public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
-    private static final EventLogger LOG = EventLogger.forClass(RoomRegistry.class);
-
     private final ChannelRegistry channels;
     private final RoomIdPool ids;
     private final RoomMapCatalog maps;
@@ -89,9 +82,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized Optional<RoomEntryTarget> entryTarget(ChannelMembershipSnapshot context, int requestedId) {
-        var room = rooms.values().stream().filter(value -> value.id().value() == requestedId)
-            .filter(value -> value.channelId() == context.channelId()).findFirst();
-        return room.map(value -> new RoomEntryTarget(value.id(), value.generation(), value.channelId()));
+        return RoomEntryTarget.find(rooms.values(), context.channelId(), requestedId);
     }
 
     public synchronized CreateRoomResult create(
@@ -107,20 +98,20 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         UUID id = owner.sessionId();
 
-        if (memberships.containsKey(id)) {
-            return rejected("ALREADY_IN_ROOM");
+        if (memberships.containsKey(id) || RoomControlChecks.pending(receipts.get(id))) {
+            return CreateRoomResult.rejected("ALREADY_IN_ROOM");
         }
 
         if (!current(context, owner)) {
-            return rejected("CHANNEL_CHANGED");
+            return CreateRoomResult.rejected("CHANNEL_CHANGED");
         }
 
         if (!RoomControlChecks.matches(context, owner)) {
-            return rejected("CHARACTER_CHANGED");
+            return CreateRoomResult.rejected("CHARACTER_CHANGED");
         }
 
         if (!maps.contains(settings.mapId())) {
-            return rejected("UNSUPPORTED_MAP");
+            return CreateRoomResult.rejected("UNSUPPORTED_MAP");
         }
 
         var ownerCharacter = owner.character().id();
@@ -134,7 +125,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var allocated = ids.allocate();
 
         if (allocated.isEmpty()) {
-            return rejected("ROOM_IDS_EXHAUSTED");
+            return CreateRoomResult.rejected("ROOM_IDS_EXHAUSTED");
         }
 
         var room = new Room(allocated.orElseThrow(), UUID.randomUUID(), context.channelId(), settings, password, owner);
@@ -157,40 +148,41 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         RoomPresenceOutput output
     ) {
         if (phase == RoomRegistryPhase.CLOSED) {
-            return entryRejected(EnterRoomOutcome.IGNORED, "SERVER_STOPPING");
+            return EnterRoomResult.rejected(EnterRoomOutcome.IGNORED, "SERVER_STOPPING");
         }
 
-        if (memberships.containsKey(participant.sessionId())) {
-            return entryRejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
+        if (memberships.containsKey(participant.sessionId())
+            || RoomControlChecks.pending(receipts.get(participant.sessionId()))) {
+            return EnterRoomResult.rejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
         }
 
         if (!current(context, participant) || !RoomControlChecks.matches(context, participant)) {
-            return entryRejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
+            return EnterRoomResult.rejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
         }
 
         var room = rooms.get(target.id());
 
         if (room == null || !room.generation().equals(target.generation()) || room.channelId() != context.channelId()
             || target.channelId() != context.channelId() || room.state() != RoomState.WAITING) {
-            return entryRejected(EnterRoomOutcome.NOT_FOUND, "ROOM_UNAVAILABLE");
+            return EnterRoomResult.rejected(EnterRoomOutcome.NOT_FOUND, "ROOM_UNAVAILABLE");
         }
 
         if (room.contains(participant)) {
-            return entryRejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
+            return EnterRoomResult.rejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
         }
 
         if (room.playerCount() >= room.settings().capacity()) {
-            return entryRejected(EnterRoomOutcome.FULL, "ROOM_FULL");
+            return EnterRoomResult.rejected(EnterRoomOutcome.FULL, "ROOM_FULL");
         }
 
         if (!room.acceptsPassword(password)) {
-            return entryRejected(EnterRoomOutcome.WRONG_PASSWORD, "WRONG_PASSWORD");
+            return EnterRoomResult.rejected(EnterRoomOutcome.WRONG_PASSWORD, "WRONG_PASSWORD");
         }
 
         var occupied = room.enter(participant, password);
 
         if (occupied.isEmpty()) {
-            return entryRejected(EnterRoomOutcome.NO_SLOT, "NO_OPEN_SLOT");
+            return EnterRoomResult.rejected(EnterRoomOutcome.NO_SLOT, "NO_OPEN_SLOT");
         }
 
         var subscription = subscribe(room, participant, output);
@@ -212,15 +204,16 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         RoomPresenceOutput output
     ) {
         if (phase == RoomRegistryPhase.CLOSED) {
-            return entryRejected(EnterRoomOutcome.IGNORED, "SERVER_STOPPING");
+            return EnterRoomResult.rejected(EnterRoomOutcome.IGNORED, "SERVER_STOPPING");
         }
 
-        if (memberships.containsKey(participant.sessionId())) {
-            return entryRejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
+        if (memberships.containsKey(participant.sessionId())
+            || RoomControlChecks.pending(receipts.get(participant.sessionId()))) {
+            return EnterRoomResult.rejected(EnterRoomOutcome.ALREADY_IN_ROOM, "ALREADY_IN_ROOM");
         }
 
         if (!current(context, participant) || !RoomControlChecks.matches(context, participant)) {
-            return entryRejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
+            return EnterRoomResult.rejected(EnterRoomOutcome.REJECTED, "CONTEXT_CHANGED");
         }
 
         var target = rooms.values().stream()
@@ -231,7 +224,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             .min(Comparator.comparingInt(Room::playerCount).reversed().thenComparingInt(room -> room.id().value()));
 
         if (target.isEmpty()) {
-            return entryRejected(EnterRoomOutcome.NOT_FOUND, "NO_MATCHING_ROOM");
+            return EnterRoomResult.rejected(EnterRoomOutcome.NOT_FOUND, "NO_MATCHING_ROOM");
         }
 
         var room = target.orElseThrow();
@@ -254,8 +247,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var subscription = memberships.get(id);
-        var member = subscription.membership();
-        var room = rooms.get(member.roomId());
+        var room = rooms.get(subscription.membership().roomId());
         return RoomControlOperations.setSlotAvailability(
             room,
             subscription,
@@ -275,8 +267,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var subscription = memberships.get(id);
-        var member = subscription.membership();
-        var room = rooms.get(member.roomId());
+        var room = rooms.get(subscription.membership().roomId());
         return RoomControlOperations.changeTeam(room, subscription, List.copyOf(memberships.values()), desiredTeam);
     }
 
@@ -290,8 +281,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var subscription = memberships.get(id);
-        var member = subscription.membership();
-        var room = rooms.get(member.roomId());
+        var room = rooms.get(subscription.membership().roomId());
         return RoomControlOperations.setReady(room, subscription, List.copyOf(memberships.values()), ready);
     }
 
@@ -347,22 +337,55 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         );
     }
 
+    public synchronized ExpelRoomParticipantResult expel(UUID id, long targetCharacterId) {
+        String rejection = controlRejection(id);
+
+        if (rejection != null) {
+            return RoomNotifications.expelRejected(id, rejection);
+        }
+
+        var snapshot = current(id).orElseThrow();
+        var slot = snapshot.slots().stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().character().id().value() == targetCharacterId)
+            .findFirst().orElse(null);
+        var target = slot == null ? null : slot.participant();
+        rejection = RoomControlChecks.expel(rooms.get(snapshot.id()), id, target);
+
+        if (rejection == null) {
+            rejection = controlRejection(target.sessionId());
+        }
+
+        if (rejection != null) {
+            return RoomNotifications.expelRejected(id, rejection);
+        }
+
+        var subscription = memberships.get(target.sessionId());
+        RoomNotifications.expelled(subscription, target);
+        remove(subscription.membership(), "EXPELLED");
+        receipts.put(
+            target.sessionId(),
+            new RoomLeaveReceipt(subscription.membership(), RoomLeaveStatus.AWAITING_ACKNOWLEDGEMENT)
+        );
+        RoomNotifications.expelLog(snapshot, participant(memberships.get(id)), target, slot.index());
+        return new ExpelRoomParticipantResult(ExpelRoomParticipantOutcome.EXPELLED, "EXPELLED");
+    }
+
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
         var member = membership(id).orElse(null);
 
         if (requestedReason != 0) {
-            return rejectLeave(id, "UNSUPPORTED_REASON");
+            return RoomNotifications.leaveRejected(id, "UNSUPPORTED_REASON");
         }
 
         if (member == null || member.roomId().value() != requestedRoomId) {
             var receipt = receipts.get(id);
 
             if (receipt != null && receipt.membership().roomId().value() == requestedRoomId) {
-                LOG.log(RoomLogEvent.LEAVE_REPLAYED, sessionId(id), roomId(receipt.membership().roomId().value()));
-                return new LeaveRoomResult(LeaveRoomOutcome.REPLAYED);
+                receipts.put(id, new RoomLeaveReceipt(receipt.membership()));
+                return RoomNotifications.leaveReplayed(id, receipt);
             }
 
-            return rejectLeave(id, "UNKNOWN_MEMBERSHIP");
+            return RoomNotifications.leaveRejected(id, "UNKNOWN_MEMBERSHIP");
         }
 
         var context = channels.membership(id);
@@ -373,7 +396,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         if (context.orElseThrow().channelId() != member.channelId()) {
-            return rejectLeave(id, "CHANNEL_CHANGED");
+            return RoomNotifications.leaveRejected(id, "CHANNEL_CHANGED");
         }
 
         remove(member, "LEFT");
@@ -457,39 +480,19 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         }
 
         var result = RoomSnapshot.from(room);
-        boolean ownerChanged = !previous.ownerSessionId().equals(result.ownerSessionId());
-        var recipients = List.copyOf(memberships.values());
-        RoomNotifications.update(recipients, result, expected.sessionId(), removed.index(), ownerChanged);
         publish(room.channelId());
         channels.roomChanged(room.channelId(), room.id().value());
-
-        RoomNotifications.ownerChanged(recipients, previous, result, ownerChanged, closeReason);
-    }
-
-    private CreateRoomResult rejected(String value) {
-        return new CreateRoomResult(CreateRoomOutcome.REJECTED, null, value);
-    }
-
-    private EnterRoomResult entryRejected(EnterRoomOutcome outcome, String reason) {
-        return new EnterRoomResult(outcome, reason, CompletableFuture.completedFuture(null));
-    }
-
-    private LeaveRoomResult rejectLeave(UUID id, String value) {
-        LOG.log(RoomLogEvent.LEAVE_REJECTED, sessionId(id), reason(value));
-        return new LeaveRoomResult(LeaveRoomOutcome.REJECTED);
+        RoomNotifications.departure(
+            List.copyOf(memberships.values()),
+            previous,
+            result,
+            expected.sessionId(),
+            removed.index(),
+            closeReason
+        );
     }
 
     private void publish(int channelId) {
-        var updated = new HashMap<>(listings);
-        var snapshot = rooms.values().stream().filter(room -> room.channelId() == channelId)
-            .sorted(Comparator.comparingInt(room -> room.id().value())).map(RoomListing::from).toList();
-
-        if (snapshot.isEmpty()) {
-            updated.remove(channelId);
-        } else {
-            updated.put(channelId, snapshot);
-        }
-
-        listings = Map.copyOf(updated);
+        listings = RoomListing.replaceChannel(listings, rooms.values(), channelId);
     }
 }

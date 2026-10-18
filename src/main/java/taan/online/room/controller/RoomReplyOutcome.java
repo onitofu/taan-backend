@@ -1,6 +1,7 @@
 package taan.online.room.controller;
 
 public enum RoomReplyOutcome {
+    EXPEL_COMPLETED,
     SETTINGS_UPDATED,
     SETTINGS_REJECTED,
     WEAPON_UPDATED,

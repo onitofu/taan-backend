@@ -24,5 +24,7 @@ public interface RoomPresenceOutput {
 
     CompletionStage<Void> settingsChanged(RoomSettings settings, boolean rejected);
 
+    CompletionStage<Void> expelled(AccountId targetAccountId);
+
     void close(String reason);
 }

@@ -14,12 +14,25 @@ import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
+import taan.online.room.protocol.packet.PcGameSessionUserExpel;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionUserExpel response) {
+        return new BinaryWriter().unsignedInt(PcGameSessionUserExpel.TYPE_ID).wideString(response.text0())
+            .wideString(response.text1()).unsignedInt(response.targetAccountId()).toByteArray();
+    }
+
+    public PcGameSessionUserExpel expel(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionUserExpel.TYPE_ID);
+        var response = new PcGameSessionUserExpel(input.wideString(), input.wideString(), input.unsignedInt());
+        input.finish();
+        return response;
+    }
+
     public byte[] encode(PcGameSessionChangeGameOption response) {
         return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionChangeGameOption.TYPE_ID))
             .unsignedShort(response.mapId()).unsignedShort(response.gameType()).unsignedByte(response.rule())

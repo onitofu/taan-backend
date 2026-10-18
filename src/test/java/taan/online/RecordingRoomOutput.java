@@ -33,6 +33,9 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
     public Runnable onSlotAvailability = () -> { };
     public Runnable onInitialize = () -> { };
     public Runnable onUpdate = () -> { };
+    public final List<AccountId> expelledAccounts = new ArrayList<>();
+    public Runnable onExpelled = () -> { };
+    public CompletionStage<Void> expelDelivery = CompletableFuture.completedFuture(null);
     public String closed;
 
     @Override
@@ -88,6 +91,13 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
         settingsRejections.add(rejected);
         onSettingsChanged.run();
         return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> expelled(AccountId targetAccountId) {
+        expelledAccounts.add(targetAccountId);
+        onExpelled.run();
+        return expelDelivery;
     }
 
     @Override

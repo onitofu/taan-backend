@@ -16,6 +16,7 @@ import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
+import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 
 public final class RoomRequestDispatcher {
     private final RoomPacketHandler handler;
@@ -29,7 +30,8 @@ public final class RoomRequestDispatcher {
         var event = switch (result.outcome()) {
             case ENTERED -> ProtocolEvent.ROOM_ENTERED;
             case CREATED -> ProtocolEvent.ROOM_CREATED;
-            case SETTINGS_UPDATED, SETTINGS_REJECTED, WEAPON_UPDATED, WEAPON_REJECTED, READY_UPDATED, READY_REJECTED,
+            case EXPEL_COMPLETED, SETTINGS_UPDATED, SETTINGS_REJECTED, WEAPON_UPDATED, WEAPON_REJECTED,
+                READY_UPDATED, READY_REJECTED,
                 CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED,
                 LEAVE_REJECTED, START_UNAVAILABLE,
                 SLOT_AVAILABILITY_UPDATED, SLOT_AVAILABILITY_REJECTED, TEAM_CHANGED, TEAM_UNCHANGED, TEAM_REJECTED ->
@@ -46,7 +48,8 @@ public final class RoomRequestDispatcher {
     }
 
     static boolean accepts(int type) {
-        return type == PqGameSessionCreate.TYPE_ID || type == PqGameSessionEnter.TYPE_ID
+        return type == PqGameSessionUserExpel.TYPE_ID || type == PqGameSessionCreate.TYPE_ID
+            || type == PqGameSessionEnter.TYPE_ID
             || type == PqGameSessionQuickJoin.TYPE_ID || type == PqGameSessionLeave.TYPE_ID
             || type == PqGameSessionStartGame.TYPE_ID || type == PqGameSessionOpenCloseSlot.TYPE_ID
             || type == PqGameSessionChangeTeam.TYPE_ID || type == PqGameSessionReady.TYPE_ID
@@ -55,6 +58,10 @@ public final class RoomRequestDispatcher {
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PqGameSessionUserExpel.TYPE_ID) {
+            return RoomLogEvent.EXPEL_FAILED;
+        }
+
         if (type == PqGameSessionChangeMap.TYPE_ID || type == PqGameSessionChangeGameOption.TYPE_ID) {
             return RoomLogEvent.SETTINGS_FAILED;
         }

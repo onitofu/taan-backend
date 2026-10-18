@@ -12,8 +12,16 @@ import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
+import taan.online.room.protocol.packet.PqGameSessionUserExpel;
 
 public final class RoomRequestCodec {
+    public PqGameSessionUserExpel expel(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionUserExpel.TYPE_ID);
+        var request = new PqGameSessionUserExpel(input.unsignedInt());
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionChangeMap changeMap(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionChangeMap.TYPE_ID);
         var request = new PqGameSessionChangeMap(input.unsignedShort());
