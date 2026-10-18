@@ -89,7 +89,7 @@ class RoomInventoryIntegrationTest {
                 wire.slot(owner.read());
                 observer.read();
                 observer.read();
-                owner.send(RoomScenario.weapon(1001, 200));
+                owner.send(RoomScenario.weapon(1001, 0));
                 wire.changeWeapon(owner.read());
                 wire.changeWeapon(guest.read());
                 guest.send(RoomScenario.ready(1));
@@ -100,7 +100,7 @@ class RoomInventoryIntegrationTest {
 
                 assertEquals(expected, changed.slot().occupant().appearance().parts().get(1));
                 assertEquals(changed, wire.slot(guest.read()));
-                assertEquals(200, changed.slot().occupant().weaponId());
+                assertEquals(0, changed.slot().occupant().weaponId());
                 assertEquals(2, changed.slot().state());
                 assertEquals(1, changed.resetWidget());
                 assertEquals(bag, InventoryFixtures.update(owner.read()).id());
@@ -168,7 +168,7 @@ class RoomInventoryIntegrationTest {
                 wire.slot(guest.read());
 
                 assertEquals(expected, init.slots().getFirst().occupant().appearance().parts().get(1));
-                assertEquals(200, init.slots().getFirst().occupant().weaponId());
+                assertEquals(0, init.slots().getFirst().occupant().weaponId());
                 assertEquals(3, init.info().details().playerCount());
                 saved = inventories(a);
                 owner.sendTogether(RoomScenario.leave(room, 0), RoomScenario.leave(room, 0));

@@ -162,7 +162,7 @@ class RoomLifecycleIntegrationTest {
         assertEquals(1, room.info().details().playerCount());
         assertEquals(8, room.info().details().capacity());
         assertEquals(1, room.info().details().mapId());
-        assertEquals(3, room.slots().getFirst().occupant().weaponId());
+        assertEquals(0, room.slots().getFirst().occupant().weaponId());
         return room;
     }
 

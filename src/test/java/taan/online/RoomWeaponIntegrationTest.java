@@ -85,16 +85,21 @@ class RoomWeaponIntegrationTest {
 
                 assertArrayEquals(root("03-ChangeWeapon.reply"), owner.read());
                 assertArrayEquals(root("03-ChangeWeapon.reply"), guest.read());
-                guest.sendTogether(weapon(1002, 0), weapon(1002, 200));
+                guest.sendTogether(weapon(1002, 0), weapon(1002, 0));
 
                 assertArrayEquals(root("03-ChangeWeapon.reply"), owner.read());
                 assertArrayEquals(root("03-ChangeWeapon.reply"), guest.read());
                 var selected = wire.changeWeapon(owner.read());
                 assertEquals(1002, selected.characterId());
-                assertEquals(200, selected.weaponId());
+                assertEquals(0, selected.weaponId());
                 assertEquals(selected, wire.changeWeapon(guest.read()));
-                guest.sendTogether(weapon(2, 11), weapon(1001, 11));
-                guest.sendTogether(weapon(1002, 100), weapon(1002, 300));
+                guest.sendTogether(weapon(2, 0), weapon(1001, 0));
+                for (int unsupported : new int[]{1, 3, 11, 200, 100, 300}) {
+                    guest.send(weapon(1002, unsupported));
+
+                    assertEquals(0, wire.changeWeapon(guest.read()).weaponId());
+                }
+
                 cash(guest);
                 cash(owner);
                 cash(observer);
@@ -102,21 +107,21 @@ class RoomWeaponIntegrationTest {
                 guest.send(ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
-                guest.send(weapon(1002, 11));
+                guest.send(weapon(1002, 0));
                 cash(guest);
                 cash(owner);
-                owner.send(weapon(1001, 11));
+                owner.send(weapon(1001, 0));
 
-                assertEquals(11, wire.changeWeapon(owner.read()).weaponId());
-                assertEquals(11, wire.changeWeapon(guest.read()).weaponId());
+                assertEquals(0, wire.changeWeapon(owner.read()).weaponId());
+                assertEquals(0, wire.changeWeapon(guest.read()).weaponId());
                 observer.send(RoomEntryFixtures.enter(room));
                 var init = wire.initialize(observer.read());
                 wire.slot(owner.read());
                 wire.slot(guest.read());
 
-                assertEquals(11, init.slots().get(0).occupant().weaponId());
+                assertEquals(0, init.slots().get(0).occupant().weaponId());
                 assertEquals(3, init.slots().get(2).state());
-                assertEquals(200, init.slots().get(2).occupant().weaponId());
+                assertEquals(0, init.slots().get(2).occupant().weaponId());
                 assertEquals(1002, init.slots().get(2).occupant().characterId());
                 guest.send(ready(0));
                 wire.ready(owner.read());
@@ -135,10 +140,10 @@ class RoomWeaponIntegrationTest {
                 wire.option(observer.read());
                 wire.slot(guest.read());
                 wire.option(guest.read());
-                guest.send(weapon(1002, 200));
+                guest.send(weapon(1002, 0));
 
-                assertEquals(200, wire.changeWeapon(observer.read()).weaponId());
-                assertEquals(200, wire.changeWeapon(guest.read()).weaponId());
+                assertEquals(0, wire.changeWeapon(observer.read()).weaponId());
+                assertEquals(0, wire.changeWeapon(guest.read()).weaponId());
                 guest.send(Arrays.copyOf(weapon(1002, 0), 4));
 
                 assertEquals(4, wire.slot(observer.read()).slot().slotIndex());
@@ -160,7 +165,7 @@ class RoomWeaponIntegrationTest {
                 guest.send(root("create-unprotected"));
                 var init = wire.initialize(guest.read());
 
-                assertEquals(3, init.slots().get(0).occupant().weaponId());
+                assertEquals(0, init.slots().get(0).occupant().weaponId());
                 assertEquals(character, database.characters().findByAccount(b.id()).getFirst());
                 assertEquals(inventory, inventory(b));
             }
@@ -190,7 +195,7 @@ class RoomWeaponIntegrationTest {
                 guest.send(RoomEntryFixtures.enter(room));
                 wire.initialize(guest.read());
                 wire.slot(owner.read());
-                guest.send(weapon(1002, 200));
+                guest.send(weapon(1002, 0));
                 wire.changeWeapon(owner.read());
                 wire.changeWeapon(guest.read());
                 guest.send(RoomScenario.leave(room, 0));
@@ -204,7 +209,7 @@ class RoomWeaponIntegrationTest {
                 var init = wire.initialize(guest.read());
                 wire.slot(owner.read());
 
-                assertEquals(3, init.slots().get(2).occupant().weaponId());
+                assertEquals(0, init.slots().get(2).occupant().weaponId());
                 cash(guest);
             }
         }

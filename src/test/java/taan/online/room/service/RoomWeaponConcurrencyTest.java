@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.room.model.RoomTeam;
-import taan.online.room.service.model.ChangeRoomWeaponOutcome;
 
 class RoomWeaponConcurrencyTest {
     @Test
@@ -40,7 +39,7 @@ class RoomWeaponConcurrencyTest {
                     );
                     var selected = selection.get(5, TimeUnit.SECONDS);
                     ready.get(5, TimeUnit.SECONDS);
-                    int weapon = selected.outcome() == ChangeRoomWeaponOutcome.CHANGED ? 0 : 3;
+                    int weapon = 0;
 
                     assertEquals(
                         weapon,
@@ -51,7 +50,7 @@ class RoomWeaponConcurrencyTest {
                     var choosing = workers.submit(
                         () -> {
                             next.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.changeWeapon(guest, 2, 200);
+                            return scenario.rooms.changeWeapon(guest, 2, 0);
                         }
                     );
                     var moving = workers.submit(
@@ -64,14 +63,14 @@ class RoomWeaponConcurrencyTest {
                     moving.get(5, TimeUnit.SECONDS);
 
                     assertEquals(
-                        200,
+                        0,
                         scenario.rooms.current(guest).orElseThrow().slots().get(1).participant().weaponId()
                     );
                     var last = new CyclicBarrier(2);
                     var changing = workers.submit(
                         () -> {
                             last.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.changeWeapon(guest, 2, 11);
+                            return scenario.rooms.changeWeapon(guest, 2, 0);
                         }
                     );
                     var leaving = workers.submit(
@@ -108,7 +107,7 @@ class RoomWeaponConcurrencyTest {
                     var selection = workers.submit(
                         () -> {
                             barrier.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.changeWeapon(owner, 1, 200);
+                            return scenario.rooms.changeWeapon(owner, 1, 0);
                         }
                     );
                     var joining = workers.submit(
@@ -121,9 +120,9 @@ class RoomWeaponConcurrencyTest {
                     joining.get(5, TimeUnit.SECONDS);
                     int initial = output.initializations.getFirst().slots().get(0).participant().weaponId();
 
-                    assertTrue(initial == 200 || output.weaponIds.equals(List.of(200)));
+                    assertTrue(initial == 0 || output.weaponIds.equals(List.of(0)));
                     assertEquals(
-                        200,
+                        0,
                         scenario.rooms.current(guest).orElseThrow().slots().get(0).participant().weaponId()
                     );
                 }

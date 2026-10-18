@@ -323,7 +323,7 @@ class RoomEntryGuardTest {
                     scenario.channels,
                     rooms,
                     new RoomCharacterLoader(scenario.characters, InventoryFixtures.catalog()),
-                    new RoomBootstrapDefinition(1, 3)
+                    new RoomBootstrapDefinition(1, 0)
                 );
                 scenario.characters.onCommit = () -> {
                     rooms.release(a, "LEFT");

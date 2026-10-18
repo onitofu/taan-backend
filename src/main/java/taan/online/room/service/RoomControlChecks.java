@@ -95,7 +95,7 @@ final class RoomControlChecks {
             return "NOT_OWNER";
         }
 
-        if (room.state() == RoomState.CLOSED) {
+        if (room.state() != RoomState.WAITING && room.state() != RoomState.CAPTAIN_SELECTION) {
             return "ROOM_UNAVAILABLE";
         }
 

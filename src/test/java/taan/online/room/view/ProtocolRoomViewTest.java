@@ -66,7 +66,8 @@ class ProtocolRoomViewTest {
             room.settings(),
             room.ownerSessionId(),
             room.slots(),
-            false
+            false,
+            room.state()
         );
     }
 

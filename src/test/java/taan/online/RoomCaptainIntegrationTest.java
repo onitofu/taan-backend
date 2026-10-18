@@ -109,9 +109,9 @@ class RoomCaptainIntegrationTest {
                     assertFalse(logs.text().contains("alpha@example.test"));
                     assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                     assertFalse(logs.text().contains(TestFixtures.VERIFIER));
-                    owner.send(RoomScenario.weapon(1001, 200));
-                    assertEquals(200, wire.changeWeapon(owner.read()).weaponId());
-                    assertEquals(200, wire.changeWeapon(guest.read()).weaponId());
+                    owner.send(RoomScenario.weapon(1001, 0));
+                    assertEquals(0, wire.changeWeapon(owner.read()).weaponId());
+                    assertEquals(0, wire.changeWeapon(guest.read()).weaponId());
                 }
             }
         }

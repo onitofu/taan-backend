@@ -58,7 +58,7 @@ class RoomModelTest {
             assertThrows(IllegalArgumentException.class, () -> new RoomBootstrapDefinition(values[0], values[1]));
         }
 
-        assertEquals(200, new RoomBootstrapDefinition(65535, 200).weaponId());
+        assertEquals(0, new RoomBootstrapDefinition(65535, 0).weaponId());
         assertEquals(0, new RoomBootstrapDefinition(1, 0).weaponId());
 
         assertThrows(IllegalArgumentException.class, () -> new RoomParticipant(id, character, -1));

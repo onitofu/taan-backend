@@ -265,6 +265,13 @@ final class RoomStartOperations {
         broadcast(room, null, output -> output.notice("Captain selection cancelled. Start again."));
     }
 
+    void finishReservedSelection(Room room, CaptainSelectionResult captains) {
+        if (captains != null) {
+            scheduler.cancel(room.captainSelection().id());
+            room.finishCaptainSelection();
+        }
+    }
+
     private void finish(Room room) {
         scheduler.cancel(room.captainSelection().id());
         room.finishCaptainSelection();

@@ -115,6 +115,14 @@ public final class LogField {
         return new LogField("selectionId", value);
     }
 
+    public static LogField matchId(UUID value) {
+        return new LogField("matchId", value);
+    }
+
+    public static LogField roomGeneration(UUID value) {
+        return new LogField("roomGeneration", value);
+    }
+
     public static LogField roomId(int value) {
         return new LogField("roomId", value);
     }

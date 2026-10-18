@@ -70,7 +70,7 @@ class RoomPacketHandlerTest {
             assertEquals(1, init.option().ownerCharacterId());
             assertEquals("Hero1", init.slots().getFirst().occupant().name());
             assertEquals(1, init.slots().getFirst().occupant().team());
-            assertEquals(3, init.slots().getFirst().occupant().weaponId());
+            assertEquals(0, init.slots().getFirst().occupant().weaponId());
             assertEquals(2, init.slots().getFirst().occupant().appearance().mode());
             assertTrue(init.slots().stream().skip(1).allMatch(slot -> slot.state() == 0 && slot.occupant() == null));
 
@@ -149,7 +149,16 @@ class RoomPacketHandlerTest {
             var slots = new ArrayList<>(original.slots());
             slots.set(0, new RoomSlot(0, RoomSlotState.OPEN, null));
             slots.set(2, new RoomSlot(2, RoomSlotState.OCCUPIED, owner));
-            var snapshot = new RoomSnapshot(original.id(), original.generation(), 1, settings, id, slots, false);
+            var snapshot = new RoomSnapshot(
+                original.id(),
+                original.generation(),
+                1,
+                settings,
+                id,
+                slots,
+                false,
+                original.state()
+            );
             var result = new RoomSnapshotMapper().map(snapshot);
 
             assertEquals(1, result.info().details().gameType());

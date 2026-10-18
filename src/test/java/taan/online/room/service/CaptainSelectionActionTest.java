@@ -70,7 +70,7 @@ class CaptainSelectionActionTest {
             scenario.create.execute(other, RoomScenario.command(), c);
             scenario.enter.execute(guest, 1, "", b);
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeWeapon(owner, 1, 200);
+            scenario.rooms.changeWeapon(owner, 1, 0);
             scenario.rooms.changeSettings(owner, 2, 3, 0);
             var before = scenario.rooms.current(owner).orElseThrow();
             var begin = new BeginCaptainSelectionAction(scenario.rooms);
@@ -158,7 +158,7 @@ class CaptainSelectionActionTest {
             var finished = new RequestRoomStartAction(scenario.rooms).execute(owner);
 
             assertNotNull(finished.captains());
-            assertEquals(ChangeRoomWeaponOutcome.CHANGED, scenario.rooms.changeWeapon(owner, 1, 4).outcome());
+            assertEquals(ChangeRoomWeaponOutcome.UNCHANGED, scenario.rooms.changeWeapon(owner, 1, 0).outcome());
         }
     }
 

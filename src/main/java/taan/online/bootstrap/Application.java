@@ -49,6 +49,7 @@ import taan.online.lobby.service.LeaveLobbyAction;
 import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
+import taan.online.match.service.MatchRegistry;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
@@ -151,7 +152,12 @@ public final class Application implements AutoCloseable {
             maps
         );
         selectionScheduler = new ScheduledRoomSelectionScheduler(config.maxConnections());
-        rooms = new RoomRegistry(channels, maps, selectionScheduler);
+        var matchDefinitions = new MatchDefinitionLoader().load(
+            Application.class.getResourceAsStream("/match/jungle.properties"),
+            Application.class.getResourceAsStream("/match/jungle-spawns.csv"),
+            Application.class.getResourceAsStream("/match/weapons.csv")
+        );
+        rooms = new RoomRegistry(channels, maps, selectionScheduler, new MatchRegistry(matchDefinitions));
         var inventoryDispatcher = new InventoryRequestDispatcher(
             new MoveInventoryItemPacketHandler(
                 new MoveInventoryItemAction(

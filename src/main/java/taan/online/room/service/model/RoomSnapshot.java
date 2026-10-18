@@ -8,6 +8,7 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
+import taan.online.room.model.RoomState;
 
 public record RoomSnapshot(
     RoomId id,
@@ -16,7 +17,8 @@ public record RoomSnapshot(
     RoomSettings settings,
     UUID ownerSessionId,
     List<RoomSlot> slots,
-    boolean protectedRoom
+    boolean protectedRoom,
+    RoomState state
 ) {
     public static RoomSnapshot from(Room room) {
         return new RoomSnapshot(
@@ -26,7 +28,8 @@ public record RoomSnapshot(
             room.settings(),
             room.ownerSessionId(),
             room.slots(),
-            room.protectedRoom()
+            room.protectedRoom(),
+            room.state()
         );
     }
 

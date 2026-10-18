@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static taan.online.room.service.model.ChangeRoomWeaponOutcome.CHANGED;
 import static taan.online.room.service.model.ChangeRoomWeaponOutcome.IGNORED;
 import static taan.online.room.service.model.ChangeRoomWeaponOutcome.REJECTED;
 import static taan.online.room.service.model.ChangeRoomWeaponOutcome.UNCHANGED;
@@ -41,7 +40,7 @@ class ChangeRoomWeaponActionTest {
             var listings = scenario.rooms.forChannel(1);
             var action = new ChangeRoomWeaponAction(scenario.rooms);
 
-            assertEquals(CHANGED, action.execute(guest, 2, 0).outcome());
+            assertEquals(UNCHANGED, action.execute(guest, 2, 0).outcome());
             assertEquals(UNCHANGED, action.execute(guest, 2, 0).outcome());
             assertEquals(List.of(0, 0), a.weaponIds);
             assertEquals(a.weaponIds, b.weaponIds);
@@ -62,10 +61,10 @@ class ChangeRoomWeaponActionTest {
             scenario.rooms.release(owner, "DISCONNECTED");
 
             assertEquals(guest, scenario.rooms.current(guest).orElseThrow().ownerSessionId());
-            assertEquals(CHANGED, action.execute(guest, 2, 11).outcome());
+            assertEquals(REJECTED, action.execute(guest, 2, 11).outcome());
             assertTrue(logs.text().contains("room.weapon.selected"));
             assertTrue(logs.text().contains("outcome=\"UNCHANGED\""));
-            assertTrue(logs.text().contains("weaponId=\"200\""));
+            assertTrue(logs.text().contains("weaponId=\"0\""));
             assertFalse(logs.text().contains("Hero2"));
         }
     }
@@ -92,8 +91,8 @@ class ChangeRoomWeaponActionTest {
             rooms(scenario.rooms).get(new RoomId(1)).close();
 
             assertEquals("ROOM_UNAVAILABLE", action.execute(owner, 1, 0).reason());
-            assertEquals(3, scenario.rooms.current(owner).orElseThrow().slots().get(0).participant().weaponId());
-            assertTrue(output.weaponIds.isEmpty());
+            assertEquals(0, scenario.rooms.current(owner).orElseThrow().slots().get(0).participant().weaponId());
+            assertEquals(List.of(0, 0, 0, 0, 0, 0), output.weaponIds);
             assertTrue(logs.text().contains("room.weapon.rejected"));
         }
     }
@@ -139,14 +138,14 @@ class ChangeRoomWeaponActionTest {
             var accepted = scenario.rooms.changeWeapon(guest, 2, 0);
             accepted.delivery().toCompletableFuture().join();
 
-            assertEquals(CHANGED, accepted.outcome());
+            assertEquals(UNCHANGED, accepted.outcome());
             assertEquals("ROOM_NOTIFICATION_FAILED", a.closed);
             assertEquals(0, scenario.rooms.current(guest).orElseThrow().slots().get(2).participant().weaponId());
             b.onWeaponChanged = a.onWeaponChanged;
             var failed = scenario.rooms.changeWeapon(guest, 2, 200);
 
             assertThrows(RuntimeException.class, () -> failed.delivery().toCompletableFuture().join());
-            assertEquals(200, scenario.rooms.current(guest).orElseThrow().slots().get(2).participant().weaponId());
+            assertEquals(0, scenario.rooms.current(guest).orElseThrow().slots().get(2).participant().weaponId());
             assertTrue(logs.text().contains("room.notification.failed"));
             assertFalse(logs.text().contains("secret@example.test"));
         }

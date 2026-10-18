@@ -29,7 +29,7 @@ class RoomAppearanceTest {
                 scenario.owner(owner)
             );
             room.enter(scenario.owner(guest), "");
-            room.changeWeapon(guest, 200);
+            room.changeWeapon(guest, 0);
             room.setReady(scenario.owner(guest).character().accountId(), true);
             var old = room.slots();
             var appearance = new CharacterAppearance(
@@ -41,7 +41,7 @@ class RoomAppearanceTest {
             var changed = room.slots().get(2);
             var original = old.get(2);
             assertEquals(RoomSlotState.READY, changed.state());
-            assertEquals(200, changed.participant().weaponId());
+            assertEquals(0, changed.participant().weaponId());
             assertEquals(original.participant().character().id(), changed.participant().character().id());
             assertEquals(original.participant().character().createdAt(), changed.participant().character().createdAt());
             assertEquals(List.of(old.getFirst()), List.of(room.slots().getFirst()));

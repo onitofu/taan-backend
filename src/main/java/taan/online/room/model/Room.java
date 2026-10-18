@@ -20,6 +20,7 @@ public final class Room {
     private final List<RoomSlot> slots;
     private UUID ownerSessionId;
     private RoomState state = RoomState.WAITING;
+    private UUID matchId;
     private CaptainSelection captainSelection;
     private Long captainRetryAfterNanos;
 
@@ -230,7 +231,7 @@ public final class Room {
     }
 
     public static boolean isSelectableWeapon(int weaponId) {
-        return weaponId >= 0 && weaponId <= 11 || weaponId == 200;
+        return weaponId == 0;
     }
 
     public boolean changeWeapon(UUID sessionId, int weaponId) {
@@ -311,6 +312,10 @@ public final class Room {
             return Optional.empty();
         }
 
+        if (state == RoomState.MATCH) {
+            throw new IllegalStateException("Match must be cancelled before departure");
+        }
+
         finishCaptainSelection();
         var removed = previous.orElseThrow();
         slots.set(removed.index(), new RoomSlot(removed.index(), RoomSlotState.OPEN, null));
@@ -331,7 +336,7 @@ public final class Room {
             return "NOT_OWNER";
         }
 
-        if (state == RoomState.CLOSED) {
+        if (state != RoomState.WAITING && state != RoomState.CAPTAIN_SELECTION) {
             return "ROOM_UNAVAILABLE";
         }
 
@@ -374,6 +379,42 @@ public final class Room {
         }
     }
 
+    public UUID matchId() {
+        return matchId;
+    }
+
+    public void reserveMatch(UUID id) {
+        Objects.requireNonNull(id);
+
+        if (startRejection(ownerSessionId) != null || settings.mode().requiresCaptainSelection()
+            && (captainSelection == null || captainSelection.phase() != CaptainSelectionPhase.FINALIZED)) {
+            throw new IllegalStateException("Room cannot reserve a match");
+        }
+
+        matchId = id;
+        state = RoomState.MATCH;
+    }
+
+    public boolean rollbackMatch(UUID expected) {
+        if (!Objects.equals(matchId, expected) || state != RoomState.MATCH) {
+            return false;
+        }
+
+        matchId = null;
+        state = RoomState.WAITING;
+        captainSelection = null;
+
+        for (int index = 0; index < slots.size(); index++) {
+            var slot = slots.get(index);
+
+            if (slot.state() == RoomSlotState.READY) {
+                slots.set(index, new RoomSlot(index, RoomSlotState.OCCUPIED, slot.participant()));
+            }
+        }
+
+        return true;
+    }
+
     public RoomState state() {
         return state;
     }
@@ -384,6 +425,7 @@ public final class Room {
         }
 
         captainSelection = null;
+        matchId = null;
         state = RoomState.CLOSED;
         return true;
     }

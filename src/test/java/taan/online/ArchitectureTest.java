@@ -213,6 +213,7 @@ class ArchitectureTest {
         "taan.online.channel.logging..",
         "taan.online.lobby.logging..",
         "taan.online.room.logging..",
+        "taan.online.match.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -225,6 +226,7 @@ class ArchitectureTest {
         "taan.online.channel.logging..",
         "taan.online.lobby.logging..",
         "taan.online.room.logging..",
+        "taan.online.match.logging..",
         "taan.online.session.logging..",
         "taan.online.bootstrap.logging..",
         "taan.online.server.logging.."
@@ -260,6 +262,7 @@ class ArchitectureTest {
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.network..",
             "taan.online.server..",
+            "taan.online.match..",
             "taan.online.room..",
             "taan.online.lobby..",
             "taan.online.account..",
