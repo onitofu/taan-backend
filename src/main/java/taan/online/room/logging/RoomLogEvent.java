@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum RoomLogEvent implements LogEvent {
+    WEAPON_SELECTED("room.weapon.selected", Level.DEBUG, "Room weapon selection accepted"),
+    WEAPON_REJECTED("room.weapon.rejected", Level.DEBUG, "Room weapon selection rejected"),
+    WEAPON_FAILED("room.weapon.failed", Level.ERROR, "Room weapon selection failed"),
     READY_SET("room.ready.set", Level.DEBUG, "Room readiness accepted"),
     READY_REJECTED("room.ready.rejected", Level.DEBUG, "Room readiness rejected"),
     READY_RESET("room.ready.reset", Level.DEBUG, "Room readiness reset"),

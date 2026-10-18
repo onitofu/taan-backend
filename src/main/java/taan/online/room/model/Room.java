@@ -176,6 +176,38 @@ public final class Room {
         );
     }
 
+    public static boolean isSelectableWeapon(int weaponId) {
+        return weaponId >= 0 && weaponId <= 11 || weaponId == 200;
+    }
+
+    public boolean changeWeapon(UUID sessionId, int weaponId) {
+        if (state != RoomState.WAITING) {
+            throw new IllegalStateException("Room weapon cannot be changed");
+        }
+
+        if (!isSelectableWeapon(weaponId)) {
+            throw new IllegalArgumentException("Unsupported room weapon");
+        }
+
+        var slot = slots.stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().sessionId().equals(sessionId)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Room participant is not present"));
+
+        if (slot.state() == RoomSlotState.READY) {
+            throw new IllegalStateException("Ready participant cannot change weapon");
+        }
+
+        var actor = slot.participant();
+
+        if (actor.weaponId() == weaponId) {
+            return false;
+        }
+
+        var updated = new RoomParticipant(actor.sessionId(), actor.character(), weaponId);
+        slots.set(slot.index(), new RoomSlot(slot.index(), slot.state(), updated));
+        return true;
+    }
+
     public boolean setReady(AccountId accountId, boolean ready) {
         if (state != RoomState.WAITING) {
             throw new IllegalStateException("Room readiness cannot be changed");

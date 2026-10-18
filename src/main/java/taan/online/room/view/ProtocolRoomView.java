@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterId;
 import taan.online.protocol.PacketOutput;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
+import taan.online.room.protocol.packet.PcGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
@@ -74,6 +76,11 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
     @Override
     public CompletionStage<Void> readyChanged(AccountId accountId, boolean ready) {
         return output.send(List.of(codec.encode(new PcGameSessionReady(accountId.value(), ready))));
+    }
+
+    @Override
+    public CompletionStage<Void> weaponChanged(CharacterId characterId, int weaponId) {
+        return output.send(List.of(codec.encode(new PcGameSessionChangeWeapon(characterId.value(), weaponId))));
     }
 
     @Override

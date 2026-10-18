@@ -12,6 +12,7 @@ import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.slotIndex;
 import static taan.online.logging.LogField.team;
+import static taan.online.logging.LogField.weaponId;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterId;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomId;
@@ -110,6 +112,33 @@ final class RoomNotifications {
         var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
             .toList();
         return broadcast(recipients, sender.sessionId(), output -> output.readyChanged(account, ready));
+    }
+
+    static CompletionStage<Void> weaponChanged(
+        List<RoomSubscription> subscriptions,
+        RoomMembership sender,
+        CharacterId character,
+        int weapon
+    ) {
+        var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
+            .toList();
+        return broadcast(recipients, sender.sessionId(), output -> output.weaponChanged(character, weapon));
+    }
+
+    static void weaponLog(RoomSnapshot room, UUID actor, int weapon, String result) {
+        var slot = room.slots().stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().sessionId().equals(actor)).findFirst().orElseThrow();
+        LOG.log(
+            RoomLogEvent.WEAPON_SELECTED,
+            sessionId(actor),
+            accountId(slot.participant().character().accountId().value()),
+            characterId(slot.participant().character().id().value()),
+            channelId(room.channelId()),
+            roomId(room.id().value()),
+            slotIndex(slot.index()),
+            weaponId(weapon),
+            outcome(result)
+        );
     }
 
     static void ownerChanged(

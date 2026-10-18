@@ -71,6 +71,10 @@ public final class LogField {
         return new LogField("previousSlotIndex", value);
     }
 
+    public static LogField weaponId(int value) {
+        return new LogField("weaponId", value);
+    }
+
     public static LogField ready(boolean value) {
         return new LogField("ready", value);
     }

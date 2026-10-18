@@ -56,6 +56,7 @@ import taan.online.protocol.connection.packet.PcFirstAccept;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
+import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -472,7 +473,8 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             LogEvent event = switch (pending.peekFirst().type()) {
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
-                case PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
+                case PqGameSessionChangeWeapon.TYPE_ID,
+                    PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
                     PqGameSessionChangeTeam.TYPE_ID, PqGameSessionReady.TYPE_ID, PqGameSessionLeave.TYPE_ID,
                     PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID ->
                     RoomLogEvent.REQUEST_CANCELLED;
