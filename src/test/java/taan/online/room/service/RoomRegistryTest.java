@@ -53,8 +53,9 @@ class RoomRegistryTest {
             scenario.lobby(a);
             var next = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
 
-            assertNotEquals(first.id(), next.id());
-            assertEquals(LeaveRoomOutcome.REJECTED, scenario.leave.execute(a, first.id().value(), 0).outcome());
+            assertEquals(first.id(), next.id());
+            assertNotEquals(first.generation(), next.generation());
+            assertEquals(LeaveRoomOutcome.REJECTED, scenario.leave.execute(a, 999, 0).outcome());
             scenario.rooms.release(token, "LATE_CLOSE");
             scenario.rooms.release(
                 new RoomMembership(a, next.id(), UUID.randomUUID(), next.channelId(), UUID.randomUUID()),
@@ -82,6 +83,45 @@ class RoomRegistryTest {
                     new RecordingRoomOutput()
                 ).outcome()
             );
+        }
+    }
+
+    @Test
+    void reusesTheLowestNumberAfterFinalDepartureAndRetainsNumbersOfOccupiedRooms() {
+        try (var scenario = new RoomScenario()) {
+            var a = scenario.player(1, 1);
+            var b = scenario.player(2, 1);
+            var c = scenario.player(3, 1);
+            var guest = scenario.player(4, 1);
+            var d = scenario.player(5, 2);
+            var first = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
+            var second = scenario.create.execute(b, RoomScenario.command(), new RecordingRoomOutput()).room();
+            var third = scenario.create.execute(c, RoomScenario.command(), new RecordingRoomOutput()).room();
+            scenario.enter.execute(guest, second.id().value(), "", new RecordingRoomOutput());
+
+            assertEquals(1, first.id().value());
+            assertEquals(2, second.id().value());
+            assertEquals(3, third.id().value());
+            assertEquals(LeaveRoomOutcome.LEFT, scenario.leave.execute(a, first.id().value(), 0).outcome());
+            var reused = scenario.create.execute(d, RoomScenario.command(), new RecordingRoomOutput()).room();
+
+            assertEquals(first.id(), reused.id());
+            assertNotEquals(first.generation(), reused.generation());
+
+            scenario.rooms.release(b, "DISCONNECT");
+            scenario.lobby(b);
+            var fourth = scenario.create.execute(b, RoomScenario.command(), new RecordingRoomOutput()).room();
+
+            assertEquals(4, fourth.id().value());
+            assertEquals(second.id(), scenario.rooms.current(guest).orElseThrow().id());
+
+            scenario.rooms.release(guest, "DISCONNECT");
+            scenario.lobby(a);
+            var next = scenario.create.execute(a, RoomScenario.command(), new RecordingRoomOutput()).room();
+
+            assertEquals(second.id(), next.id());
+            assertTrue(scenario.rooms.current(guest).isEmpty());
+            assertEquals(2, scenario.rooms.forChannel(1).getFirst().id().value());
         }
     }
 

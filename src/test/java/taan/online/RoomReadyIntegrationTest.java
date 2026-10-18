@@ -8,6 +8,8 @@ import static taan.online.RoomFixtures.root;
 import static taan.online.RoomScenario.ready;
 import static taan.online.RoomScenario.team;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -66,13 +68,22 @@ class RoomReadyIntegrationTest {
                 foreign.send(root("create-unprotected"));
                 wire.initialize(foreign.read());
                 owner.send(root("create-unprotected"));
-                int room = wire.initialize(owner.read()).info().roomId();
+                var created = wire.initialize(owner.read());
+                int room = created.info().roomId();
+
+                assertEquals(a.id().value(), created.option().ownerAccountId());
+                assertEquals(a.id().value(), created.slots().getFirst().occupant().accountId());
+                assertEquals(1001, created.option().ownerCharacterId());
                 guest.read();
                 guest.read();
                 observer.read();
                 observer.read();
                 guest.send(RoomEntryFixtures.enter(room));
-                wire.initialize(guest.read());
+                var joined = wire.initialize(guest.read());
+
+                assertEquals(created.option(), joined.option());
+                assertEquals(b.id().value(), joined.slots().get(2).occupant().accountId());
+                assertEquals(1002, joined.slots().get(2).occupant().characterId());
                 wire.slot(owner.read());
                 observer.read();
                 observer.read();
@@ -170,7 +181,11 @@ class RoomReadyIntegrationTest {
     }
 
     private void lobby(CharacterTestClient client, Account account, int channel) throws Exception {
-        client.login(account.login().value());
+        byte[] login = client.login(account.login().value());
+        long localAccount = Integer.toUnsignedLong(ByteBuffer.wrap(login).order(ByteOrder.LITTLE_ENDIAN).getInt(5));
+
+        assertEquals(account.id().value(), localAccount);
+
         long character = database.characters().findByAccount(account.id()).getFirst().id().value();
         client.send(CharacterFixtures.select(character));
         client.read();

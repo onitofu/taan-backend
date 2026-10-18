@@ -67,7 +67,8 @@ class RoomRegistryStaleSessionTest {
 
             assertEquals(CreateRoomOutcome.CREATED, current.outcome());
             assertTrue(rooms.current(first).isEmpty());
-            assertNotEquals(old.room().id(), current.room().id());
+            assertEquals(old.room().id(), current.room().id());
+            assertNotEquals(old.room().generation(), current.room().generation());
             rooms.release(token, "LATE_OLD_CLOSE");
             rooms.release(first, "LATE_OLD_CLOSE");
 

@@ -111,6 +111,11 @@
       "origin": "SYNTHETIC"
     },
     {
+      "login-success-empty-female-local-account1.root.hex": "971f45c9b0d8d3500f18e95196d10b91391ef8ecd7416f849c380f7593c3d98e",
+      "original_file": "auth_codec.py",
+      "origin": "SYNTHETIC"
+    },
+    {
       "login-success-empty-female.root.hex": "ed2029c7c65847986de8637d238f763e0a807c86a2f9176a7f72615b1c841938",
       "original_file": "login-success-empty-female.root.bin",
       "origin": "SYNTHETIC"
