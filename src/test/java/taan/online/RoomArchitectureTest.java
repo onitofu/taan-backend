@@ -65,6 +65,7 @@ class RoomArchitectureTest {
             "taan.online.character.model..",
             "taan.online.character.repository",
             "taan.online.inventory.model..",
+            "taan.online.inventory.service..",
             "taan.online.account.model.."
         );
 

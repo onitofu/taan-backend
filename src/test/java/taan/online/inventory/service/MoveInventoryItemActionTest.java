@@ -27,7 +27,12 @@ class MoveInventoryItemActionTest {
         ).items().stream().filter(
             item -> item.slot() == 1
         ).findFirst().orElseThrow();
-        var action = new MoveInventoryItemAction(id -> Optional.of(actor), repository, InventoryFixtures.catalog());
+        var action = new MoveInventoryItemAction(
+            id -> Optional.of(actor),
+            repository,
+            InventoryFixtures.catalog(),
+            new TestInventoryMoveContextAccess()
+        );
         var command = InventoryFixtures.command(repository);
 
         try (var logs = new LogCapture()) {
@@ -66,7 +71,12 @@ class MoveInventoryItemActionTest {
         var actor = InventoryFixtures.actor();
         var repository = new TestInventoryRepository();
         var command = InventoryFixtures.command(repository);
-        var action = new MoveInventoryItemAction(id -> Optional.of(actor), repository, InventoryFixtures.catalog());
+        var action = new MoveInventoryItemAction(
+            id -> Optional.of(actor),
+            repository,
+            InventoryFixtures.catalog(),
+            new TestInventoryMoveContextAccess()
+        );
 
         assertEquals(
             InventoryMoveOutcome.ACCOUNT_MISMATCH,
@@ -101,7 +111,8 @@ class MoveInventoryItemActionTest {
                     selected.get()
                 ),
                 repository,
-                InventoryFixtures.catalog()
+                InventoryFixtures.catalog(),
+                new TestInventoryMoveContextAccess()
             );
             var command = InventoryFixtures.command(repository);
             Runnable close = () -> selected.set(null);
@@ -133,7 +144,12 @@ class MoveInventoryItemActionTest {
         for (int stage = 0; stage < 3; stage++) {
             var actor = InventoryFixtures.actor();
             var repository = new TestInventoryRepository();
-            var action = new MoveInventoryItemAction(id -> Optional.of(actor), repository, InventoryFixtures.catalog());
+            var action = new MoveInventoryItemAction(
+                id -> Optional.of(actor),
+                repository,
+                InventoryFixtures.catalog(),
+                new TestInventoryMoveContextAccess()
+            );
             var command = InventoryFixtures.command(repository);
             Runnable fail = () -> repository.failure = new IllegalStateException("PrivateInventoryValue");
 

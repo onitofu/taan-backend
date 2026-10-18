@@ -3,6 +3,8 @@ package taan.online.room.service;
 import java.util.UUID;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
+import taan.online.inventory.service.model.InventoryActor;
+import taan.online.inventory.service.model.InventoryMoveContext;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSlotState;
@@ -33,6 +35,28 @@ final class RoomControlChecks {
         return context.channelId() != membership.channelId()
             || context.phase() != ChannelPresencePhase.MEMBER || !matches(context, participant)
             ? "CONTEXT_CHANGED" : null;
+    }
+
+    static InventoryMoveContext inventoryContext(
+        InventoryActor actor,
+        RoomRegistryPhase phase,
+        RoomSubscription subscription,
+        ChannelMembershipSnapshot channel,
+        Room room
+    ) {
+        if (subscription == null) {
+            return new InventoryMoveContext(actor, null, phase == RoomRegistryPhase.OPEN);
+        }
+
+        var slot = room.slots().stream().filter(value -> value.participant() != null)
+            .filter(value -> value.participant().sessionId().equals(actor.sessionId())).findFirst().orElseThrow();
+        var participant = slot.participant();
+        var character = participant.character();
+        boolean allowed = rejection(phase, subscription.membership(), channel, participant) == null
+            && room.state() == RoomState.WAITING && slot.state() != RoomSlotState.READY
+            && character.accountId().equals(actor.accountId()) && character.id().value() == actor.characterId()
+            && character.gender() == actor.gender();
+        return new InventoryMoveContext(actor, subscription.membership().admissionId(), allowed);
     }
 
     static String availability(RoomSnapshot room, UUID id, int index, RoomSlotState desiredState) {

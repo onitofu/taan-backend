@@ -6,6 +6,7 @@ import static taan.online.logging.LogField.team;
 
 import java.util.List;
 import java.util.UUID;
+import taan.online.inventory.model.CharacterInventory;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
@@ -36,12 +37,19 @@ final class RoomControlOperations {
     }
 
     static SlotAvailabilityResult setSlotAvailability(
+        String rejection,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         int index,
         RoomSlotState desiredState
     ) {
+        if (rejection != null) {
+            var outcome = RoomControlChecks.inactive(rejection) ? SlotAvailabilityOutcome.IGNORED
+                : SlotAvailabilityOutcome.REJECTED;
+            return new SlotAvailabilityResult(outcome, rejection);
+        }
+
         var member = subscription.membership();
         var id = member.sessionId();
 
@@ -49,7 +57,7 @@ final class RoomControlOperations {
             return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "ROOM_UNAVAILABLE");
         }
 
-        String rejection = RoomControlChecks.availability(RoomSnapshot.from(room), id, index, desiredState);
+        rejection = RoomControlChecks.availability(RoomSnapshot.from(room), id, index, desiredState);
 
         if (rejection != null) {
             return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, rejection);
@@ -65,11 +73,18 @@ final class RoomControlOperations {
     }
 
     static ChangeRoomTeamResult changeTeam(
+        String rejection,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         RoomTeam desiredTeam
     ) {
+        if (rejection != null) {
+            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomTeamOutcome.IGNORED
+                : ChangeRoomTeamOutcome.REJECTED;
+            return new ChangeRoomTeamResult(outcome, rejection);
+        }
+
         var member = subscription.membership();
         var id = member.sessionId();
 
@@ -101,11 +116,18 @@ final class RoomControlOperations {
     }
 
     static SetRoomReadyResult setReady(
+        String rejection,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         boolean ready
     ) {
+        if (rejection != null) {
+            var outcome = RoomControlChecks.inactive(rejection) ? SetRoomReadyOutcome.IGNORED
+                : SetRoomReadyOutcome.REJECTED;
+            return new SetRoomReadyResult(outcome, rejection);
+        }
+
         var member = subscription.membership();
         var id = member.sessionId();
 
@@ -131,12 +153,19 @@ final class RoomControlOperations {
     }
 
     static ChangeRoomWeaponResult changeWeapon(
+        String rejection,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         long characterId,
         int weaponId
     ) {
+        if (rejection != null) {
+            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomWeaponOutcome.IGNORED
+                : ChangeRoomWeaponOutcome.REJECTED;
+            return new ChangeRoomWeaponResult(outcome, rejection);
+        }
+
         if (room.state() != RoomState.WAITING) {
             return new ChangeRoomWeaponResult(ChangeRoomWeaponOutcome.REJECTED, "ROOM_UNAVAILABLE");
         }
@@ -205,6 +234,24 @@ final class RoomControlOperations {
         );
         var outcome = changed ? ChangeRoomSettingsOutcome.CHANGED : ChangeRoomSettingsOutcome.UNCHANGED;
         return new ChangeRoomSettingsResult(outcome, outcome.name(), room.settings());
+    }
+
+    static void refreshEquipment(
+        Room room,
+        RoomSubscription subscription,
+        List<RoomSubscription> subscriptions,
+        CharacterInventory equipment
+    ) {
+        try {
+            var actor = subscription.membership().sessionId();
+            boolean changed = room.updateAppearance(actor, new RoomAppearanceMapper().map(equipment));
+
+            if (changed) {
+                RoomNotifications.appearanceUpdated(subscriptions, RoomSnapshot.from(room), actor);
+            }
+        } catch (RuntimeException failure) {
+            RoomNotifications.appearanceFailed(subscription, failure);
+        }
     }
 
     private static RoomParticipant participant(Room room, UUID id) {

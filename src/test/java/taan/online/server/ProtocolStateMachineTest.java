@@ -165,6 +165,7 @@ class ProtocolStateMachineTest {
             "ROOM_SLOT_AVAILABILITY",
             "ROOM_CHANGE_TEAM",
             "ROOM_CHANGE_WEAPON",
+            "MOVE_INVENTORY_ITEM",
             "ROOM_EXPEL",
             "ROOM_SETTINGS",
             "ROOM_READY"
@@ -178,12 +179,14 @@ class ProtocolStateMachineTest {
             "SELECT_CHARACTER",
             "SELECTED_REQUEST_IGNORED",
             "CHANNEL_REQUEST_IGNORED",
+            "INVENTORY_REQUEST_IGNORED",
             "ROOM_REQUEST_IGNORED"
         }) {
             expected.put("ROOM/" + event, new String[]{"ROOM", event, "IGNORE", "ROOM"});
         }
 
         for (String event : new String[]{
+            "INVENTORY_REQUEST_COMPLETED",
             "KEEP_ALIVE_ACCEPTED",
             "SELECTED_REQUEST_COMPLETED",
             "LOBBY_LEFT_MEMBER",

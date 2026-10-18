@@ -12,6 +12,7 @@ import taan.online.InventoryFixtures;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.inventory.service.MoveInventoryItemAction;
 import taan.online.inventory.service.SelectedInventoryAccess;
+import taan.online.inventory.service.TestInventoryMoveContextAccess;
 
 class MoveInventoryItemPacketHandlerTest {
     @Test
@@ -24,7 +25,8 @@ class MoveInventoryItemPacketHandlerTest {
             new MoveInventoryItemAction(
                 access,
                 repository,
-                InventoryFixtures.catalog()
+                InventoryFixtures.catalog(),
+                new TestInventoryMoveContextAccess()
             ),
             access
         );
@@ -52,7 +54,8 @@ class MoveInventoryItemPacketHandlerTest {
                 new MoveInventoryItemAction(
                     access,
                     repository,
-                    InventoryFixtures.catalog()
+                    InventoryFixtures.catalog(),
+                    new TestInventoryMoveContextAccess()
                 ),
                 access
             );
