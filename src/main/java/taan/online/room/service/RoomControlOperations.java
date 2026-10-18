@@ -9,11 +9,16 @@ import java.util.UUID;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
+import taan.online.room.model.RoomMapCatalog;
+import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
+import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.service.model.ChangeRoomSettingsOutcome;
+import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomTeamResult;
 import taan.online.room.service.model.ChangeRoomWeaponOutcome;
@@ -163,6 +168,43 @@ final class RoomControlOperations {
         );
         RoomNotifications.weaponLog(RoomSnapshot.from(room), id, weaponId, outcome.name());
         return new ChangeRoomWeaponResult(outcome, outcome.name(), delivery);
+    }
+
+    static ChangeRoomSettingsResult changeSettings(
+        Room room,
+        UUID id,
+        RoomMapCatalog maps,
+        int mapId,
+        Integer gameType,
+        Integer rule
+    ) {
+        String rejection = null;
+        var current = room.settings();
+        int desiredType = gameType == null ? (current.mode() == RoomMode.ITEM ? 0 : 1) : gameType;
+        int desiredRule = rule == null ? (current.rule() == RoomRule.BONUS ? 2 : 0) : rule;
+
+        if (!room.ownerSessionId().equals(id)) {
+            rejection = "NOT_OWNER";
+        } else if (room.state() != RoomState.WAITING) {
+            rejection = "ROOM_UNAVAILABLE";
+        } else if (!maps.contains(mapId)) {
+            rejection = "UNSUPPORTED_MAP";
+        } else if ((desiredType != 0 && desiredType != 1) || desiredRule != (desiredType == 0 ? 2 : 0)) {
+            rejection = "UNSUPPORTED_MODE_OR_RULE";
+        }
+
+        if (rejection != null) {
+            return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.REJECTED, rejection, current);
+        }
+
+        boolean changed = room.changeSettings(
+            desiredType == 0 ? RoomMode.ITEM : RoomMode.NO_ITEM,
+            desiredRule == 2 ? RoomRule.BONUS : RoomRule.BASIC,
+            mapId,
+            maps
+        );
+        var outcome = changed ? ChangeRoomSettingsOutcome.CHANGED : ChangeRoomSettingsOutcome.UNCHANGED;
+        return new ChangeRoomSettingsResult(outcome, outcome.name(), room.settings());
     }
 
     private static RoomParticipant participant(Room room, UUID id) {

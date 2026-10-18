@@ -14,6 +14,8 @@ import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.protocol.connection.packet.PqKeepAlive;
+import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
+import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -49,6 +51,7 @@ final class RequestEvents {
             case PqLobbyEnter.TYPE_ID -> ProtocolEvent.LOBBY_ENTER;
             case PqLobbyLeave.TYPE_ID -> ProtocolEvent.LOBBY_LEAVE;
             case PqGameSessionCreate.TYPE_ID -> ProtocolEvent.ROOM_CREATE;
+            case PqGameSessionChangeMap.TYPE_ID, PqGameSessionChangeGameOption.TYPE_ID -> ProtocolEvent.ROOM_SETTINGS;
             case PqGameSessionChangeWeapon.TYPE_ID -> ProtocolEvent.ROOM_CHANGE_WEAPON;
             case PqGameSessionChangeTeam.TYPE_ID -> ProtocolEvent.ROOM_CHANGE_TEAM;
             case PqGameSessionEnter.TYPE_ID -> ProtocolEvent.ROOM_ENTER;

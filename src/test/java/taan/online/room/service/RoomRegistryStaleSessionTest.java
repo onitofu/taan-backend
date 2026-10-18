@@ -31,7 +31,7 @@ class RoomRegistryStaleSessionTest {
         var actor = access.players.get(first);
         var character = CharacterFixtures.character(1, new AccountId(1), AccountGender.MALE, "Hero1");
 
-        try (var rooms = new RoomRegistry(channels)) {
+        try (var rooms = new RoomRegistry(channels, RoomScenario.maps())) {
             var old = rooms.create(
                 channels.membership(first).orElseThrow(),
                 RoomScenario.settings(),

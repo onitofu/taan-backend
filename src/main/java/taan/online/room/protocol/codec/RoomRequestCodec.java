@@ -1,6 +1,8 @@
 package taan.online.room.protocol.codec;
 
 import taan.online.protocol.BinaryReader;
+import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
+import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -12,6 +14,25 @@ import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestCodec {
+    public PqGameSessionChangeMap changeMap(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionChangeMap.TYPE_ID);
+        var request = new PqGameSessionChangeMap(input.unsignedShort());
+        input.finish();
+        return request;
+    }
+
+    public PqGameSessionChangeGameOption settings(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionChangeGameOption.TYPE_ID);
+        var request = new PqGameSessionChangeGameOption(
+            input.unsignedShort(),
+            input.unsignedShort(),
+            input.unsignedByte(),
+            input.unsignedByte()
+        );
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionChangeWeapon changeWeapon(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionChangeWeapon.TYPE_ID);
         var request = new PqGameSessionChangeWeapon(input.unsignedInt(), input.unsignedShort());

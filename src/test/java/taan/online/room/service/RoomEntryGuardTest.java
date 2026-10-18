@@ -209,7 +209,7 @@ class RoomEntryGuardTest {
             var channels = SelectionFixtures.registry(access);
             channels.move(a, new MoveToCommand(0, 1, 0, 929));
             channels.enter(a, RoomListingFixtures.emptyView(new CollectingPacketOutput()));
-            try (var rooms = new RoomRegistry(channels)) {
+            try (var rooms = new RoomRegistry(channels, RoomScenario.maps())) {
                 var owner = CharacterFixtures.character(1, new AccountId(1), AccountGender.MALE, "Owner");
                 int id = rooms.create(
                     channels.membership(a).orElseThrow(),
@@ -301,7 +301,7 @@ class RoomEntryGuardTest {
             for (int i = 2; i <= 65535; i++) {
                 pool.allocate();
             }
-            try (var rooms = new RoomRegistry(scenario.channels, pool)) {
+            try (var rooms = new RoomRegistry(scenario.channels, pool, RoomScenario.maps())) {
                 var first = rooms.create(
                     scenario.channels.membership(a).orElseThrow(),
                     RoomScenario.settings(),

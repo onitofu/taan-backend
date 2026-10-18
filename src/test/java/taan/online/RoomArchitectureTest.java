@@ -105,6 +105,8 @@ class RoomArchitectureTest {
             "taan.online.room.model..",
             "taan.online.room.protocol..",
             "taan.online.protocol",
+            "taan.online.protocol.connection.codec",
+            "taan.online.protocol.connection.packet",
             "taan.online.character.controller..",
             "taan.online.character.model..",
             "taan.online.character.protocol.packet..",

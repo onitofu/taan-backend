@@ -71,6 +71,18 @@ public final class LogField {
         return new LogField("previousSlotIndex", value);
     }
 
+    public static LogField mapId(int value) {
+        return new LogField("mapId", value);
+    }
+
+    public static LogField roomMode(String value) {
+        return new LogField("roomMode", value);
+    }
+
+    public static LogField roomRule(String value) {
+        return new LogField("roomRule", value);
+    }
+
     public static LogField weaponId(int value) {
         return new LogField("weaponId", value);
     }

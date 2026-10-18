@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterId;
+import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.service.model.RoomSnapshot;
@@ -20,6 +21,8 @@ public interface RoomPresenceOutput {
     CompletionStage<Void> readyChanged(AccountId accountId, boolean ready);
 
     CompletionStage<Void> weaponChanged(CharacterId characterId, int weaponId);
+
+    CompletionStage<Void> settingsChanged(RoomSettings settings, boolean rejected);
 
     void close(String reason);
 }

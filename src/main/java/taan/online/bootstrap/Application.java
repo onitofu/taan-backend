@@ -53,6 +53,7 @@ import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
 import taan.online.room.controller.RoomPacketHandler;
+import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.CreateRoomAction;
@@ -148,11 +149,13 @@ public final class Application implements AutoCloseable {
 
         var channelAccess = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(channelAccess, config.port());
-        rooms = new RoomRegistry(channels);
         var roomDefinitions = new RoomDefinitionLoader();
+        var maps = roomDefinitions.maps(Application.class.getResourceAsStream("/room/maps.csv"));
         var roomDefaults = roomDefinitions.defaults(
-            Application.class.getResourceAsStream("/room/bootstrap.properties")
+            Application.class.getResourceAsStream("/room/bootstrap.properties"),
+            maps
         );
+        rooms = new RoomRegistry(channels, maps);
         var roomCharacters = new RoomCharacterLoader(characters, itemCatalog);
         var roomDispatcher = new RoomRequestDispatcher(
             new RoomPacketHandler(
@@ -167,6 +170,7 @@ public final class Application implements AutoCloseable {
                 ),
                 new EnterRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
                 new QuickJoinRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
+                new ChangeRoomSettingsAction(rooms),
                 new ChangeRoomTeamAction(rooms),
                 new ChangeRoomWeaponAction(rooms),
                 new SetRoomReadyAction(rooms),

@@ -159,7 +159,7 @@ class QuickJoinRegistryTest {
             channels.move(a, new MoveToCommand(0, 1, 0, 929));
             channels.enter(a, RoomListingFixtures.emptyView(new CollectingPacketOutput()));
 
-            try (var rooms = new RoomRegistry(channels)) {
+            try (var rooms = new RoomRegistry(channels, RoomScenario.maps())) {
                 var owner = CharacterFixtures.character(1, new AccountId(1), AccountGender.MALE, "Owner");
                 rooms.create(
                     channels.membership(a).orElseThrow(),

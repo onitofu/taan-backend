@@ -5,6 +5,8 @@ import taan.online.logging.LogEvent;
 import taan.online.protocol.PacketOutput;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.logging.RoomLogEvent;
+import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
+import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -27,7 +29,7 @@ public final class RoomRequestDispatcher {
         var event = switch (result.outcome()) {
             case ENTERED -> ProtocolEvent.ROOM_ENTERED;
             case CREATED -> ProtocolEvent.ROOM_CREATED;
-            case WEAPON_UPDATED, WEAPON_REJECTED, READY_UPDATED, READY_REJECTED,
+            case SETTINGS_UPDATED, SETTINGS_REJECTED, WEAPON_UPDATED, WEAPON_REJECTED, READY_UPDATED, READY_REJECTED,
                 CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED,
                 LEAVE_REJECTED, START_UNAVAILABLE,
                 SLOT_AVAILABILITY_UPDATED, SLOT_AVAILABILITY_REJECTED, TEAM_CHANGED, TEAM_UNCHANGED, TEAM_REJECTED ->
@@ -48,10 +50,15 @@ public final class RoomRequestDispatcher {
             || type == PqGameSessionQuickJoin.TYPE_ID || type == PqGameSessionLeave.TYPE_ID
             || type == PqGameSessionStartGame.TYPE_ID || type == PqGameSessionOpenCloseSlot.TYPE_ID
             || type == PqGameSessionChangeTeam.TYPE_ID || type == PqGameSessionReady.TYPE_ID
-            || type == PqGameSessionChangeWeapon.TYPE_ID;
+            || type == PqGameSessionChangeWeapon.TYPE_ID
+            || type == PqGameSessionChangeMap.TYPE_ID || type == PqGameSessionChangeGameOption.TYPE_ID;
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PqGameSessionChangeMap.TYPE_ID || type == PqGameSessionChangeGameOption.TYPE_ID) {
+            return RoomLogEvent.SETTINGS_FAILED;
+        }
+
         if (type == PqGameSessionChangeWeapon.TYPE_ID) {
             return RoomLogEvent.WEAPON_FAILED;
         }

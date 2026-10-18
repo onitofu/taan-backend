@@ -6,10 +6,16 @@ import java.util.concurrent.CompletionStage;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterId;
 import taan.online.protocol.PacketOutput;
+import taan.online.protocol.connection.codec.NoticeMessageCodec;
+import taan.online.protocol.connection.packet.PcNoticeMsg;
+import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PcGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
@@ -81,6 +87,24 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
     @Override
     public CompletionStage<Void> weaponChanged(CharacterId characterId, int weaponId) {
         return output.send(List.of(codec.encode(new PcGameSessionChangeWeapon(characterId.value(), weaponId))));
+    }
+
+    @Override
+    public CompletionStage<Void> settingsChanged(RoomSettings settings, boolean rejected) {
+        var response = new PcGameSessionChangeGameOption(
+            settings.mapId(),
+            settings.mode() == RoomMode.ITEM ? 0 : 1,
+            settings.rule() == RoomRule.BONUS ? 2 : 0,
+            255
+        );
+        var batch = new ArrayList<byte[]>();
+        batch.add(codec.encode(response));
+
+        if (rejected) {
+            batch.add(new NoticeMessageCodec().encode(new PcNoticeMsg("Requested room settings are not allowed.")));
+        }
+
+        return output.send(batch);
     }
 
     @Override

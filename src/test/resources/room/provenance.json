@@ -31,6 +31,16 @@
       "origin": "UNKNOWN"
     },
     {
+      "04-ChangeGameOption.reply.frame.hex": "3ac9d93b8c44d804904d92b96b206007185fbc0ca56bc3254e46c9ce86d275e6",
+      "original_file": "04-ChangeGameOption.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "04-ChangeGameOption.request.frame.hex": "aa686ff20ea2ca528de0f30dd9a756fa2f6007213fb26842e1066ed69bd5fd57",
+      "original_file": "04-ChangeGameOption.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
       "05-ChangeTeam.reply.frame.hex": "b832ddebb385bd008a4035dc7e6db345aaeb55ec6ac023f3aeb9a4f064d83ee2",
       "original_file": "05-ChangeTeam.reply.frame.bin",
       "origin": "UNKNOWN"
@@ -49,6 +59,11 @@
       "06-ChangeTeam.request.frame.hex": "a8888107e5d9551c63abc46faa5b2f2a672ab679dc9d9adf21974d97930f9faf",
       "original_file": "06-ChangeTeam.request.root.bin",
       "origin": "UNKNOWN"
+    },
+    {
+      "PcChangeGameOption-rejected-current.frame.hex": "26b7e2ebe314bde09cc2f839c4d6bbce4fe0e9f114edd5509fec11d50783d7a9",
+      "original_file": "events.jsonl",
+      "origin": "SYNTHETIC"
     },
     {
       "PcGameSession_Init-two-players.frame.hex": "14d1c226f450a26c71a060b5574b383a1398d7784e8d6c723cf14b86cd2f6cc0",
@@ -73,6 +88,11 @@
     {
       "PcGameSession_UpdateSlot-leave-blue0.frame.hex": "071c861ded0f4234d501ca4f7b956470fb1aee63ca4a44e503a8afd6d2a4fa2c",
       "original_file": "PcGameSession_UpdateSlot-leave-blue0.frame.bin",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "PqChangeMap-map2.frame.hex": "42fe63fd8487a9c7fa3098e39cef87a0724c33fcb438a812a03503615d69abdf",
+      "original_file": "room-settings-schema.json",
       "origin": "SYNTHETIC"
     },
     {

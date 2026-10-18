@@ -3,12 +3,15 @@ package taan.online.room.service;
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.characterId;
+import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.previousSlotIndex;
 import static taan.online.logging.LogField.ready;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.recipientSessionId;
 import static taan.online.logging.LogField.roomId;
+import static taan.online.logging.LogField.roomMode;
+import static taan.online.logging.LogField.roomRule;
 import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.slotIndex;
 import static taan.online.logging.LogField.team;
@@ -28,6 +31,8 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
+import taan.online.room.service.model.ChangeRoomSettingsOutcome;
+import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomSnapshot;
 
@@ -112,6 +117,39 @@ final class RoomNotifications {
         var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
             .toList();
         return broadcast(recipients, sender.sessionId(), output -> output.readyChanged(account, ready));
+    }
+
+    static ChangeRoomSettingsResult settingsChanged(
+        List<RoomSubscription> subscriptions,
+        RoomMembership sender,
+        RoomSnapshot snapshot,
+        ChangeRoomSettingsResult result
+    ) {
+        boolean rejected = result.outcome() == ChangeRoomSettingsOutcome.REJECTED;
+        var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
+            .filter(value -> !rejected || value.membership().equals(sender)).toList();
+        var delivery = broadcast(
+            recipients,
+            sender.sessionId(),
+            output -> output.settingsChanged(result.settings(), rejected)
+        );
+        var actor = snapshot.slots().stream().map(value -> value.participant())
+            .filter(value -> value != null && value.sessionId().equals(sender.sessionId())).findFirst().orElseThrow();
+        var settings = result.settings();
+        LOG.log(
+            rejected ? RoomLogEvent.SETTINGS_REJECTED : RoomLogEvent.SETTINGS_SET,
+            sessionId(sender.sessionId()),
+            accountId(actor.character().accountId().value()),
+            characterId(actor.character().id().value()),
+            channelId(sender.channelId()),
+            roomId(sender.roomId().value()),
+            mapId(settings.mapId()),
+            roomMode(settings.mode().name()),
+            roomRule(settings.rule().name()),
+            outcome(result.outcome().name()),
+            reason(result.reason())
+        );
+        return new ChangeRoomSettingsResult(result.outcome(), result.reason(), settings, delivery);
     }
 
     static CompletionStage<Void> weaponChanged(

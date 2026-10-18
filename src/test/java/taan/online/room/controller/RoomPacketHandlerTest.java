@@ -22,6 +22,8 @@ import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
+import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -31,6 +33,7 @@ import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
+import taan.online.room.service.ChangeRoomSettingsAction;
 import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.ChangeRoomWeaponAction;
 import taan.online.room.service.SetRoomReadyAction;
@@ -156,7 +159,9 @@ class RoomPacketHandlerTest {
             PqGameSessionOpenCloseSlot.TYPE_ID,
             PqGameSessionChangeTeam.TYPE_ID,
             PqGameSessionReady.TYPE_ID,
-            PqGameSessionChangeWeapon.TYPE_ID
+            PqGameSessionChangeWeapon.TYPE_ID,
+            PqGameSessionChangeMap.TYPE_ID,
+            PqGameSessionChangeGameOption.TYPE_ID
         }) {
             try (var scenario = new RoomScenario()) {
                 var id = scenario.player(1, 1);
@@ -175,6 +180,7 @@ class RoomPacketHandlerTest {
                     scenario.create,
                     scenario.enter,
                     scenario.quickJoin,
+                    new ChangeRoomSettingsAction(scenario.rooms),
                     new ChangeRoomTeamAction(scenario.rooms),
                     new ChangeRoomWeaponAction(scenario.rooms),
                     new SetRoomReadyAction(scenario.rooms),
@@ -187,6 +193,8 @@ class RoomPacketHandlerTest {
                     : type == PqGameSessionEnter.TYPE_ID ? root("enter-empty-password")
                     : type == PqGameSessionQuickJoin.TYPE_ID ? root("quickjoin-any")
                     : type == PqGameSessionLeave.TYPE_ID ? leave(1, 0)
+                    : type == PqGameSessionChangeMap.TYPE_ID ? RoomScenario.map(2)
+                    : type == PqGameSessionChangeGameOption.TYPE_ID ? RoomScenario.settings(2, 0, 2, 255)
                     : type == PqGameSessionChangeWeapon.TYPE_ID ? RoomScenario.weapon(1, 0)
                     : type == PqGameSessionReady.TYPE_ID ? RoomScenario.ready(0)
                     : type == PqGameSessionChangeTeam.TYPE_ID ? RoomScenario.team(2)
@@ -226,6 +234,7 @@ class RoomPacketHandlerTest {
                 scenario.create,
                 scenario.enter,
                 scenario.quickJoin,
+                new ChangeRoomSettingsAction(scenario.rooms),
                 new ChangeRoomTeamAction(scenario.rooms),
                 new ChangeRoomWeaponAction(scenario.rooms),
                 new SetRoomReadyAction(scenario.rooms),

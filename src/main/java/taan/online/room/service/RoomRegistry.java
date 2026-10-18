@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +22,7 @@ import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomIdPool;
+import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomSettings;
@@ -28,6 +30,8 @@ import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.service.model.ChangeRoomSettingsOutcome;
+import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomTeamResult;
 import taan.online.room.service.model.ChangeRoomWeaponOutcome;
@@ -54,19 +58,21 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
     private final ChannelRegistry channels;
     private final RoomIdPool ids;
+    private final RoomMapCatalog maps;
     private final Map<RoomId, Room> rooms = new HashMap<>();
     private final Map<UUID, RoomSubscription> memberships = new HashMap<>();
     private final Map<UUID, RoomLeaveReceipt> receipts = new HashMap<>();
     private volatile Map<Integer, List<RoomListing>> listings = Map.of();
     private RoomRegistryPhase phase = RoomRegistryPhase.OPEN;
 
-    public RoomRegistry(ChannelRegistry channels) {
-        this(channels, new RoomIdPool());
+    public RoomRegistry(ChannelRegistry channels, RoomMapCatalog maps) {
+        this(channels, new RoomIdPool(), maps);
     }
 
-    RoomRegistry(ChannelRegistry channels, RoomIdPool ids) {
+    RoomRegistry(ChannelRegistry channels, RoomIdPool ids, RoomMapCatalog maps) {
         this.channels = channels;
         this.ids = ids;
+        this.maps = Objects.requireNonNull(maps);
     }
 
     @Override
@@ -111,6 +117,10 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         if (!RoomControlChecks.matches(context, owner)) {
             return rejected("CHARACTER_CHANGED");
+        }
+
+        if (!maps.contains(settings.mapId())) {
+            return rejected("UNSUPPORTED_MAP");
         }
 
         var ownerCharacter = owner.character().id();
@@ -302,6 +312,38 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             List.copyOf(memberships.values()),
             characterId,
             weaponId
+        );
+    }
+
+    public synchronized ChangeRoomSettingsResult changeSettings(UUID id, int mapId, int gameType, int rule) {
+        return updateSettings(id, mapId, gameType, rule);
+    }
+
+    public synchronized ChangeRoomSettingsResult changeMap(UUID id, int mapId) {
+        return updateSettings(id, mapId, null, null);
+    }
+
+    private ChangeRoomSettingsResult updateSettings(UUID id, int mapId, Integer gameType, Integer rule) {
+        String rejection = controlRejection(id);
+
+        if (rejection != null) {
+            return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.IGNORED, rejection, null);
+        }
+
+        var subscription = memberships.get(id);
+        var room = rooms.get(subscription.membership().roomId());
+        var result = RoomControlOperations.changeSettings(room, id, maps, mapId, gameType, rule);
+
+        if (result.outcome() == ChangeRoomSettingsOutcome.CHANGED) {
+            publish(room.channelId());
+            channels.roomChanged(room.channelId(), room.id().value());
+        }
+
+        return RoomNotifications.settingsChanged(
+            List.copyOf(memberships.values()),
+            subscription.membership(),
+            RoomSnapshot.from(room),
+            result
         );
     }
 

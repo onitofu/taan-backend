@@ -6,6 +6,7 @@ import taan.online.protocol.BinaryReader;
 import taan.online.protocol.BinaryWriter;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.protocol.packet.GameSlotInfo;
+import taan.online.room.protocol.packet.PcGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionChangeWeapon;
 import taan.online.room.protocol.packet.PcGameSessionInit;
@@ -19,6 +20,24 @@ import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionChangeGameOption response) {
+        return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionChangeGameOption.TYPE_ID))
+            .unsignedShort(response.mapId()).unsignedShort(response.gameType()).unsignedByte(response.rule())
+            .unsignedByte(response.missionDifficultyOrIgnored()).toByteArray();
+    }
+
+    public PcGameSessionChangeGameOption settings(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionChangeGameOption.TYPE_ID);
+        var response = new PcGameSessionChangeGameOption(
+            input.unsignedShort(),
+            input.unsignedShort(),
+            input.unsignedByte(),
+            input.unsignedByte()
+        );
+        input.finish();
+        return response;
+    }
+
     public byte[] encode(PcGameSessionChangeWeapon response) {
         validateWeaponIdentity(response.characterId());
         return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionChangeWeapon.TYPE_ID))
