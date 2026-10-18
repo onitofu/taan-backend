@@ -1,0 +1,14 @@
+package taan.online.room.service.model;
+
+public enum RoomMatchEndReason {
+    GIVE_UP,
+    ROOM_LEAVE,
+    DISCONNECTED,
+    LOADING_TIMEOUT,
+    PREVIEW_TIMEOUT,
+    UNSUPPORTED_GAMEPLAY,
+    START_DELIVERY_FAILED,
+    END_DELIVERY_FAILED,
+    SERVER_STOPPING,
+    PREPARATION_FAILED
+}

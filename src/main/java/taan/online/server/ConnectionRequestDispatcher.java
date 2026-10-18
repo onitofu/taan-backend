@@ -10,6 +10,7 @@ final class ConnectionRequestDispatcher {
     private final LobbyRequestDispatcher lobby;
     private final InventoryRequestDispatcher inventories;
     private final RoomRequestDispatcher rooms;
+    private final MatchRequestDispatcher matches;
 
     ConnectionRequestDispatcher(
         AccountRequestDispatcher accounts,
@@ -17,7 +18,8 @@ final class ConnectionRequestDispatcher {
         SelectedCharacterRequestDispatcher selected,
         LobbyRequestDispatcher lobby,
         InventoryRequestDispatcher inventories,
-        RoomRequestDispatcher rooms
+        RoomRequestDispatcher rooms,
+        MatchRequestDispatcher matches
     ) {
         this.accounts = accounts;
         this.characters = characters;
@@ -25,9 +27,14 @@ final class ConnectionRequestDispatcher {
         this.lobby = lobby;
         this.inventories = inventories;
         this.rooms = rooms;
+        this.matches = matches;
     }
 
     RequestCompletion dispatch(UUID sessionId, PendingRequest request, PacketOutput output) {
+        if (MatchRequestDispatcher.accepts(request.type())) {
+            return matches.dispatch(sessionId, request);
+        }
+
         if (RoomRequestDispatcher.accepts(request.type())) {
             return rooms.dispatch(request.type(), sessionId, request.root(), output);
         }

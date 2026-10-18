@@ -9,6 +9,11 @@ public enum MatchLogEvent implements LogEvent {
     RESERVATION_REJECTED("match.reservation.rejected", Level.DEBUG, "Match reservation rejected"),
     RESERVATION_ROLLED_BACK("match.reservation.rolled_back", Level.DEBUG, "Match reservation rolled back"),
     CANCELLED("match.cancelled", Level.INFO, "Match cancelled"),
+    TERMINATION_IGNORED("match.termination.ignored", Level.DEBUG, "Stale match termination ignored"),
+    RESULT_SELECTION_IGNORED("match.result.selection.ignored", Level.DEBUG, "Preview card selection ignored"),
+    TERMINAL_DELIVERY_FAILED("match.terminal.delivery.failed", Level.ERROR, "Match terminal delivery failed"),
+    OPERATION_FAILED("match.operation.failed", Level.ERROR, "Match operation failed"),
+    REQUEST_CANCELLED("match.request.cancelled", Level.DEBUG, "Queued match request cancelled"),
     RESERVATION_FAILED("match.reservation.failed", Level.ERROR, "Match reservation failed");
 
     private final String eventName;

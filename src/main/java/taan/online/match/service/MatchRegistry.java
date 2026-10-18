@@ -13,7 +13,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.Objects;
 import java.util.Optional;
 import taan.online.logging.EventLogger;
@@ -25,9 +29,15 @@ import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.MatchResultReceipt;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.RoomMatchLifecycle;
+import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchDraft;
+import taan.online.room.service.model.RoomMatchEndReason;
+import taan.online.room.service.model.RoomMatchTermination;
+import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomMatchParticipant;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchReservationResult;
@@ -38,6 +48,9 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
     private final MatchDefinitions definitions;
     private final Map<MatchId, Match> matches = new HashMap<>();
+    private final Map<UUID, MatchSubscription> subscriptions = new HashMap<>();
+    private final Map<UUID, MatchResultReceipt> receipts = new HashMap<>();
+    private final Map<RoomMatchToken, MatchTerminationDelivery> terminations = new HashMap<>();
 
     public MatchRegistry(MatchDefinitions definitions) {
         this.definitions = Objects.requireNonNull(definitions);
@@ -74,6 +87,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 draft.captains()
             );
             matches.put(match.id(), match);
+            participants.forEach(value -> receipts.remove(value.sessionId()));
         } catch (IllegalArgumentException failure) {
             log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
             return result(RoomMatchReservationOutcome.REJECTED, null, "INVALID_SETUP");
@@ -113,6 +127,8 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         var match = find(token);
 
         if (match == null) {
+            terminations.remove(token);
+            receipts.values().removeIf(value -> value.token().equals(token));
             return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
         }
 
@@ -125,6 +141,114 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             closeReason
         );
         return result(RoomMatchReservationOutcome.ROLLED_BACK, token, closeReason);
+    }
+
+    public synchronized void subscribe(UUID sessionId, MatchOutput output) {
+        subscriptions.putIfAbsent(sessionId, new MatchSubscription(sessionId, output));
+    }
+
+    public synchronized void unsubscribe(UUID sessionId) {
+        subscriptions.remove(sessionId);
+        receipts.remove(sessionId);
+    }
+
+    @Override
+    public synchronized boolean previewStarted(RoomMatchToken token) {
+        var match = find(token);
+        return match != null && match.previewStarted();
+    }
+
+    @Override
+    public synchronized RoomMatchTermination prepareTermination(
+        RoomMatchToken token,
+        RoomMatchEndReason closeReason,
+        UUID departing
+    ) {
+        var match = find(token);
+
+        if (match == null) {
+            log(MatchLogEvent.TERMINATION_IGNORED, token, "STALE_MATCH");
+            return null;
+        }
+
+        var previous = match.phase();
+        var mode = mode(previous, closeReason);
+        match.beginTermination();
+        var recipients = match.participants().stream()
+            .filter(value -> mode != RoomMatchTerminationMode.RETURN_TO_ROOM || !value.sessionId().equals(departing))
+            .map(
+                value -> new RoomMembership(
+                    value.sessionId(),
+                    match.roomId(),
+                    match.roomGeneration(),
+                    match.channelId(),
+                    value.admissionId()
+                )
+            ).toList();
+        var terminal = new RoomMatchTermination(token, closeReason, mode, recipients);
+        var outputs = mode == RoomMatchTerminationMode.ROLLBACK ? List.<MatchSubscription>of() : recipients.stream()
+            .map(value -> subscriptions.get(value.sessionId())).filter(Objects::nonNull).toList();
+        var exiting = mode == RoomMatchTerminationMode.RETURN_TO_ROOM && closeReason == RoomMatchEndReason.ROOM_LEAVE
+            ? subscriptions.get(departing) : null;
+        terminations.put(token, new MatchTerminationDelivery(terminal, outputs, exiting));
+
+        if (mode == RoomMatchTerminationMode.RETURN_TO_ROOM) {
+            recipients.forEach(value -> receipts.put(value.sessionId(), new MatchResultReceipt(token, value)));
+        }
+
+        matches.remove(match.id());
+        match.cancel();
+        log(MatchLogEvent.CANCELLED, token, closeReason.name());
+        return terminal;
+    }
+
+    @Override
+    public CompletionStage<Void> dispatchTermination(RoomMatchTermination terminal, UUID requester) {
+        MatchTerminationDelivery delivery;
+
+        synchronized (this) {
+            delivery = terminations.get(terminal.token());
+
+            if (delivery == null || !delivery.terminal().equals(terminal)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            terminations.remove(terminal.token());
+        }
+
+        return delivery.dispatch(requester);
+    }
+
+    @Override
+    public synchronized RoomMatchToken resultToken(RoomMembership membership) {
+        var receipt = receipts.get(membership.sessionId());
+        return receipt != null && receipt.membership().equals(membership) ? receipt.token() : null;
+    }
+
+    public synchronized boolean consumeResult(RoomMatchContext context) {
+        return context.token().equals(resultToken(context.membership()));
+    }
+
+    @Override
+    public synchronized void release(RoomMembership membership) {
+        var receipt = receipts.get(membership.sessionId());
+
+        if (receipt != null && receipt.membership().equals(membership)) {
+            receipts.remove(membership.sessionId());
+        }
+    }
+
+    private static RoomMatchTerminationMode mode(MatchPhase phase, RoomMatchEndReason reason) {
+        if (reason == RoomMatchEndReason.SERVER_STOPPING) {
+            return RoomMatchTerminationMode.DISCONNECT;
+        }
+
+        if (phase == MatchPhase.RESERVED) {
+            return RoomMatchTerminationMode.ROLLBACK;
+        }
+
+        return phase == MatchPhase.PREVIEW ? RoomMatchTerminationMode.RETURN_TO_ROOM
+            : RoomMatchTerminationMode.DISCONNECT;
     }
 
     public synchronized Optional<MatchSnapshot> current(RoomMatchToken token) {

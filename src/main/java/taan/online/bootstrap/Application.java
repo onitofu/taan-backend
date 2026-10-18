@@ -49,7 +49,11 @@ import taan.online.lobby.service.LeaveLobbyAction;
 import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
+import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.TerminateMatchAction;
+import taan.online.server.MatchRequestDispatcher;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
@@ -157,7 +161,16 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/match/jungle-spawns.csv"),
             Application.class.getResourceAsStream("/match/weapons.csv")
         );
-        rooms = new RoomRegistry(channels, maps, selectionScheduler, new MatchRegistry(matchDefinitions));
+        var matches = new MatchRegistry(matchDefinitions);
+        rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
+        var matchDispatcher = new MatchRequestDispatcher(
+            new MatchPacketHandler(
+                rooms,
+                matches,
+                new TerminateMatchAction(rooms),
+                new ConsumeMatchResultAction(rooms, matches)
+            )
+        );
         var inventoryDispatcher = new InventoryRequestDispatcher(
             new MoveInventoryItemPacketHandler(
                 new MoveInventoryItemAction(
@@ -260,6 +273,7 @@ public final class Application implements AutoCloseable {
                 lobby,
                 inventoryDispatcher,
                 roomDispatcher,
+                matchDispatcher,
                 config.outputBatches(),
                 config.outputBytes(),
                 config.maxFrameBytes()

@@ -83,7 +83,8 @@ class ProtocolStateMachineTest {
         ProtocolEvent.ROOM_CHANGE_WEAPON,
         ProtocolEvent.ROOM_EXPEL,
         ProtocolEvent.ROOM_SETTINGS,
-        ProtocolEvent.ROOM_READY
+        ProtocolEvent.ROOM_READY,
+        ProtocolEvent.MATCH_REQUEST
     );
 
     @Test
@@ -201,6 +202,11 @@ class ProtocolStateMachineTest {
             expected.put("ROOM/" + event, new String[]{"ROOM", event, "CONTINUE", "ROOM"});
         }
 
+        expected.put("ROOM/MATCH_REQUEST", new String[]{"ROOM", "MATCH_REQUEST", "PROCESS", "ROOM"});
+        expected.put(
+            "ROOM/MATCH_REQUEST_COMPLETED",
+            new String[]{"ROOM", "MATCH_REQUEST_COMPLETED", "CONTINUE", "ROOM"}
+        );
         expected.put("ROOM/ROOM_LEFT", new String[]{"ROOM", "ROOM_LEFT", "CONTINUE", "CHANNEL_SELECTED"});
 
         for (var phase : ProtocolPhase.values()) {

@@ -36,7 +36,6 @@ import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.EnterRoomResult;
 import taan.online.room.service.model.ExpelRoomParticipantResult;
-import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.LeaveRoomResult;
 import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
@@ -44,6 +43,9 @@ import taan.online.room.service.model.RoomListing;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomMatchReservationResult;
 import taan.online.room.service.model.RoomMatchToken;
+import taan.online.room.service.model.RoomMatchContext;
+import taan.online.room.service.model.RoomMatchEndReason;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomSnapshot;
@@ -52,7 +54,7 @@ import taan.online.room.service.model.SetCaptainCandidateResult;
 import taan.online.room.service.model.SetRoomReadyResult;
 import taan.online.room.service.model.SlotAvailabilityResult;
 
-public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
+public final class RoomRegistry implements RoomListingAccess, RoomMatchAccess, AutoCloseable {
     private final ChannelRegistry channels;
     private final RoomIdPool ids;
     private final RoomMapCatalog maps;
@@ -112,7 +114,16 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             new AdvanceCaptainSelectionAction(this)
         );
         matches = new RoomMatchOperations(channels, rooms, memberships, starts, lifecycle, this::changed);
-        departures = new RoomDepartureOperations(channels, ids, rooms, memberships, starts, matches, this::publish);
+        departures = new RoomDepartureOperations(
+            channels,
+            ids,
+            rooms,
+            memberships,
+            receipts,
+            starts,
+            matches,
+            this::publish
+        );
     }
 
     public synchronized RoomMatchReservationResult reserveMatch(UUID id) {
@@ -125,6 +136,26 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
     public synchronized RoomMatchReservationResult rollbackMatch(RoomMatchToken token, String reason) {
         return matches.rollback(token, reason);
+    }
+
+    @Override
+    public synchronized RoomMatchContext matchContext(UUID id) {
+        return matches.context(id, phase);
+    }
+
+    @Override
+    public synchronized boolean previewStarted(RoomMatchToken token) {
+        return matches.previewStarted(token);
+    }
+
+    @Override
+    public synchronized RoomMatchTerminationResult terminateMatch(RoomMatchContext context, RoomMatchEndReason reason) {
+        return matches.terminate(context, reason, phase);
+    }
+
+    @Override
+    public synchronized RoomMatchTerminationResult terminateMatch(RoomMatchToken token, RoomMatchEndReason reason) {
+        return matches.terminate(token, reason, null);
     }
 
     public synchronized RoomStartResult beginCaptainSelection(UUID id) {
@@ -411,37 +442,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
-        var member = membership(id).orElse(null);
-
-        if (requestedReason != 0) {
-            return RoomNotifications.leaveRejected(id, "UNSUPPORTED_REASON");
-        }
-
-        if (member == null || member.roomId().value() != requestedRoomId) {
-            var receipt = receipts.get(id);
-
-            if (receipt != null && receipt.membership().roomId().value() == requestedRoomId) {
-                receipts.put(id, new RoomLeaveReceipt(receipt.membership()));
-                return RoomNotifications.leaveReplayed(id, receipt);
-            }
-
-            return RoomNotifications.leaveRejected(id, "UNKNOWN_MEMBERSHIP");
-        }
-
-        var context = channels.membership(id);
-
-        if (context.isEmpty()) {
-            release(id, "SESSION_CLOSED");
-            return new LeaveRoomResult(LeaveRoomOutcome.IGNORED);
-        }
-
-        if (context.orElseThrow().channelId() != member.channelId()) {
-            return RoomNotifications.leaveRejected(id, "CHANNEL_CHANGED");
-        }
-
-        remove(member, "LEFT");
-        receipts.put(id, new RoomLeaveReceipt(member));
-        return new LeaveRoomResult(LeaveRoomOutcome.LEFT);
+        return departures.leave(id, requestedRoomId, requestedReason);
     }
 
     public synchronized void release(UUID id, String closeReason) {

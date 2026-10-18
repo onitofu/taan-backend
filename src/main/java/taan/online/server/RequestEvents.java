@@ -11,6 +11,9 @@ import taan.online.character.protocol.packet.PqSelectCharacter;
 import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
+import taan.online.match.protocol.packet.PcGamePlayGiveUp;
+import taan.online.match.protocol.packet.PqResultRandSelect;
+import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.protocol.connection.packet.PqKeepAlive;
@@ -68,6 +71,8 @@ final class RequestEvents {
             case PqGameSessionChallengeChief.TYPE_ID, PqGameSessionCancelChief.TYPE_ID ->
                 ProtocolEvent.ROOM_CAPTAIN_CANDIDATE;
             case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
+            case PcGamePlayGiveUp.TYPE_ID, PqResultRandSelect.TYPE_ID, PqResultSelectCard.TYPE_ID ->
+                ProtocolEvent.MATCH_REQUEST;
             case PqKeepAlive.TYPE_ID -> ProtocolEvent.KEEP_ALIVE;
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         };

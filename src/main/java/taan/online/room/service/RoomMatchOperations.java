@@ -1,10 +1,16 @@
 package taan.online.room.service;
 
+import static taan.online.logging.LogField.roomId;
+import static taan.online.logging.LogField.matchId;
+import static taan.online.logging.LogField.roomGeneration;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import taan.online.channel.service.ChannelRegistry;
+import taan.online.logging.EventLogger;
+import taan.online.room.logging.RoomLogEvent;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.InventoryMoveContext;
 import taan.online.room.model.CaptainSelectionPhase;
@@ -13,6 +19,11 @@ import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomMatchContext;
+import taan.online.room.service.model.RoomMatchEndReason;
+import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMatchTerminationResult;
+import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomMatchDraft;
 import taan.online.room.service.model.RoomMatchParticipant;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
@@ -21,6 +32,8 @@ import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomRegistryPhase;
 
 final class RoomMatchOperations {
+    private static final EventLogger LOG = EventLogger.forClass(RoomMatchOperations.class);
+
     private final ChannelRegistry channels;
     private final Map<RoomId, Room> rooms;
     private final Map<UUID, RoomSubscription> memberships;
@@ -153,13 +166,98 @@ final class RoomMatchOperations {
     }
 
     RoomMatchReservationResult cancel(Room room, String reason) {
+        var ended = finish(room, RoomMatchEndReason.PREPARATION_FAILED, null, null);
+        return ended.termination() == null ? stale()
+            : result(RoomMatchReservationOutcome.ROLLED_BACK, ended.termination().token(), reason);
+    }
+
+    RoomMatchContext context(UUID id, RoomRegistryPhase phase) {
+        var subscription = memberships.get(id);
+
+        if (subscription == null) {
+            return null;
+        }
+
+        var member = subscription.membership();
+        var room = rooms.get(member.roomId());
+        var participant = RoomControlChecks.participant(rooms, subscription);
+
+        if (RoomControlChecks.rejection(phase, member, channels.membership(id).orElse(null), participant) != null) {
+            return null;
+        }
+
+        var token = room.matchId() != null ? token(room) : lifecycle == null ? null : lifecycle.resultToken(member);
+        return token == null ? null : new RoomMatchContext(member, token);
+    }
+
+    boolean previewStarted(RoomMatchToken token) {
+        var room = current(token);
+        return room != null && contextRejection(room) == null && lifecycle.previewStarted(token);
+    }
+
+    RoomMatchTerminationResult terminate(
+        RoomMatchContext expected,
+        RoomMatchEndReason reason,
+        RoomRegistryPhase phase
+    ) {
+        var actual = context(expected.membership().sessionId(), phase);
+        return expected.equals(actual) ? terminate(expected.token(), reason, expected.membership().sessionId())
+            : RoomMatchTerminationResult.ignored();
+    }
+
+    RoomMatchTerminationResult terminate(RoomMatchToken token, RoomMatchEndReason reason, UUID requester) {
+        var room = current(token);
+        return room == null ? RoomMatchTerminationResult.ignored() : finish(room, reason, null, requester);
+    }
+
+    boolean leave(Room room, UUID id) {
+        var ended = finish(room, RoomMatchEndReason.ROOM_LEAVE, id, null);
+        return ended.termination() != null && ended.termination().mode() != RoomMatchTerminationMode.ROLLBACK;
+    }
+
+    void departed(Room room, UUID id, String reason) {
+        finish(
+            room,
+            reason.equals("SERVER_STOPPING") ? RoomMatchEndReason.SERVER_STOPPING
+                : RoomMatchEndReason.DISCONNECTED,
+            id,
+            null
+        );
+    }
+
+    void forget(RoomMembership expected) {
+        if (lifecycle != null) {
+            lifecycle.release(expected);
+        }
+    }
+
+    private RoomMatchTerminationResult finish(Room room, RoomMatchEndReason reason, UUID departing, UUID requester) {
         if (room.matchId() == null) {
-            return stale();
+            return RoomMatchTerminationResult.ignored();
         }
 
         var token = token(room);
         var previous = room.slots();
-        lifecycle.cancel(token, reason);
+        var terminal = lifecycle.prepareTermination(token, reason, departing);
+
+        if (terminal == null) {
+            lifecycle.cancel(token, "MATCH_CONTEXT_LOST");
+            room.rollbackMatch(token.matchId());
+            changed.accept(room);
+            LOG.failure(
+                RoomLogEvent.OPERATION_FAILED,
+                new IllegalStateException("Match runtime missing"),
+                roomId(room.id().value()),
+                roomGeneration(room.generation()),
+                matchId(token.matchId())
+            );
+            List.copyOf(memberships.values()).stream()
+                .filter(value -> value.membership().roomId().equals(room.id()))
+                .forEach(value -> value.output().close("MATCH_CONTEXT_LOST"));
+            return RoomMatchTerminationResult.ignored();
+        }
+
+        var delivery = lifecycle.dispatchTermination(terminal, requester);
         room.rollbackMatch(token.matchId());
         changed.accept(room);
 
@@ -175,7 +273,7 @@ final class RoomMatchOperations {
             }
         }
 
-        return result(RoomMatchReservationOutcome.ROLLED_BACK, token, reason);
+        return new RoomMatchTerminationResult(terminal, delivery);
     }
 
     private Room current(RoomMatchToken token) {
