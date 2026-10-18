@@ -48,6 +48,7 @@ import taan.online.logging.LogContext;
 import taan.online.logging.LogEvent;
 import taan.online.logging.WarningEvent;
 import taan.online.logging.WarningLogLimiter;
+import taan.online.match.logging.MatchLogEvent;
 import taan.online.network.ConnectionId;
 import taan.online.network.FrameAssemblyTimeoutEvent;
 import taan.online.protocol.MalformedPacketException;
@@ -73,6 +74,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private final UserLoginPacketHandler login;
     private final ConnectionRequestDispatcher requests;
     private final RoomRequestDispatcher rooms;
+    private final MatchRequestDispatcher matches;
     private final LobbyRequestDispatcher lobby;
     private final int outputBatches;
     private final int outputBytes;
@@ -107,12 +109,14 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         LobbyRequestDispatcher lobby,
         InventoryRequestDispatcher inventories,
         RoomRequestDispatcher rooms,
+        MatchRequestDispatcher matches,
         int outputBatches,
         int outputBytes,
         int maxFrame
     ) {
         this.executor = executor;
         this.rooms = rooms;
+        this.matches = matches;
         accounts = new AccountRequestDispatcher(check, create, login, clock);
         this.lobby = lobby;
         this.outputBatches = outputBatches;
@@ -129,7 +133,8 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             selected,
             lobby,
             inventories,
-            rooms
+            rooms,
+            matches
         );
     }
 
@@ -147,6 +152,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             reason -> close(context, reason)
         );
         sessionId = login.open(id.value());
+        matches.open(sessionId, output);
         context.channel().closeFuture().addListener(ignored -> cleanup());
         activity(context);
 
@@ -172,7 +178,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
             return;
         }
 
-        pending.addLast(new PendingRequest(UUID.randomUUID(), type, root));
+        pending.addLast(new PendingRequest(UUID.randomUUID(), type, root, matches.capture(sessionId, type)));
         next(context);
     }
 
@@ -233,6 +239,12 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 onEventLoop(context, () -> exceptionCaught(context, failure));
                 return;
             } catch (RuntimeException failure) {
+                if (MatchRequestDispatcher.accepts(request.type())) {
+                    LOG.failure(MatchLogEvent.OPERATION_FAILED, failure);
+                    onEventLoop(context, () -> close(context, "MATCH_OPERATION_FAILED"));
+                    return;
+                }
+
                 if (RoomRequestDispatcher.accepts(request.type())) {
                     LOG.failure(
                         RoomRequestDispatcher.failureEvent(request.type()),
@@ -452,6 +464,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private void releaseMemberships(String reason) {
         login.close(reason);
         rooms.close(sessionId, reason);
+        matches.close(sessionId);
         lobby.close(sessionId, reason);
     }
 
@@ -462,7 +475,8 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         if (task != null && task.cancel()) {
             executor.remove(task);
             int type = pending.peekFirst().type();
-            LogEvent event = RoomRequestDispatcher.accepts(type) ? RoomLogEvent.REQUEST_CANCELLED : switch (type) {
+            LogEvent event = MatchRequestDispatcher.accepts(type) ? MatchLogEvent.REQUEST_CANCELLED
+                : RoomRequestDispatcher.accepts(type) ? RoomLogEvent.REQUEST_CANCELLED : switch (type) {
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,

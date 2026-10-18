@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
 import taan.online.RoomScenario;
+import taan.online.MatchFixtures;
+import taan.online.match.service.MatchRegistry;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -177,6 +179,8 @@ class ConnectionWorkCancellationTest {
         var characters = new TestCharacterRepository();
         var access = new SessionCharacterAccess(sessions);
         var channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
+        var matches = new MatchRegistry(MatchFixtures.definitions());
+        var rooms = new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler(), matches);
         var handler = new ConnectionContext(
             workers,
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
@@ -214,8 +218,9 @@ class ConnectionWorkCancellationTest {
                 sessions,
                 channels,
                 characters,
-                new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler())
+                rooms
             ),
+            MatchFixtures.dispatcher(rooms, matches),
             64,
             1048576,
             16384

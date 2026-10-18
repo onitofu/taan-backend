@@ -11,6 +11,8 @@ import taan.online.CharacterFixtures;
 import taan.online.RoomEntryFixtures;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
+import taan.online.MatchFixtures;
+import taan.online.match.service.MatchRegistry;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
 import taan.online.TestRoomSelectionScheduler;
@@ -27,18 +29,24 @@ final class RoomConnectionWorld implements AutoCloseable {
     final SessionRegistry sessions = new SessionRegistry();
     final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
     final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
+    final MatchRegistry matches = new MatchRegistry(MatchFixtures.definitions());
     final RoomRegistry rooms = new RoomRegistry(
         channels,
         new RoomIdPool(),
         RoomScenario.maps(),
         timers,
         timers::nanoTime,
-        new Random(1)
+        new Random(1),
+        matches
     );
     private final List<ConnectionContextTestHarness> clients = new ArrayList<>();
 
     ConnectionContextTestHarness client(long accountId) {
-        var client = new ConnectionContextTestHarness(16, sessions, channels, rooms, accountId);
+        return client(accountId, null);
+    }
+
+    ConnectionContextTestHarness client(long accountId, MatchRequestDispatcher matchOverride) {
+        var client = new ConnectionContextTestHarness(16, sessions, channels, rooms, accountId, matches, matchOverride);
         clients.add(client);
         request(client, TestFixtures.fixture("first-packet-minimal.root.hex"));
         read(client);

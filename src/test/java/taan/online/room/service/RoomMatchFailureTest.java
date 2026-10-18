@@ -2,6 +2,7 @@ package taan.online.room.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,6 +29,7 @@ class RoomMatchFailureTest {
         ) {
             var owner = populate(scenario, rooms);
 
+            assertNull(rooms.matchContext(owner));
             assertEquals("MATCH_UNAVAILABLE", rooms.reserveMatch(owner).reason());
             assertEquals(RoomState.WAITING, rooms.current(owner).orElseThrow().state());
         }

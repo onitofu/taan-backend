@@ -279,6 +279,8 @@ class ArchitectureTest {
     static final ArchRule SERVER_DEPENDENCIES = noClasses().that().resideInAPackage("taan.online.server..")
         .should().dependOnClassesThat().resideInAnyPackage(
             "taan.online.persistence..",
+            "taan.online.match.model..",
+            "taan.online.match.service..",
             "taan.online.bootstrap..",
             "taan.online.account.model..",
             "taan.online.account.service..",

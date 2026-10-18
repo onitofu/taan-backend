@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
+import taan.online.MatchFixtures;
+import taan.online.match.service.MatchRegistry;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
@@ -93,7 +95,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         SelectedCharacterRequestDispatcher selectedOverride,
         LobbyRequestDispatcher lobbyOverride
     ) {
-        this(capacity, sessions, activate, clock, selectedOverride, lobbyOverride, null, null, 1);
+        this(capacity, sessions, activate, clock, selectedOverride, lobbyOverride, null, null, 1, null, null);
     }
 
     ConnectionContextTestHarness(
@@ -103,7 +105,42 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         RoomRegistry rooms,
         long accountId
     ) {
-        this(capacity, sessions, true, Clock.systemUTC(), null, null, channels, rooms, accountId);
+        this(capacity, sessions, true, Clock.systemUTC(), null, null, channels, rooms, accountId, null, null);
+    }
+
+    ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        ChannelRegistry channels,
+        RoomRegistry rooms,
+        long accountId,
+        MatchRegistry matches
+    ) {
+        this(capacity, sessions, true, Clock.systemUTC(), null, null, channels, rooms, accountId, matches, null);
+    }
+
+    ConnectionContextTestHarness(
+        int capacity,
+        SessionRegistry sessions,
+        ChannelRegistry channels,
+        RoomRegistry rooms,
+        long accountId,
+        MatchRegistry matches,
+        MatchRequestDispatcher matchOverride
+    ) {
+        this(
+            capacity,
+            sessions,
+            true,
+            Clock.systemUTC(),
+            null,
+            null,
+            channels,
+            rooms,
+            accountId,
+            matches,
+            matchOverride
+        );
     }
 
     private ConnectionContextTestHarness(
@@ -115,7 +152,9 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         LobbyRequestDispatcher lobbyOverride,
         ChannelRegistry sharedChannels,
         RoomRegistry sharedRooms,
-        long accountId
+        long accountId,
+        MatchRegistry sharedMatches,
+        MatchRequestDispatcher matchOverride
     ) {
         repository.accountId(accountId);
         ownsRooms = sharedRooms == null;
@@ -137,10 +176,12 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         channels = sharedChannels == null ? SelectionFixtures.registry(
             new SessionChannelAccess(sessions)
         ) : sharedChannels;
+        var matches = sharedMatches == null ? new MatchRegistry(MatchFixtures.definitions()) : sharedMatches;
         rooms = sharedRooms == null ? new RoomRegistry(
             channels,
             RoomScenario.maps(),
-            new TestRoomSelectionScheduler()
+            new TestRoomSelectionScheduler(),
+            matches
         ) : sharedRooms;
         handler = new ConnectionContext(
             workers,
@@ -172,6 +213,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             lobbyOverride == null ? SelectionFixtures.lobby(sessions, channels, rooms) : lobbyOverride,
             InventoryFixtures.dispatcher(sessions, inventories, new RoomInventoryMoveContextAccess(rooms)),
             RoomScenario.dispatcher(sessions, channels, characters, rooms),
+            matchOverride == null ? MatchFixtures.dispatcher(rooms, matches) : matchOverride,
             64,
             1048576,
             16384

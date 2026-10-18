@@ -57,7 +57,36 @@ class MatchArchitectureTest {
             "java..",
             "taan.online.match.service.model..",
             "taan.online.match.model..",
-            "taan.online.room.model.."
+            "taan.online.room.model..",
+            "taan.online.room.service.model.."
+        );
+
+    @ArchTest
+    static final ArchRule CONTROLLERS = classes().that().resideInAPackage("taan.online.match.controller..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.match.controller..",
+            "taan.online.match.service..",
+            "taan.online.match.protocol..",
+            "taan.online.match.view..",
+            "taan.online.room.service..",
+            "taan.online.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule VIEWS = classes().that().resideInAPackage("taan.online.match.view..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.match.view..",
+            "taan.online.match.service..",
+            "taan.online.match.protocol..",
+            "taan.online.protocol.."
+        );
+
+    @ArchTest
+    static final ArchRule TERMINAL_OWNER = classes().that().haveSimpleName("MatchTerminationDelivery")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.match\\.service\\.(MatchRegistry|MatchTerminationDelivery)"
         );
 
     @ArchTest

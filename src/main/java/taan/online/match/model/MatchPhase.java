@@ -1,5 +1,5 @@
 package taan.online.match.model;
 
 public enum MatchPhase {
-    RESERVED, LOADING, CANCELLED
+    RESERVED, LOADING, PREVIEW, TERMINATING, CANCELLED
 }

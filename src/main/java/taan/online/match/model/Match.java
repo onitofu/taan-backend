@@ -138,6 +138,24 @@ public final class Match {
         return true;
     }
 
+    public boolean previewStarted() {
+        if (phase != MatchPhase.LOADING) {
+            return false;
+        }
+
+        phase = MatchPhase.PREVIEW;
+        return true;
+    }
+
+    public boolean beginTermination() {
+        if (phase == MatchPhase.CANCELLED || phase == MatchPhase.TERMINATING) {
+            return false;
+        }
+
+        phase = MatchPhase.TERMINATING;
+        return true;
+    }
+
     public boolean cancel() {
         if (phase == MatchPhase.CANCELLED) {
             return false;

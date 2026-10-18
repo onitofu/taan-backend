@@ -1,6 +1,7 @@
 package taan.online.logging;
 
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.slf4j.MDC;
 
 public final class LogContext implements AutoCloseable {
@@ -33,6 +34,28 @@ public final class LogContext implements AutoCloseable {
 
             try {
                 task.run();
+            } finally {
+                MDC.clear();
+
+                if (previous != null) {
+                    MDC.setContextMap(previous);
+                }
+            }
+        };
+    }
+
+    public static <T, U, R> BiFunction<T, U, R> propagate(BiFunction<T, U, R> task) {
+        Map<String, String> captured = MDC.getCopyOfContextMap();
+        return (first, second) -> {
+            Map<String, String> previous = MDC.getCopyOfContextMap();
+            MDC.clear();
+
+            if (captured != null) {
+                MDC.setContextMap(captured);
+            }
+
+            try {
+                return task.apply(first, second);
             } finally {
                 MDC.clear();
 
