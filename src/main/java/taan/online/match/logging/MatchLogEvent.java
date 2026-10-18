@@ -4,6 +4,10 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    LOADING_ACK("match.loading.ack", Level.DEBUG, "Match loading acknowledgement accepted"),
+    POSITION_CONFIRMED("match.position.confirmed", Level.DEBUG, "Match position confirmed"),
+    STARTED("match.started", Level.INFO, "Match preview started"),
+    BOOTSTRAP_DELIVERY_FAILED("match.bootstrap.delivery.failed", Level.ERROR, "Match bootstrap delivery failed"),
     RESERVED("match.reserved", Level.DEBUG, "Match reserved"),
     LOADING("match.loading", Level.DEBUG, "Match loading committed"),
     RESERVATION_REJECTED("match.reservation.rejected", Level.DEBUG, "Match reservation rejected"),

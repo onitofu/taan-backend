@@ -3,6 +3,7 @@ package taan.online;
 import java.net.ServerSocket;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -44,9 +45,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public void reset() throws SQLException {
-        execute(
-            "TRUNCATE inventory_items, inventories, characters, accounts RESTART IDENTITY"
-        );
+        execute("TRUNCATE inventory_items, inventories, characters, accounts RESTART IDENTITY");
     }
 
     public Account account(String login, AccountGender gender) {
@@ -118,6 +117,10 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public ApplicationConfig configuration() throws Exception {
+        return configuration(Map.of());
+    }
+
+    public ApplicationConfig configuration(Map<String, String> overrides) throws Exception {
         var environment = TestFixtures.environment();
         environment.put("DB_HOSTNAME", postgres.getHost());
         environment.put("DB_PORT", postgres.getMappedPort(5432).toString());
@@ -131,6 +134,7 @@ public final class CharacterTestDatabase implements AutoCloseable {
             environment.put("BACKEND_PORT", Integer.toString(available.getLocalPort()));
         }
 
+        environment.putAll(overrides);
         return ApplicationConfig.fromEnvironment(environment);
     }
 

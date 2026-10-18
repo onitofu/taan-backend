@@ -30,7 +30,10 @@ public record ApplicationConfig(
     int logWarnIntervalSeconds,
     int outputBatches,
     int outputBytes,
-    int playableTimeSeconds
+    int playableTimeSeconds,
+    int matchLoadingTimeoutSeconds,
+    int matchPreviewTimeoutSeconds,
+    int matchReportsPerSecond
 ) {
     public static ApplicationConfig fromEnvironment(Map<String, String> environment) {
         String level = required(environment, "LOG_LEVEL");
@@ -66,7 +69,10 @@ public record ApplicationConfig(
             positive(environment, "LOG_WARN_INTERVAL_SECONDS"),
             positive(environment, "BACKEND_MAX_PENDING_OUTPUT_BATCHES"),
             positive(environment, "BACKEND_MAX_PENDING_OUTPUT_BYTES"),
-            positive(environment, "BACKEND_PLAYABLE_TIME_BOOTSTRAP_SECONDS")
+            positive(environment, "BACKEND_PLAYABLE_TIME_BOOTSTRAP_SECONDS"),
+            positive(environment, "BACKEND_MATCH_LOADING_TIMEOUT_SECONDS"),
+            positive(environment, "BACKEND_MATCH_PREVIEW_TIMEOUT_SECONDS"),
+            positive(environment, "BACKEND_MATCH_REPORTS_PER_SECOND")
         );
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {

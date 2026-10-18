@@ -12,6 +12,11 @@ import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
+import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
+import taan.online.match.protocol.packet.PcGamePlaySetPos;
+import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.protocol.MalformedPacketException;
@@ -71,7 +76,11 @@ final class RequestEvents {
             case PqGameSessionChallengeChief.TYPE_ID, PqGameSessionCancelChief.TYPE_ID ->
                 ProtocolEvent.ROOM_CAPTAIN_CANDIDATE;
             case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
-            case PcGamePlayGiveUp.TYPE_ID, PqResultRandSelect.TYPE_ID, PqResultSelectCard.TYPE_ID ->
+            case PcGamePlayLoadingDone.TYPE_ID, PcGamePlaySetPos.TYPE_ID, PqGameSessionReportEnemies.TYPE_ID,
+                PcGamePlayEndScenario.TYPE_ID, UnsupportedGameplayPacket.MOVE_TYPE_ID,
+                UnsupportedGameplayPacket.PASS_TURN_TYPE_ID, UnsupportedGameplayPacket.USE_ITEM_TYPE_ID,
+                UnsupportedGameplayPacket.SCENARIO_TYPE_ID,
+                PcGamePlayGiveUp.TYPE_ID, PqResultRandSelect.TYPE_ID, PqResultSelectCard.TYPE_ID ->
                 ProtocolEvent.MATCH_REQUEST;
             case PqKeepAlive.TYPE_ID -> ProtocolEvent.KEEP_ALIVE;
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");

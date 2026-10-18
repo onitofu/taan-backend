@@ -16,7 +16,6 @@ import taan.online.TestFixtures;
 import taan.online.match.model.MapSpawnDefinition;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchMapDefinition;
-import taan.online.match.service.MatchRegistry;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomState;
 
@@ -57,7 +56,9 @@ class RoomMatchFailureTest {
                 )
             ).toList()
         );
-        var runtime = new MatchRegistry(new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons()));
+        var runtime = MatchFixtures.registry(
+            new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons())
+        );
 
         try (
             var scenario = new RoomScenario();

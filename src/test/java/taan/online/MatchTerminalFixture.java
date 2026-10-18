@@ -4,6 +4,9 @@ import java.util.List;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.ConsumeMatchResultAction;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.TestMatchOutput;
 import taan.online.room.model.RoomMode;
@@ -27,10 +30,13 @@ public final class MatchTerminalFixture implements AutoCloseable {
         var rooms = room.scenario.rooms;
         var matches = room.scenario.matches;
         handler = new MatchPacketHandler(
-            rooms,
+            rooms.matchAccess(),
             matches,
-            new TerminateMatchAction(rooms),
-            new ConsumeMatchResultAction(rooms, matches)
+            new TerminateMatchAction(rooms.matchAccess()),
+            new ConsumeMatchResultAction(rooms.matchAccess(), matches),
+            new ConfirmMatchLoadingAction(rooms.matchAccess()),
+            new ConfirmMatchPositionAction(rooms.matchAccess()),
+            new ReportMatchEnemiesAction(rooms.matchAccess())
         );
 
         if (mode.requiresCaptainSelection()) {
@@ -44,7 +50,7 @@ public final class MatchTerminalFixture implements AutoCloseable {
         }
 
         if (phase == MatchPhase.PREVIEW) {
-            rooms.previewStarted(token);
+            MatchFixtures.loaded(matches, token);
         }
     }
 

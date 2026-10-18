@@ -1,6 +1,7 @@
 package taan.online.server;
 
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import taan.online.room.service.RoomMatchAccess;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
@@ -20,8 +21,18 @@ final class FailingRoomMatchAccess implements RoomMatchAccess {
     }
 
     @Override
-    public boolean previewStarted(RoomMatchToken token) {
-        throw new UnsupportedOperationException();
+    public CompletionStage<Void> loadingDone(RoomMatchContext context, int slot, int x, int y) {
+        return delegate.loadingDone(context, slot, x, y);
+    }
+
+    @Override
+    public boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
+        return delegate.confirmPosition(context, slot, x, y, facing);
+    }
+
+    @Override
+    public boolean reportEnemies(RoomMatchContext context) {
+        return delegate.reportEnemies(context);
     }
 
     @Override

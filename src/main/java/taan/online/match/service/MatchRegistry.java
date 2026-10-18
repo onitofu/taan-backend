@@ -9,28 +9,29 @@ import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.roomMode;
 import static taan.online.logging.LogField.sessionId;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.LongSupplier;
+import java.util.random.RandomGenerator;
+import taan.online.logging.WarningLogLimiter;
+import taan.online.logging.WarningEvent;
+import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.room.service.RoomMatchCallbacks;
+import taan.online.room.service.model.RoomMatchProgressToken;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.Objects;
 import java.util.Optional;
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
-import taan.online.match.model.MapSpawnDefinition;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
-import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchResultReceipt;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.service.RoomMatchLifecycle;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchDraft;
@@ -38,7 +39,6 @@ import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
 import taan.online.room.service.model.RoomMembership;
-import taan.online.room.service.model.RoomMatchParticipant;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchReservationResult;
 import taan.online.room.service.model.RoomMatchToken;
@@ -47,13 +47,32 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     private static final EventLogger LOG = EventLogger.forClass(MatchRegistry.class);
 
     private final MatchDefinitions definitions;
-    private final Map<MatchId, Match> matches = new HashMap<>();
+    private final MatchPreparation preparation;
+    private final MatchBootstrapSettings settings;
+    private final MatchScheduler scheduler;
+    private final LongSupplier clock;
+    private final RandomGenerator random;
+    private final WarningLogLimiter warnings;
+    private final Map<MatchId, MatchRuntime> matches = new HashMap<>();
     private final Map<UUID, MatchSubscription> subscriptions = new HashMap<>();
     private final Map<UUID, MatchResultReceipt> receipts = new HashMap<>();
     private final Map<RoomMatchToken, MatchTerminationDelivery> terminations = new HashMap<>();
 
-    public MatchRegistry(MatchDefinitions definitions) {
+    public MatchRegistry(
+        MatchDefinitions definitions,
+        MatchBootstrapSettings settings,
+        MatchScheduler scheduler,
+        LongSupplier clock,
+        RandomGenerator random,
+        WarningLogLimiter warnings
+    ) {
         this.definitions = Objects.requireNonNull(definitions);
+        preparation = new MatchPreparation(definitions);
+        this.settings = settings;
+        this.scheduler = scheduler;
+        this.clock = clock;
+        this.random = random;
+        this.warnings = warnings;
     }
 
     @Override
@@ -65,7 +84,10 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             return result(RoomMatchReservationOutcome.UNCHANGED, token, "ALREADY_RESERVED");
         }
 
-        String rejection = rejection(draft);
+        String rejection = preparation.rejection(
+            draft,
+            matches.values().stream().map(value -> MatchSnapshot.from(value.match)).toList()
+        );
 
         if (rejection != null) {
             log(MatchLogEvent.RESERVATION_REJECTED, draft, rejection);
@@ -73,7 +95,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         }
 
         try {
-            var participants = participants(draft);
+            var participants = preparation.participants(draft);
             var match = new Match(
                 new MatchId(token.matchId()),
                 token.roomId(),
@@ -84,9 +106,10 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 draft.settings().rule(),
                 definitions,
                 participants,
-                draft.captains()
+                draft.captains(),
+                participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex()
             );
-            matches.put(match.id(), match);
+            matches.put(match.id(), new MatchRuntime(match));
             participants.forEach(value -> receipts.remove(value.sessionId()));
         } catch (IllegalArgumentException failure) {
             log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
@@ -114,7 +137,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
         }
 
-        if (!match.commit()) {
+        if (!match.commit(clock.getAsLong(), settings.loadingTimeoutNanos())) {
             return result(RoomMatchReservationOutcome.UNCHANGED, token, "ALREADY_COMMITTED");
         }
 
@@ -135,6 +158,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         var previous = match.phase();
         match.cancel();
         matches.remove(match.id());
+        scheduler.cancel(match.id().value());
         log(
             previous == MatchPhase.RESERVED ? MatchLogEvent.RESERVATION_ROLLED_BACK : MatchLogEvent.CANCELLED,
             token,
@@ -153,9 +177,187 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     }
 
     @Override
-    public synchronized boolean previewStarted(RoomMatchToken token) {
+    public synchronized boolean activate(RoomMatchToken token, RoomMatchCallbacks callbacks) {
         var match = find(token);
-        return match != null && match.previewStarted();
+
+        if (match == null || match.phase() != MatchPhase.RESERVED) {
+            return false;
+        }
+
+        var runtime = matches.get(match.id());
+        var recipients = match.participants().stream().map(value -> subscriptions.get(value.sessionId()))
+            .filter(Objects::nonNull).toList();
+
+        if (recipients.size() != match.participants().size()) {
+            return false;
+        }
+
+        runtime.callbacks = Objects.requireNonNull(callbacks);
+        runtime.recipients = recipients;
+        return true;
+    }
+
+    @Override
+    public synchronized RoomMatchProgressToken progress(RoomMatchToken token) {
+        var match = find(token);
+        return match == null ? null : progress(match);
+    }
+
+    @Override
+    public CompletionStage<Void> publish(RoomMatchProgressToken expected, UUID requester) {
+        MatchBootstrapDelivery delivery;
+        MatchRuntime runtime;
+
+        synchronized (this) {
+            var match = currentProgress(expected);
+
+            if (match == null || match.phase() == MatchPhase.RESERVED) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            runtime = matches.get(match.id());
+
+            if (runtime.callbacks == null || runtime.publishedRevision == expected.revision()) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            runtime.publishedRevision = expected.revision();
+            delivery = new MatchBootstrapDelivery(
+                MatchSnapshot.from(match),
+                runtime.recipients,
+                runtime.callbacks,
+                scheduler,
+                expected,
+                warnings
+            );
+        }
+
+        try {
+            return delivery.dispatch(requester);
+        } catch (RuntimeException failure) {
+            synchronized (this) {
+                runtime.publishedRevision = -1;
+            }
+
+            throw failure;
+        }
+    }
+
+    @Override
+    public synchronized RoomMatchProgressToken loadingDone(RoomMatchContext context, int slot, int x, int y) {
+        var runtime = actor(context);
+
+        if (runtime == null) {
+            return null;
+        }
+
+        String outcome = runtime.match.loadingDone(context.membership().sessionId(), slot, x, y);
+
+        if (!outcome.equals("ACCEPTED") && !outcome.equals("UNCHANGED")) {
+            warnings.warn(WarningEvent.FRAME_REJECTED, outcome);
+            return null;
+        }
+
+        log(MatchLogEvent.LOADING_ACK, context.token(), outcome);
+        return runtime.match.beginSynchronization() ? progress(runtime.match) : null;
+    }
+
+    @Override
+    public synchronized RoomMatchProgressToken deliveryCompleted(RoomMatchProgressToken token, UUID recipient) {
+        var match = currentProgress(token);
+
+        if (match == null || !match.deliveryCompleted(recipient)) {
+            return null;
+        }
+
+        if (match.beginSynchronization()) {
+            return progress(match);
+        }
+
+        if (match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())) {
+            log(MatchLogEvent.STARTED, token.match(), "PREVIEW");
+            return progress(match);
+        }
+
+        return null;
+    }
+
+    @Override
+    public synchronized boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
+        var runtime = actor(context);
+        boolean valid = runtime != null
+            && runtime.match.confirmsPosition(context.membership().sessionId(), slot, x, y, facing);
+
+        if (valid) {
+            log(MatchLogEvent.POSITION_CONFIRMED, context.token(), "UNCHANGED");
+        } else {
+            warnings.warn(WarningEvent.FRAME_REJECTED, "INVALID_POSITION_CONFIRMATION");
+        }
+
+        return valid;
+    }
+
+    @Override
+    public synchronized boolean reportEnemies(RoomMatchContext context) {
+        var runtime = actor(context);
+
+        if (runtime == null || runtime.match.phase() == MatchPhase.RESERVED) {
+            return false;
+        }
+
+        long now = clock.getAsLong();
+        var budget = runtime.reportBudgets.computeIfAbsent(
+            context.membership().sessionId(),
+            ignored -> new MatchReportBudget(now)
+        );
+
+        if (!budget.accept(now, settings.reportsPerSecond())) {
+            warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_REPORT_RATE_EXCEEDED");
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public synchronized RoomMatchEndReason timeoutReason(RoomMatchProgressToken token) {
+        var match = currentProgress(token);
+
+        if (match == null || !match.expired(clock.getAsLong())) {
+            return null;
+        }
+
+        var reason = match.phase() == MatchPhase.PREVIEW
+            ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
+        warnings.warn(WarningEvent.LIMIT_EXCEEDED, reason.name());
+        return reason;
+    }
+
+    private MatchRuntime actor(RoomMatchContext context) {
+        var match = find(context.token());
+
+        if (match == null || match.channelId() != context.membership().channelId()) {
+            return null;
+        }
+
+        boolean admitted = match.participants().stream().anyMatch(
+            value ->
+                value.sessionId().equals(context.membership().sessionId())
+                    && value.admissionId().equals(context.membership().admissionId())
+        );
+        return admitted ? matches.get(match.id()) : null;
+    }
+
+    private Match currentProgress(RoomMatchProgressToken token) {
+        var match = find(token.match());
+        return match != null && match.phaseRevision() == token.revision() ? match : null;
+    }
+
+    private static RoomMatchProgressToken progress(Match match) {
+        return new RoomMatchProgressToken(
+            new RoomMatchToken(match.roomId(), match.roomGeneration(), match.id().value()),
+            match.phaseRevision()
+        );
     }
 
     @Override
@@ -172,7 +374,12 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         }
 
         var previous = match.phase();
-        var mode = mode(previous, closeReason);
+        var runtime = matches.get(match.id());
+        var mode = MatchTerminationDelivery.mode(
+            previous,
+            closeReason,
+            previous == MatchPhase.LOADING && runtime.callbacks != null && runtime.publishedRevision < 0
+        );
         match.beginTermination();
         var recipients = match.participants().stream()
             .filter(value -> mode != RoomMatchTerminationMode.RETURN_TO_ROOM || !value.sessionId().equals(departing))
@@ -197,6 +404,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         }
 
         matches.remove(match.id());
+        scheduler.cancel(match.id().value());
         match.cancel();
         log(MatchLogEvent.CANCELLED, token, closeReason.name());
         return terminal;
@@ -238,107 +446,16 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         }
     }
 
-    private static RoomMatchTerminationMode mode(MatchPhase phase, RoomMatchEndReason reason) {
-        if (reason == RoomMatchEndReason.SERVER_STOPPING) {
-            return RoomMatchTerminationMode.DISCONNECT;
-        }
-
-        if (phase == MatchPhase.RESERVED) {
-            return RoomMatchTerminationMode.ROLLBACK;
-        }
-
-        return phase == MatchPhase.PREVIEW ? RoomMatchTerminationMode.RETURN_TO_ROOM
-            : RoomMatchTerminationMode.DISCONNECT;
-    }
-
     public synchronized Optional<MatchSnapshot> current(RoomMatchToken token) {
         return Optional.ofNullable(find(token)).map(MatchSnapshot::from);
     }
 
     private Match find(RoomMatchToken token) {
-        var match = matches.get(new MatchId(token.matchId()));
+        var runtime = matches.get(new MatchId(token.matchId()));
+        var match = runtime == null ? null : runtime.match;
         return match != null && match.roomId().equals(token.roomId())
             && match.roomGeneration().equals(token.generation())
             ? match : null;
-    }
-
-    private String rejection(RoomMatchDraft draft) {
-        if (draft.settings().mapId() != definitions.map().mapId()) {
-            return "UNSUPPORTED_MAP";
-        }
-
-        if (matches.values().stream().anyMatch(
-            value -> value.roomId().equals(draft.token().roomId())
-                || value.id().value().equals(draft.token().matchId())
-        )) {
-            return "ALREADY_RESERVED";
-        }
-
-        for (var participant : draft.participants()) {
-            var membership = participant.membership();
-
-            if (!membership.roomId().equals(draft.token().roomId())
-                || !membership.generation().equals(draft.token().generation())
-                || membership.channelId() != draft.channelId()) {
-                return "ADMISSION_MISMATCH";
-            }
-
-            if (participant.slot().participant().weaponId() != 0) {
-                return "UNSUPPORTED_WEAPON";
-            }
-
-            if (matches.values().stream().flatMap(value -> value.participants().stream()).anyMatch(
-                value -> value.sessionId().equals(membership.sessionId())
-                    || value.character().accountId().equals(participant.slot().participant().character().accountId())
-                    || value.character().id().equals(participant.slot().participant().character().id())
-            )) {
-                return "PARTICIPANT_IN_MATCH";
-            }
-        }
-
-        return null;
-    }
-
-    private ArrayList<MatchParticipant> participants(RoomMatchDraft draft) {
-        var result = new ArrayList<MatchParticipant>();
-        var used = new HashSet<Integer>();
-        var weapon = definitions.weapons().getFirst();
-        var ordered = draft.participants().stream().sorted(Comparator.comparingInt(value -> value.slot().index()))
-            .toList();
-
-        for (RoomMatchParticipant participant : ordered) {
-            var slot = participant.slot();
-            int side = slot.team() == RoomTeam.BLUE ? 1 : 2;
-            var spawn = definitions.map().spawns().stream()
-                .filter(value -> value.valid() && !used.contains(value.index()))
-                .filter(value -> value.side() == side || value.side() == 0)
-                .min(
-                    Comparator.comparingInt(
-                        (MapSpawnDefinition value) -> value.side() == side
-                            ? 0 : 1
-                    ).thenComparingInt(MapSpawnDefinition::index)
-                )
-                .orElseThrow(() -> new IllegalStateException("Insufficient authorized map spawns"));
-            used.add(spawn.index());
-            result.add(
-                new MatchParticipant(
-                    participant.membership().sessionId(),
-                    participant.membership().admissionId(),
-                    slot.index(),
-                    slot.team(),
-                    slot.participant().character(),
-                    0,
-                    spawn,
-                    side - 1,
-                    weapon.resourceMaxHp(),
-                    weapon.resourceMaxHp(),
-                    0,
-                    weapon.maxEnergy()
-                )
-            );
-        }
-
-        return result;
     }
 
     private static RoomMatchReservationResult result(

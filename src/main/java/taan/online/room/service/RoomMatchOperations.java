@@ -7,6 +7,8 @@ import static taan.online.logging.LogField.roomGeneration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+import taan.online.room.service.model.RoomMatchProgressToken;
 import java.util.function.Consumer;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.logging.EventLogger;
@@ -190,9 +192,41 @@ final class RoomMatchOperations {
         return token == null ? null : new RoomMatchContext(member, token);
     }
 
-    boolean previewStarted(RoomMatchToken token) {
-        var room = current(token);
-        return room != null && contextRejection(room) == null && lifecycle.previewStarted(token);
+    boolean activeOwner(UUID id) {
+        var room = rooms.get(memberships.get(id).membership().roomId());
+        return room.state() == RoomState.MATCH && room.ownerSessionId().equals(id);
+    }
+
+    boolean activate(RoomMatchToken token, RoomMatchCallbacks callbacks) {
+        return lifecycle.activate(token, callbacks);
+    }
+
+    RoomMatchProgressToken progress(RoomMatchToken token) {
+        return current(token) == null ? null : lifecycle.progress(token);
+    }
+
+    CompletionStage<Void> publish(RoomMatchProgressToken token, UUID requester) {
+        return lifecycle.publish(token, requester);
+    }
+
+    RoomMatchProgressToken loadingDone(RoomMatchContext context, int slot, int x, int y) {
+        return lifecycle.loadingDone(context, slot, x, y);
+    }
+
+    RoomMatchProgressToken deliveryCompleted(RoomMatchProgressToken token, UUID recipient) {
+        return lifecycle.deliveryCompleted(token, recipient);
+    }
+
+    boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
+        return lifecycle.confirmPosition(context, slot, x, y, facing);
+    }
+
+    boolean reportEnemies(RoomMatchContext context) {
+        return lifecycle.reportEnemies(context);
+    }
+
+    RoomMatchEndReason timeoutReason(RoomMatchProgressToken token) {
+        return lifecycle.timeoutReason(token);
     }
 
     RoomMatchTerminationResult terminate(

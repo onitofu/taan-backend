@@ -139,13 +139,26 @@ final class RoomStartOperations {
             }
 
             captains = selection.result();
-            finish(room);
         }
 
         log(RoomLogEvent.START_CHECKED, room, id, null, "VALIDATED");
-        log(RoomLogEvent.START_DEFERRED, room, id, null, "MATCH_UNAVAILABLE");
+        return new RoomStartResult(
+            RoomStartOutcome.VALIDATED,
+            "VALIDATED",
+            captains,
+            CompletableFuture.completedFuture(null)
+        );
+    }
+
+    RoomStartResult unavailable(UUID id, String reason, CaptainSelectionResult captains) {
+        var room = room(id);
+        if (room.captainSelection() != null) {
+            finish(room);
+        }
+
+        log(RoomLogEvent.START_DEFERRED, room, id, null, reason);
         var delivery = broadcast(room, id, output -> output.notice(UNAVAILABLE));
-        return new RoomStartResult(RoomStartOutcome.MATCH_UNAVAILABLE, "MATCH_UNAVAILABLE", captains, delivery);
+        return new RoomStartResult(RoomStartOutcome.MATCH_UNAVAILABLE, reason, captains, delivery);
     }
 
     SetCaptainCandidateResult candidate(UUID id, long characterId, boolean requested, String rejection) {
@@ -181,8 +194,12 @@ final class RoomStartOperations {
                 subscription,
                 () -> subscription.output().captainCandidateChanged(characterId, current)
             );
-            return new SetCaptainCandidateResult(SetCaptainCandidateOutcome.REJECTED, "SELECTION_CLOSED", current,
-                delivery);
+            return new SetCaptainCandidateResult(
+                SetCaptainCandidateOutcome.REJECTED,
+                "SELECTION_CLOSED",
+                current,
+                delivery
+            );
         }
 
         boolean updated = selection.setCandidate(slot.index(), requested);

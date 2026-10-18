@@ -54,21 +54,26 @@ class MatchPacketHandlerTest {
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, before);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());
-            assertFalse(new ConsumeMatchResultAction(rooms, f.room.scenario.matches).execute(id, ended.roomContext()));
+            assertFalse(
+                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(
+                    id,
+                    ended.roomContext()
+                )
+            );
             assertNull(
-                new TerminateMatchAction(rooms).execute(
+                new TerminateMatchAction(rooms.matchAccess()).execute(
                     UUID.randomUUID(),
                     ended.roomContext()
                 ).termination()
             );
-            assertNull(new TerminateMatchAction(rooms).execute(id, null).termination());
+            assertNull(new TerminateMatchAction(rooms.matchAccess()).execute(id, null).termination());
             assertFalse(
-                new ConsumeMatchResultAction(rooms, f.room.scenario.matches).execute(
+                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(
                     UUID.randomUUID(),
                     ended.roomContext()
                 )
             );
-            assertFalse(new ConsumeMatchResultAction(rooms, f.room.scenario.matches).execute(id, null));
+            assertFalse(new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(id, null));
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, null);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());
@@ -99,12 +104,7 @@ class MatchPacketHandlerTest {
 
                 assertThrows(
                     MalformedPacketException.class,
-                    () -> f.handler.handle(
-                        f.room.owner,
-                        type,
-                        Arrays.copyOf(root, root.length + 1),
-                        null
-                    )
+                    () -> f.handler.handle(f.room.owner, type, Arrays.copyOf(root, root.length + 1), null)
                 );
             }
 

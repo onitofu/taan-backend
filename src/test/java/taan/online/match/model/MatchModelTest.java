@@ -52,22 +52,15 @@ class MatchModelTest {
                         values[3],
                         values[4],
                         values[5],
-                        values[6]
+                        values[6],
+                        p.roomSlotState()
                     )
                 );
             }
 
             assertThrows(
                 IllegalArgumentException.class,
-                () -> copy(
-                    p,
-                    p.sessionId(),
-                    p.admissionId(),
-                    2,
-                    RoomTeam.BLUE,
-                    p.character(),
-                    p.spawn()
-                )
+                () -> copy(p, p.sessionId(), p.admissionId(), 2, RoomTeam.BLUE, p.character(), p.spawn())
             );
             assertThrows(
                 IllegalArgumentException.class,
@@ -155,14 +148,7 @@ class MatchModelTest {
             )) {
                 assertThrows(
                     IllegalArgumentException.class,
-                    () -> match(
-                        List.of(a, invalid),
-                        f.owner,
-                        RoomMode.ITEM,
-                        RoomRule.BONUS,
-                        1,
-                        null
-                    )
+                    () -> match(List.of(a, invalid), f.owner, RoomMode.ITEM, RoomRule.BONUS, 1, null)
                 );
             }
 
@@ -172,14 +158,7 @@ class MatchModelTest {
 
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    List.of(neutralA, neutralB),
-                    f.owner,
-                    RoomMode.ITEM,
-                    RoomRule.BONUS,
-                    1,
-                    null
-                )
+                () -> match(List.of(neutralA, neutralB), f.owner, RoomMode.ITEM, RoomRule.BONUS, 1, null)
             );
         }
     }
@@ -193,52 +172,24 @@ class MatchModelTest {
             for (int channel : new int[]{0, 65536}) {
                 assertThrows(
                     IllegalArgumentException.class,
-                    () -> match(
-                        participants,
-                        f.owner,
-                        RoomMode.ITEM,
-                        RoomRule.BONUS,
-                        channel,
-                        null
-                    )
+                    () -> match(participants, f.owner, RoomMode.ITEM, RoomRule.BONUS, channel, null)
                 );
             }
 
             for (var roster : List.of(List.<MatchParticipant>of(), Collections.nCopies(9, participants.get(0)))) {
                 assertThrows(
                     IllegalArgumentException.class,
-                    () -> match(
-                        roster,
-                        f.owner,
-                        RoomMode.ITEM,
-                        RoomRule.BONUS,
-                        1,
-                        null
-                    )
+                    () -> match(roster, f.owner, RoomMode.ITEM, RoomRule.BONUS, 1, null)
                 );
             }
 
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    participants,
-                    f.owner,
-                    RoomMode.ITEM,
-                    RoomRule.BASIC,
-                    1,
-                    null
-                )
+                () -> match(participants, f.owner, RoomMode.ITEM, RoomRule.BASIC, 1, null)
             );
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    participants,
-                    UUID.randomUUID(),
-                    RoomMode.ITEM,
-                    RoomRule.BONUS,
-                    1,
-                    null
-                )
+                () -> match(participants, UUID.randomUUID(), RoomMode.ITEM, RoomRule.BONUS, 1, null)
             );
             var b = participants.get(1);
             var blueB = copy(
@@ -253,49 +204,21 @@ class MatchModelTest {
 
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    List.of(participants.get(0), blueB),
-                    f.owner,
-                    RoomMode.ITEM,
-                    RoomRule.BONUS,
-                    1,
-                    null
-                )
+                () -> match(List.of(participants.get(0), blueB), f.owner, RoomMode.ITEM, RoomRule.BONUS, 1, null)
             );
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    participants,
-                    f.owner,
-                    RoomMode.CAPTAIN_ITEM,
-                    RoomRule.BONUS,
-                    1,
-                    null
-                )
+                () -> match(participants, f.owner, RoomMode.CAPTAIN_ITEM, RoomRule.BONUS, 1, null)
             );
             assertThrows(
                 IllegalArgumentException.class,
-                () -> match(
-                    participants,
-                    f.owner,
-                    RoomMode.ITEM,
-                    RoomRule.BONUS,
-                    1,
-                    new CaptainSelectionResult(0, 2)
-                )
+                () -> match(participants, f.owner, RoomMode.ITEM, RoomRule.BONUS, 1, new CaptainSelectionResult(0, 2))
             );
 
             for (var captains : List.of(new CaptainSelectionResult(1, 2), new CaptainSelectionResult(0, 3))) {
                 assertThrows(
                     IllegalArgumentException.class,
-                    () -> match(
-                        participants,
-                        f.owner,
-                        RoomMode.CAPTAIN_ITEM,
-                        RoomRule.BONUS,
-                        1,
-                        captains
-                    )
+                    () -> match(participants, f.owner, RoomMode.CAPTAIN_ITEM, RoomRule.BONUS, 1, captains)
                 );
             }
 
@@ -312,11 +235,11 @@ class MatchModelTest {
 
             assertEquals(2, match.participants().size());
             assertThrows(UnsupportedOperationException.class, () -> match.participants().clear());
-            assertTrue(match.commit());
-            assertFalse(match.commit());
+            assertTrue(match.commit(0, 30_000_000_000L));
+            assertFalse(match.commit(0, 30_000_000_000L));
             assertTrue(match.cancel());
             assertFalse(match.cancel());
-            assertFalse(match.commit());
+            assertFalse(match.commit(0, 30_000_000_000L));
             assertEquals(MatchPhase.CANCELLED, match.phase());
         }
     }
@@ -339,7 +262,8 @@ class MatchModelTest {
             rule,
             MatchFixtures.definitions(),
             participants,
-            captains
+            captains,
+            participants.isEmpty() ? 0 : participants.getFirst().slotIndex()
         );
     }
 
@@ -364,7 +288,8 @@ class MatchModelTest {
             p.hp(),
             p.maxHp(),
             p.energy(),
-            p.maxEnergy()
+            p.maxEnergy(),
+            p.roomSlotState()
         );
     }
 }
