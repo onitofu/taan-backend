@@ -5,10 +5,10 @@ import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
-import static taan.online.logging.LogField.recipientSessionId;
 import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.slotIndex;
+import static taan.online.logging.LogField.team;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Supplier;
 import taan.online.channel.model.ChannelPresencePhase;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
@@ -33,6 +31,9 @@ import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
+import taan.online.room.model.RoomTeam;
+import taan.online.room.service.model.ChangeRoomTeamOutcome;
+import taan.online.room.service.model.ChangeRoomTeamResult;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.CreateRoomResult;
 import taan.online.room.service.model.EnterRoomOutcome;
@@ -112,10 +113,9 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return rejected("CHARACTER_CHANGED");
         }
 
-        var stale = memberships.values().stream().filter(
-            value -> participant(value).character().id()
-                .equals(owner.character().id())
-        ).toList();
+        var ownerCharacter = owner.character().id();
+        var stale = memberships.values().stream()
+            .filter(value -> participant(value).character().id().equals(ownerCharacter)).toList();
 
         for (var previous : stale) {
             release(previous.membership(), "STALE_SESSION");
@@ -131,7 +131,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         rooms.put(room.id(), room);
         var subscription = subscribe(room, owner, output);
         var result = RoomSnapshot.from(room);
-        var delivery = deliver(subscription, () -> output.initialize(result));
+        var delivery = RoomNotifications.deliver(subscription, () -> output.initialize(result));
         publish(room.channelId());
         channels.hideFromLobby(id);
         channels.roomChanged(room.channelId(), room.id().value());
@@ -185,8 +185,10 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         var subscription = subscribe(room, participant, output);
         var result = RoomSnapshot.from(room);
-        var delivery = deliver(subscription, () -> output.initialize(result));
-        notifyMembers(result, participant.sessionId(), occupied.orElseThrow().index(), false);
+        var delivery = RoomNotifications.deliver(subscription, () -> output.initialize(result));
+        var recipients = List.copyOf(memberships.values());
+        int index = occupied.orElseThrow().index();
+        RoomNotifications.update(recipients, result, participant.sessionId(), index, false);
         publish(room.channelId());
         channels.hideFromLobby(participant.sessionId());
         channels.roomChanged(room.channelId(), room.id().value());
@@ -233,28 +235,16 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     public synchronized SlotAvailabilityResult setSlotAvailability(UUID id, int index, RoomSlotState desiredState) {
-        if (phase == RoomRegistryPhase.CLOSED) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.IGNORED, "SERVER_STOPPING");
+        String rejection = controlRejection(id);
+
+        if (rejection != null) {
+            var outcome = inactive(rejection) ? SlotAvailabilityOutcome.IGNORED : SlotAvailabilityOutcome.REJECTED;
+            return new SlotAvailabilityResult(outcome, rejection);
         }
 
         var subscription = memberships.get(id);
-
-        if (subscription == null) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "NO_MEMBERSHIP");
-        }
-
         var member = subscription.membership();
         var room = rooms.get(member.roomId());
-        var context = channels.membership(id).orElse(null);
-
-        if (context == null) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.IGNORED, "SESSION_CLOSED");
-        }
-
-        if (context.channelId() != member.channelId() || context.phase() != ChannelPresencePhase.MEMBER
-            || !matches(context, participant(subscription))) {
-            return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "CONTEXT_CHANGED");
-        }
 
         if (!room.ownerSessionId().equals(id)) {
             return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "NOT_OWNER");
@@ -275,18 +265,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         var actor = participant(subscription);
         boolean changed = room.setSlotAvailability(index, desiredState);
         var outcome = changed ? SlotAvailabilityOutcome.CHANGED : SlotAvailabilityOutcome.UNCHANGED;
-        var recipients = memberships.values().stream()
-            .filter(value -> value.membership().roomId().equals(room.id()))
-            .filter(value -> changed || value == subscription).toList();
-        CompletionStage<Void> delivery = CompletableFuture.completedFuture(null);
-
-        for (var recipient : recipients) {
-            var sent = deliver(recipient, () -> recipient.output().slotAvailability(index, desiredState));
-
-            if (recipient == subscription) {
-                delivery = sent;
-            }
-        }
+        var recipients = List.copyOf(memberships.values());
+        var delivery = RoomNotifications.slotAvailability(recipients, member, index, desiredState, changed);
 
         LOG.log(
             desiredState == RoomSlotState.OPEN ? RoomLogEvent.SLOT_OPENED : RoomLogEvent.SLOT_CLOSED,
@@ -299,6 +279,42 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             outcome(outcome.name())
         );
         return new SlotAvailabilityResult(outcome, outcome.name(), delivery);
+    }
+
+    public synchronized ChangeRoomTeamResult changeTeam(UUID id, RoomTeam desiredTeam) {
+        String rejection = controlRejection(id);
+
+        if (rejection != null) {
+            var outcome = inactive(rejection) ? ChangeRoomTeamOutcome.IGNORED : ChangeRoomTeamOutcome.REJECTED;
+            return new ChangeRoomTeamResult(outcome, rejection);
+        }
+
+        var subscription = memberships.get(id);
+        var member = subscription.membership();
+        var room = rooms.get(member.roomId());
+
+        if (desiredTeam == null || room.state() != RoomState.WAITING) {
+            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "INVALID_TEAM_OR_PHASE");
+        }
+
+        var source = room.slots().stream().filter(slot -> slot.participant() != null)
+            .filter(slot -> slot.participant().sessionId().equals(id)).findFirst().orElseThrow();
+
+        if (source.team() == desiredTeam) {
+            LOG.log(RoomLogEvent.TEAM_UNCHANGED, sessionId(id), roomId(room.id().value()), team(desiredTeam.name()));
+            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.UNCHANGED, "ALREADY_ON_TEAM");
+        }
+
+        var changed = room.changeTeam(id, desiredTeam);
+
+        if (changed.isEmpty()) {
+            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "NO_OPEN_TEAM_SLOT");
+        }
+
+        var change = changed.orElseThrow();
+        var recipients = List.copyOf(memberships.values());
+        var delivery = RoomNotifications.teamChanged(recipients, member, change);
+        return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.CHANGED, "CHANGED", delivery);
     }
 
     public synchronized LeaveRoomResult leave(UUID id, int requestedRoomId, int requestedReason) {
@@ -369,6 +385,28 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         return subscription;
     }
 
+    private String controlRejection(UUID id) {
+        var subscription = memberships.get(id);
+
+        if (phase == RoomRegistryPhase.CLOSED || subscription == null) {
+            return phase == RoomRegistryPhase.CLOSED ? "SERVER_STOPPING" : "NO_MEMBERSHIP";
+        }
+
+        var context = channels.membership(id).orElse(null);
+
+        if (context == null) {
+            return "SESSION_CLOSED";
+        }
+
+        return context.channelId() != subscription.membership().channelId()
+            || context.phase() != ChannelPresencePhase.MEMBER || !matches(context, participant(subscription))
+            ? "CONTEXT_CHANGED" : null;
+    }
+
+    private boolean inactive(String rejection) {
+        return rejection.equals("SERVER_STOPPING") || rejection.equals("SESSION_CLOSED");
+    }
+
     private boolean current(ChannelMembershipSnapshot context, RoomParticipant participant) {
         return context.phase() == ChannelPresencePhase.LOBBY
             && channels.membership(participant.sessionId()).filter(context::equals).isPresent();
@@ -408,40 +446,13 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         var result = RoomSnapshot.from(room);
         boolean ownerChanged = !previous.ownerSessionId().equals(result.ownerSessionId());
-        notifyMembers(result, expected.sessionId(), removed.index(), ownerChanged);
+        var recipients = List.copyOf(memberships.values());
+        RoomNotifications.update(recipients, result, expected.sessionId(), removed.index(), ownerChanged);
         publish(room.channelId());
         channels.roomChanged(room.channelId(), room.id().value());
 
         if (ownerChanged) {
             log(RoomLogEvent.OWNER_CHANGED, result, result.owner(), closeReason);
-        }
-    }
-
-    private void notifyMembers(RoomSnapshot snapshot, UUID excluded, int changedSlot, boolean ownerChanged) {
-        var recipients = memberships.values().stream().filter(
-            value -> value.membership().roomId().equals(snapshot.id())
-        )
-            .filter(value -> !value.membership().sessionId().equals(excluded)).toList();
-
-        for (var recipient : recipients) {
-            deliver(recipient, () -> recipient.output().update(snapshot, List.of(changedSlot), ownerChanged));
-        }
-    }
-
-    private CompletionStage<Void> deliver(RoomSubscription recipient, Supplier<CompletionStage<Void>> sending) {
-        try {
-            return sending.get();
-        } catch (RuntimeException failure) {
-            var member = recipient.membership();
-            LOG.failure(
-                RoomLogEvent.NOTIFICATION_FAILED,
-                failure,
-                roomId(member.roomId().value()),
-                channelId(member.channelId()),
-                recipientSessionId(member.sessionId())
-            );
-            recipient.output().close("ROOM_NOTIFICATION_FAILED");
-            return CompletableFuture.failedFuture(failure);
         }
     }
 
@@ -473,9 +484,8 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
     }
 
     private void log(RoomLogEvent event, RoomSnapshot room, RoomParticipant actor, String closeReason) {
-        int slot = room.slots().stream().filter(
-            value -> actor.equals(value.participant())
-        ).findFirst().orElseThrow().index();
+        int slot = room.slots().stream().filter(value -> actor.equals(value.participant()))
+            .findFirst().orElseThrow().index();
         LOG.log(
             event,
             sessionId(actor.sessionId()),

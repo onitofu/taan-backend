@@ -1,6 +1,7 @@
 package taan.online.room.protocol.codec;
 
 import taan.online.protocol.BinaryReader;
+import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -9,6 +10,13 @@ import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestCodec {
+    public PqGameSessionChangeTeam changeTeam(byte[] root) {
+        var input = new BinaryReader(root, PqGameSessionChangeTeam.TYPE_ID);
+        var request = new PqGameSessionChangeTeam(input.unsignedByte());
+        input.finish();
+        return request;
+    }
+
     public PqGameSessionOpenCloseSlot slotAvailability(byte[] root) {
         var input = new BinaryReader(root, PqGameSessionOpenCloseSlot.TYPE_ID);
         var request = new PqGameSessionOpenCloseSlot(input.unsignedByte(), input.unsignedByte());

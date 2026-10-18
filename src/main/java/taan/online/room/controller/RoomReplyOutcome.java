@@ -1,6 +1,9 @@
 package taan.online.room.controller;
 
 public enum RoomReplyOutcome {
+    TEAM_CHANGED,
+    TEAM_UNCHANGED,
+    TEAM_REJECTED,
     SLOT_AVAILABILITY_UPDATED,
     SLOT_AVAILABILITY_REJECTED,
     CREATED,

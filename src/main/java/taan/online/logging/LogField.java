@@ -67,6 +67,14 @@ public final class LogField {
         return new LogField("recipientSessionId", value);
     }
 
+    public static LogField previousSlotIndex(int value) {
+        return new LogField("previousSlotIndex", value);
+    }
+
+    public static LogField team(String value) {
+        return new LogField("team", value);
+    }
+
     public static LogField slotIndex(int value) {
         return new LogField("slotIndex", value);
     }
