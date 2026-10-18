@@ -1,6 +1,26 @@
 {
   "fixtures": [
     {
+      "05-ChangeTeam.reply.frame.hex": "b832ddebb385bd008a4035dc7e6db345aaeb55ec6ac023f3aeb9a4f064d83ee2",
+      "original_file": "05-ChangeTeam.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "05-ChangeTeam.request.frame.hex": "7cba39874d4dae81041ccbfa2589b3423f53a42bb8232a9df65e15ca4eef3c68",
+      "original_file": "05-ChangeTeam.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "06-ChangeTeam.reply.frame.hex": "66fca6a02eedfbd9946899a0bb8ef4a6177e8d1057b1f6c68a841fdec964a015",
+      "original_file": "06-ChangeTeam.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "06-ChangeTeam.request.frame.hex": "a8888107e5d9551c63abc46faa5b2f2a672ab679dc9d9adf21974d97930f9faf",
+      "original_file": "06-ChangeTeam.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
       "PcGameSession_Init-two-players.frame.hex": "14d1c226f450a26c71a060b5574b383a1398d7784e8d6c723cf14b86cd2f6cc0",
       "original_file": "PcGameSession_Init-two-players.frame.bin",
       "origin": "SYNTHETIC"

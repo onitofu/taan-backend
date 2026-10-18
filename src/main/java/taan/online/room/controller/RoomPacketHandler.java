@@ -10,8 +10,10 @@ import taan.online.protocol.PacketOutput;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.protocol.connection.packet.PcNoticeMsg;
 import taan.online.room.model.RoomSlotState;
+import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.codec.RoomRequestCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -21,6 +23,7 @@ import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
+import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
@@ -28,6 +31,7 @@ import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
+import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.EnterRoomOutcome;
@@ -39,6 +43,7 @@ public final class RoomPacketHandler {
     private final CreateRoomAction create;
     private final EnterRoomAction enter;
     private final QuickJoinRoomAction quickJoin;
+    private final ChangeRoomTeamAction changeTeam;
     private final SetRoomSlotAvailabilityAction slotAvailability;
     private final LeaveRoomAction leave;
     private final RequestRoomStartAction start;
@@ -49,6 +54,7 @@ public final class RoomPacketHandler {
         CreateRoomAction create,
         EnterRoomAction enter,
         QuickJoinRoomAction quickJoin,
+        ChangeRoomTeamAction changeTeam,
         SetRoomSlotAvailabilityAction slotAvailability,
         LeaveRoomAction leave,
         RequestRoomStartAction start,
@@ -58,6 +64,7 @@ public final class RoomPacketHandler {
         this.create = create;
         this.enter = enter;
         this.quickJoin = quickJoin;
+        this.changeTeam = changeTeam;
         this.slotAvailability = slotAvailability;
         this.leave = leave;
         this.start = start;
@@ -70,6 +77,35 @@ public final class RoomPacketHandler {
         }
 
         var codec = new RoomRequestCodec();
+
+        if (type == PqGameSessionChangeTeam.TYPE_ID) {
+            var request = codec.changeTeam(root);
+            var team = switch (request.team()) {
+                case 1 -> RoomTeam.BLUE;
+                case 2 -> RoomTeam.RED;
+                default -> null;
+            };
+            var result = changeTeam.execute(id, team);
+
+            if (result.outcome() == ChangeRoomTeamOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
+                return ignored();
+            }
+
+            if (result.reason().equals("NO_OPEN_TEAM_SLOT")) {
+                var notice = new PcNoticeMsg("No open slots on the requested team.");
+                return new RoomReply(
+                    RoomReplyOutcome.TEAM_REJECTED,
+                    output.send(List.of(new NoticeMessageCodec().encode(notice)))
+                );
+            }
+
+            var outcome = switch (result.outcome()) {
+                case CHANGED -> RoomReplyOutcome.TEAM_CHANGED;
+                case UNCHANGED -> RoomReplyOutcome.TEAM_UNCHANGED;
+                default -> RoomReplyOutcome.TEAM_REJECTED;
+            };
+            return new RoomReply(outcome, result.delivery());
+        }
 
         if (type == PqGameSessionOpenCloseSlot.TYPE_ID) {
             var request = codec.slotAvailability(root);

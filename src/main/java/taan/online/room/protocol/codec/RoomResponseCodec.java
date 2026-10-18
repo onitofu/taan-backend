@@ -6,6 +6,7 @@ import taan.online.protocol.BinaryReader;
 import taan.online.protocol.BinaryWriter;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.protocol.packet.GameSlotInfo;
+import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionInit;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
@@ -16,6 +17,40 @@ import taan.online.room.protocol.packet.PrGameSessionLeave;
 import taan.online.room.protocol.packet.PrGameSessionQuickJoinFail;
 
 public final class RoomResponseCodec {
+    public byte[] encode(PcGameSessionChangeTeam response) {
+        validateTeamChange(response);
+        return new BinaryWriter().unsignedInt(PcGameSessionChangeTeam.TYPE_ID).unsignedInt(response.accountId())
+            .unsignedByte(response.team()).unsignedByte(response.oldSlot0()).unsignedByte(response.oldSlot1())
+            .unsignedByte(response.newSlot0()).unsignedByte(response.newSlot1()).toByteArray();
+    }
+
+    public PcGameSessionChangeTeam changeTeam(byte[] root) {
+        var input = new BinaryReader(root, PcGameSessionChangeTeam.TYPE_ID);
+        var response = new PcGameSessionChangeTeam(
+            input.unsignedInt(),
+            input.unsignedByte(),
+            input.unsignedByte(),
+            input.unsignedByte(),
+            input.unsignedByte(),
+            input.unsignedByte()
+        );
+        input.finish();
+        validateTeamChange(response);
+        return response;
+    }
+
+    private void validateTeamChange(PcGameSessionChangeTeam response) {
+        if (response.accountId() < 1 || response.accountId() > 0xffff_ffffL
+            || response.team() < 1 || response.team() > 2
+            || response.oldSlot0() < 0 || response.oldSlot0() > 7
+            || response.newSlot0() < 0 || response.newSlot0() > 7
+            || response.oldSlot1() != 255 || response.newSlot1() != 255
+            || ((response.newSlot0() & 2) == 0 ? 1 : 2) != response.team()
+            || (response.oldSlot0() & 2) == (response.newSlot0() & 2)) {
+            throw new MalformedPacketException("INVALID_ROOM_TEAM_CHANGE");
+        }
+    }
+
     public byte[] encode(PcGameSessionOpenCloseSlot response) {
         validateAvailability(response);
         return new BinaryWriter().unsignedInt(Integer.toUnsignedLong(PcGameSessionOpenCloseSlot.TYPE_ID))

@@ -12,6 +12,7 @@ import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.protocol.connection.packet.PqFirstPacket;
+import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
@@ -44,6 +45,7 @@ final class RequestEvents {
             case PqLobbyEnter.TYPE_ID -> ProtocolEvent.LOBBY_ENTER;
             case PqLobbyLeave.TYPE_ID -> ProtocolEvent.LOBBY_LEAVE;
             case PqGameSessionCreate.TYPE_ID -> ProtocolEvent.ROOM_CREATE;
+            case PqGameSessionChangeTeam.TYPE_ID -> ProtocolEvent.ROOM_CHANGE_TEAM;
             case PqGameSessionEnter.TYPE_ID -> ProtocolEvent.ROOM_ENTER;
             case PqGameSessionQuickJoin.TYPE_ID -> ProtocolEvent.ROOM_QUICK_JOIN;
             case PqGameSessionOpenCloseSlot.TYPE_ID -> ProtocolEvent.ROOM_SLOT_AVAILABILITY;

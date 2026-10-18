@@ -19,7 +19,9 @@ import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
+import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
+import taan.online.room.service.ChangeRoomTeamAction;
 import taan.online.room.service.CreateRoomAction;
 import taan.online.room.service.EnterRoomAction;
 import taan.online.room.service.LeaveRoomAction;
@@ -71,6 +73,7 @@ public final class RoomScenario implements AutoCloseable {
         create,
         enter,
         quickJoin,
+        new ChangeRoomTeamAction(rooms),
         new SetRoomSlotAvailabilityAction(rooms),
         leave,
         start,
@@ -144,6 +147,7 @@ public final class RoomScenario implements AutoCloseable {
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomBootstrapDefinition(1, 3)
                 ),
+                new ChangeRoomTeamAction(rooms),
                 new SetRoomSlotAvailabilityAction(rooms),
                 new LeaveRoomAction(rooms),
                 new RequestRoomStartAction(access, channels, rooms),
@@ -156,6 +160,10 @@ public final class RoomScenario implements AutoCloseable {
         lastOutput = new CollectingPacketOutput();
         outputs.put(id, lastOutput);
         return handler.handle(id, type, root, lastOutput);
+    }
+
+    public static byte[] team(int value) {
+        return new BinaryWriter().unsignedInt(PqGameSessionChangeTeam.TYPE_ID).unsignedByte(value).toByteArray();
     }
 
     public static byte[] leave(int room, int reason) {

@@ -143,6 +143,34 @@ public final class Room {
         );
     }
 
+    public Optional<RoomTeamChange> changeTeam(UUID sessionId, RoomTeam desiredTeam) {
+        Objects.requireNonNull(desiredTeam);
+
+        if (state != RoomState.WAITING) {
+            throw new IllegalStateException("Room team cannot be changed");
+        }
+
+        var source = slots.stream().filter(slot -> slot.participant() != null)
+            .filter(slot -> slot.participant().sessionId().equals(sessionId)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Room participant is not present"));
+
+        if (source.team() == desiredTeam) {
+            return Optional.empty();
+        }
+
+        var target = slots.stream().filter(slot -> slot.team() == desiredTeam && slot.state() == RoomSlotState.OPEN)
+            .min(Comparator.comparingInt(RoomSlot::index));
+        return target.map(
+            slot -> {
+                var destination = new RoomSlot(slot.index(), RoomSlotState.OCCUPIED, source.participant());
+                var change = new RoomTeamChange(source, destination);
+                slots.set(source.index(), new RoomSlot(source.index(), RoomSlotState.OPEN, null));
+                slots.set(destination.index(), destination);
+                return change;
+            }
+        );
+    }
+
     public boolean setSlotAvailability(int index, RoomSlotState desiredState) {
         if (index < 0 || index >= slots.size() || desiredState == null || desiredState == RoomSlotState.OCCUPIED) {
             throw new IllegalArgumentException("Invalid room slot availability");
