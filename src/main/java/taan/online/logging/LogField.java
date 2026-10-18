@@ -71,6 +71,10 @@ public final class LogField {
         return new LogField("previousSlotIndex", value);
     }
 
+    public static LogField ready(boolean value) {
+        return new LogField("ready", value);
+    }
+
     public static LogField team(String value) {
         return new LogField("team", value);
     }

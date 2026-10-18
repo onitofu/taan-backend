@@ -11,13 +11,16 @@ import taan.online.character.protocol.packet.PqSelectCharacter;
 import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
+import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.packet.PqFirstPacket;
+import taan.online.protocol.connection.packet.PqKeepAlive;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.session.protocol.packet.PcLogging;
 import taan.online.session.protocol.packet.PcUpdateCash;
@@ -51,7 +54,9 @@ final class RequestEvents {
             case PqGameSessionOpenCloseSlot.TYPE_ID -> ProtocolEvent.ROOM_SLOT_AVAILABILITY;
             case PqGameSessionLeave.TYPE_ID -> ProtocolEvent.ROOM_LEAVE;
             case PqGameSessionStartGame.TYPE_ID -> ProtocolEvent.ROOM_START;
-            default -> ProtocolEvent.KEEP_ALIVE;
+            case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
+            case PqKeepAlive.TYPE_ID -> ProtocolEvent.KEEP_ALIVE;
+            default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         };
     }
 

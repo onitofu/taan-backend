@@ -11,6 +11,7 @@ import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 
 public final class RoomRequestDispatcher {
@@ -25,7 +26,8 @@ public final class RoomRequestDispatcher {
         var event = switch (result.outcome()) {
             case ENTERED -> ProtocolEvent.ROOM_ENTERED;
             case CREATED -> ProtocolEvent.ROOM_CREATED;
-            case CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED, LEAVE_REJECTED, START_UNAVAILABLE,
+            case READY_UPDATED, READY_REJECTED, CREATE_REJECTED, ENTRY_REJECTED, QUICK_JOIN_REJECTED,
+                LEAVE_REJECTED, START_UNAVAILABLE,
                 SLOT_AVAILABILITY_UPDATED, SLOT_AVAILABILITY_REJECTED, TEAM_CHANGED, TEAM_UNCHANGED, TEAM_REJECTED ->
                 ProtocolEvent.ROOM_REQUEST_COMPLETED;
             case LEFT -> ProtocolEvent.ROOM_LEFT;
@@ -43,10 +45,14 @@ public final class RoomRequestDispatcher {
         return type == PqGameSessionCreate.TYPE_ID || type == PqGameSessionEnter.TYPE_ID
             || type == PqGameSessionQuickJoin.TYPE_ID || type == PqGameSessionLeave.TYPE_ID
             || type == PqGameSessionStartGame.TYPE_ID || type == PqGameSessionOpenCloseSlot.TYPE_ID
-            || type == PqGameSessionChangeTeam.TYPE_ID;
+            || type == PqGameSessionChangeTeam.TYPE_ID || type == PqGameSessionReady.TYPE_ID;
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PqGameSessionReady.TYPE_ID) {
+            return RoomLogEvent.READY_FAILED;
+        }
+
         if (type == PqGameSessionChangeTeam.TYPE_ID) {
             return RoomLogEvent.TEAM_CHANGE_FAILED;
         }

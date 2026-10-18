@@ -3,6 +3,7 @@ package taan.online.room.view;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import taan.online.account.model.AccountId;
 import taan.online.protocol.PacketOutput;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
@@ -10,6 +11,7 @@ import taan.online.room.model.RoomTeamChange;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PcGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PcGameSessionOpenCloseSlot;
+import taan.online.room.protocol.packet.PcGameSessionReady;
 import taan.online.room.protocol.packet.PcGameSessionUpdateOption;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 import taan.online.room.service.RoomPresenceOutput;
@@ -49,7 +51,7 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
         int selector = switch (state) {
             case OPEN -> 1;
             case CLOSED -> 0;
-            case OCCUPIED -> throw new IllegalArgumentException("Occupied slot is not an availability state");
+            case OCCUPIED, READY -> throw new IllegalArgumentException("Occupied slot is not an availability state");
         };
         return output.send(List.of(codec.encode(new PcGameSessionOpenCloseSlot(selector, slotIndex))));
     }
@@ -67,6 +69,11 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
             255
         );
         return output.send(List.of(codec.encode(response)));
+    }
+
+    @Override
+    public CompletionStage<Void> readyChanged(AccountId accountId, boolean ready) {
+        return output.send(List.of(codec.encode(new PcGameSessionReady(accountId.value(), ready))));
     }
 
     @Override

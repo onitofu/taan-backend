@@ -28,8 +28,10 @@ import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.room.service.ChangeRoomTeamAction;
+import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.RoomSnapshot;
 import taan.online.room.view.RoomSnapshotMapper;
@@ -150,7 +152,8 @@ class RoomPacketHandlerTest {
             PqGameSessionLeave.TYPE_ID,
             PqGameSessionStartGame.TYPE_ID,
             PqGameSessionOpenCloseSlot.TYPE_ID,
-            PqGameSessionChangeTeam.TYPE_ID
+            PqGameSessionChangeTeam.TYPE_ID,
+            PqGameSessionReady.TYPE_ID
         }) {
             try (var scenario = new RoomScenario()) {
                 var id = scenario.player(1, 1);
@@ -170,6 +173,7 @@ class RoomPacketHandlerTest {
                     scenario.enter,
                     scenario.quickJoin,
                     new ChangeRoomTeamAction(scenario.rooms),
+                    new SetRoomReadyAction(scenario.rooms),
                     new SetRoomSlotAvailabilityAction(scenario.rooms),
                     scenario.leave,
                     scenario.start,
@@ -179,6 +183,7 @@ class RoomPacketHandlerTest {
                     : type == PqGameSessionEnter.TYPE_ID ? root("enter-empty-password")
                     : type == PqGameSessionQuickJoin.TYPE_ID ? root("quickjoin-any")
                     : type == PqGameSessionLeave.TYPE_ID ? leave(1, 0)
+                    : type == PqGameSessionReady.TYPE_ID ? RoomScenario.ready(0)
                     : type == PqGameSessionChangeTeam.TYPE_ID ? RoomScenario.team(2)
                     : type == PqGameSessionOpenCloseSlot.TYPE_ID ? root("PqGameSession_OpenCloseSlot-close")
                     : root("start-empty");
@@ -217,6 +222,7 @@ class RoomPacketHandlerTest {
                 scenario.enter,
                 scenario.quickJoin,
                 new ChangeRoomTeamAction(scenario.rooms),
+                new SetRoomReadyAction(scenario.rooms),
                 new SetRoomSlotAvailabilityAction(scenario.rooms),
                 scenario.leave,
                 scenario.start,

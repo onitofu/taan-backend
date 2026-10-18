@@ -123,6 +123,7 @@ final class ProtocolStateMachine {
             entry(ProtocolEvent.ROOM_START, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_SLOT_AVAILABILITY, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_CHANGE_TEAM, ProtocolPhase.ROOM),
+            entry(ProtocolEvent.ROOM_READY, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_LEFT, ProtocolPhase.CHANNEL_SELECTED),
             entry(ProtocolEvent.ROOM_LEAVE_REPLAYED, ProtocolPhase.ROOM),
             entry(ProtocolEvent.ROOM_REQUEST_COMPLETED, ProtocolPhase.ROOM),
@@ -164,7 +165,7 @@ final class ProtocolStateMachine {
                 CONFIRM_NAME, NEW_CHARACTER, DELETE_CHARACTER, GET_CHANNEL_LIST, UPDATE_CASH,
                 CLIENT_LOGGING, MOVE_INVENTORY_ITEM, MOVE_TO, LOBBY_ENTER, LOBBY_LEAVE,
                 ROOM_CREATE, ROOM_ENTER, ROOM_QUICK_JOIN, ROOM_LEAVE, ROOM_START, ROOM_SLOT_AVAILABILITY,
-                ROOM_CHANGE_TEAM ->
+                ROOM_CHANGE_TEAM, ROOM_READY ->
                 ProtocolDecision.PROCESS;
             case LOGIN_IGNORED, CHARACTER_REQUEST_IGNORED, SELECTED_REQUEST_IGNORED, CHANNEL_REQUEST_IGNORED,
                 INVENTORY_REQUEST_IGNORED, ROOM_REQUEST_IGNORED ->

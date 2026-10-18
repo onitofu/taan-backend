@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import taan.online.account.model.AccountId;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeamChange;
 import taan.online.room.service.RoomPresenceOutput;
@@ -17,6 +18,9 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
     public final List<Integer> availabilitySlots = new ArrayList<>();
     public final List<RoomSlotState> availabilityStates = new ArrayList<>();
     public final List<RoomTeamChange> teamChanges = new ArrayList<>();
+    public final List<AccountId> readyAccounts = new ArrayList<>();
+    public final List<Boolean> readyValues = new ArrayList<>();
+    public Runnable onReady = () -> { };
     public Runnable onTeamChanged = () -> { };
     public Runnable onSlotAvailability = () -> { };
     public Runnable onInitialize = () -> { };
@@ -51,6 +55,14 @@ public final class RecordingRoomOutput implements RoomPresenceOutput {
     public CompletionStage<Void> teamChanged(RoomTeamChange change) {
         teamChanges.add(change);
         onTeamChanged.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> readyChanged(AccountId accountId, boolean ready) {
+        readyAccounts.add(accountId);
+        readyValues.add(ready);
+        onReady.run();
         return CompletableFuture.completedFuture(null);
     }
 

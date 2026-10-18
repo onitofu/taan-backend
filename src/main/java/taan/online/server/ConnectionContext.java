@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
 import taan.online.account.logging.AccountLogEvent;
-import taan.online.account.protocol.packet.PqCheckAccount;
 import taan.online.account.protocol.packet.PqCreateAccount;
 import taan.online.channel.logging.ChannelLogEvent;
 import taan.online.channel.protocol.packet.PqChannelMoveTo;
@@ -55,7 +54,6 @@ import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.codec.FirstAcceptCodec;
 import taan.online.protocol.connection.packet.PcFirstAccept;
 import taan.online.protocol.connection.packet.PqFirstPacket;
-import taan.online.protocol.connection.packet.PqKeepAlive;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
 import taan.online.room.protocol.packet.PqGameSessionCreate;
@@ -63,6 +61,7 @@ import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PqGameSessionStartGame;
 import taan.online.server.logging.ConnectionLogEvent;
 import taan.online.session.controller.UserLoginPacketHandler;
@@ -173,17 +172,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
 
         LOG.log(ConnectionLogEvent.PACKET_RECEIVED, connectionId(id.value()), packetType(type), rootBytes(root.length));
 
-        switch (type) {
-            case PqCheckAccount.TYPE_ID, PqCreateAccount.TYPE_ID,
-                PqFirstPacket.TYPE_ID, PqUserLogin.TYPE_ID, PqKeepAlive.TYPE_ID,
-                PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID, PqSelectCharacter.TYPE_ID,
-                PqGetChannelList.TYPE_ID, PcUpdateCash.TYPE_ID, PcLogging.TYPE_ID,
-                PqChannelMoveTo.TYPE_ID, PqLobbyEnter.TYPE_ID, PqLobbyLeave.TYPE_ID, PqMoveInventoryItem.TYPE_ID,
-                PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
-                PqGameSessionChangeTeam.TYPE_ID, PqGameSessionLeave.TYPE_ID,
-                PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID -> { }
-            default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
-        }
+        RequestEvents.forType(type);
 
         if (pending.size() >= maxPending) {
             warnings.warn(WarningEvent.LIMIT_EXCEEDED, "CONNECTION_QUEUE_FULL", id.value().toString());
@@ -484,7 +473,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 case PqUserLogin.TYPE_ID -> SessionLogEvent.LOGIN_CANCELLED;
                 case PqMoveInventoryItem.TYPE_ID -> InventoryLogEvent.REQUEST_CANCELLED;
                 case PqGameSessionCreate.TYPE_ID, PqGameSessionEnter.TYPE_ID, PqGameSessionQuickJoin.TYPE_ID,
-                    PqGameSessionChangeTeam.TYPE_ID, PqGameSessionLeave.TYPE_ID,
+                    PqGameSessionChangeTeam.TYPE_ID, PqGameSessionReady.TYPE_ID, PqGameSessionLeave.TYPE_ID,
                     PqGameSessionStartGame.TYPE_ID, PqGameSessionOpenCloseSlot.TYPE_ID ->
                     RoomLogEvent.REQUEST_CANCELLED;
                 case PqConfirmName.TYPE_ID, PqNewCharacter.TYPE_ID, PqDelCharacter.TYPE_ID,

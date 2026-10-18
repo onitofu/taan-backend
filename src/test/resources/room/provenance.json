@@ -1,6 +1,26 @@
 {
   "fixtures": [
     {
+      "01-Ready.reply.frame.hex": "7e13e3208fc0073df5ca74806f4c5581e1cb5f6fc06b2f30ccb3e77541389a78",
+      "original_file": "01-Ready.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "01-Ready.request.frame.hex": "b1fa0561639cdbdf966db1b8e924f1c24e9017c5d35682c251d0c3e9703cff2e",
+      "original_file": "01-Ready.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "02-Ready.reply.frame.hex": "c5f66c214b1e09f38732b0e3bcc2f50de072c212e60559c8d70baa7f76daf80b",
+      "original_file": "02-Ready.reply.frame.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "02-Ready.request.frame.hex": "591628e245073e7d796a96f86fe1102b25efe1e70fa0c6a016e61385c7764cd0",
+      "original_file": "02-Ready.request.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
       "05-ChangeTeam.reply.frame.hex": "b832ddebb385bd008a4035dc7e6db345aaeb55ec6ac023f3aeb9a4f064d83ee2",
       "original_file": "05-ChangeTeam.reply.frame.bin",
       "origin": "UNKNOWN"

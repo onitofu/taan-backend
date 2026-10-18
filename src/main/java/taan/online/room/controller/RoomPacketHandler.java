@@ -1,14 +1,17 @@
 package taan.online.room.controller;
 
 import static taan.online.logging.LogField.reason;
+import static taan.online.logging.LogField.sessionId;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import taan.online.channel.service.SelectedCharacterAccess;
+import taan.online.logging.EventLogger;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.protocol.connection.packet.PcNoticeMsg;
+import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.codec.RoomRequestCodec;
@@ -19,6 +22,7 @@ import taan.online.room.protocol.packet.PqGameSessionEnter;
 import taan.online.room.protocol.packet.PqGameSessionLeave;
 import taan.online.room.protocol.packet.PqGameSessionOpenCloseSlot;
 import taan.online.room.protocol.packet.PqGameSessionQuickJoin;
+import taan.online.room.protocol.packet.PqGameSessionReady;
 import taan.online.room.protocol.packet.PrGameSessionCreateFail;
 import taan.online.room.protocol.packet.PrGameSessionEnterFail;
 import taan.online.room.protocol.packet.PrGameSessionLeave;
@@ -30,20 +34,25 @@ import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomRegistry;
+import taan.online.room.service.SetRoomReadyAction;
 import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.EnterRoomOutcome;
+import taan.online.room.service.model.SetRoomReadyOutcome;
 import taan.online.room.service.model.SlotAvailabilityOutcome;
 import taan.online.room.view.ProtocolRoomView;
 
 public final class RoomPacketHandler {
+    private static final EventLogger LOG = EventLogger.forClass(RoomPacketHandler.class);
+
     private final SelectedCharacterAccess sessions;
     private final CreateRoomAction create;
     private final EnterRoomAction enter;
     private final QuickJoinRoomAction quickJoin;
     private final ChangeRoomTeamAction changeTeam;
+    private final SetRoomReadyAction ready;
     private final SetRoomSlotAvailabilityAction slotAvailability;
     private final LeaveRoomAction leave;
     private final RequestRoomStartAction start;
@@ -55,6 +64,7 @@ public final class RoomPacketHandler {
         EnterRoomAction enter,
         QuickJoinRoomAction quickJoin,
         ChangeRoomTeamAction changeTeam,
+        SetRoomReadyAction ready,
         SetRoomSlotAvailabilityAction slotAvailability,
         LeaveRoomAction leave,
         RequestRoomStartAction start,
@@ -65,6 +75,7 @@ public final class RoomPacketHandler {
         this.enter = enter;
         this.quickJoin = quickJoin;
         this.changeTeam = changeTeam;
+        this.ready = ready;
         this.slotAvailability = slotAvailability;
         this.leave = leave;
         this.start = start;
@@ -77,6 +88,25 @@ public final class RoomPacketHandler {
         }
 
         var codec = new RoomRequestCodec();
+
+        if (type == PqGameSessionReady.TYPE_ID) {
+            int value = codec.ready(root).ready();
+
+            if (value > 1) {
+                LOG.log(RoomLogEvent.READY_REJECTED, sessionId(id), reason("INVALID_READY_VALUE"));
+                return new RoomReply(RoomReplyOutcome.READY_REJECTED, CompletableFuture.completedFuture(null));
+            }
+
+            var result = ready.execute(id, value == 1);
+
+            if (result.outcome() == SetRoomReadyOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
+                return ignored();
+            }
+
+            var outcome = result.outcome() == SetRoomReadyOutcome.REJECTED
+                ? RoomReplyOutcome.READY_REJECTED : RoomReplyOutcome.READY_UPDATED;
+            return new RoomReply(outcome, result.delivery());
+        }
 
         if (type == PqGameSessionChangeTeam.TYPE_ID) {
             var request = codec.changeTeam(root);
