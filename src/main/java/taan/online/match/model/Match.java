@@ -158,6 +158,11 @@ public final class Match {
         completion = completion.map(value -> value.acknowledged(session));
     }
 
+    public void exclude(Set<UUID> sessions) {
+        resolution = resolution.exclude(sessions, participants, world, turn.activeSlot());
+        sessions.forEach(session -> completion = completion.map(value -> value.acknowledged(session)));
+    }
+
     public Map<UUID, MatchAttackSelection> attacks() {
         return Map.copyOf(attacks);
     }

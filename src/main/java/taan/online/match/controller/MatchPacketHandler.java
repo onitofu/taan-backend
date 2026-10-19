@@ -3,8 +3,10 @@ package taan.online.match.controller;
 import java.util.UUID;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.RecordMatchSpendAction;
+import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.model.ConfirmScenarioCommand;
@@ -126,7 +128,11 @@ public final class MatchPacketHandler {
             acknowledgements,
             movement,
             passing,
-            new MatchItemPacketHandler(new ActivateSpecialAction(matches), new RecordMatchSpendAction(matches))
+            new MatchItemPacketHandler(
+                new ActivateSpecialAction(matches),
+                new RecordMatchSpendAction(matches),
+                new ReportMatchBonusAction(matches)
+            )
         );
     }
 
@@ -239,6 +245,10 @@ public final class MatchPacketHandler {
                 request.phaseRevision(),
                 root
             ).thenApply(ignored -> null);
+        }
+
+        if (type == PcGamePlayEatBonusItem.TYPE_ID) {
+            return items.handle(id, type, root, request);
         }
 
         if ((type == PcGamePlayUseItem.TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID)

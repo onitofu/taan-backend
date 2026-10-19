@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.EOFException;
 import java.net.SocketException;
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -207,6 +209,55 @@ class MatchTerminationIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner, 2);
                 ended(guest, 2);
+                assertEquals(before, durableFingerprint());
+            }
+        }
+    }
+
+    @Test
+    void keepsTheCommittedWinnerWhenTheDefeatedTcpPeerDoesNotAcknowledge() throws Exception {
+        var a = player("alpha");
+        var b = player("bravo");
+        String before = durableFingerprint();
+        var config = database.configuration(Map.of("BACKEND_MATCH_COMPLETION_GRACE_SECONDS", "1"));
+
+        try (var app = new Application(config)) {
+            app.start();
+
+            try (
+                var owner = new CharacterTestClient(config.port());
+                var guest = new CharacterTestClient(config.port())
+            ) {
+                var rooms = prepare(app, owner, a, guest, b);
+                var token = reserve(rooms, owner, guest, true);
+                var matches = RuntimeRoomTestAccess.matches(rooms);
+                var snapshot = matches.current(token).orElseThrow();
+                int slot = snapshot.turn().activeSlot();
+                var shooter = snapshot.participants().stream().filter(p -> p.slotIndex() == slot)
+                    .findFirst().orElseThrow();
+                var defeated = snapshot.participants().stream().filter(p -> p.slotIndex() != slot)
+                    .findFirst().orElseThrow();
+                var winner = slot == 0 ? owner : guest;
+                var loser = slot == 0 ? guest : owner;
+                byte[] root = new ScenarioCodec().encode(MatchScenarioTestPackets.shot(
+                    slot,
+                    snapshot.actors().get(shooter.sessionId()).facing(),
+                    10000,
+                    false
+                ));
+                byte[] ack = new BinaryWriter().unsignedInt(PcGamePlayEndScenario.TYPE_ID)
+                    .unsignedByte(slot).unsignedByte(0).toByteArray();
+                winner.sendTogether(root, ack);
+                assertArrayEquals(root, loser.read());
+
+                ended(winner, slot == 0 ? 1 : 2);
+                awaitClosed(loser);
+                assertEquals(defeated.slotIndex(), wire.slot(winner.read()).slot().slotIndex());
+                wire.option(winner.read());
+                cash(winner);
+                assertTrue(matches.current(token).isEmpty());
+                assertTrue(rooms.membership(defeated.sessionId()).isEmpty());
+                assertEquals(shooter.sessionId(), RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId());
                 assertEquals(before, durableFingerprint());
             }
         }

@@ -1,0 +1,19 @@
+{
+  "fixtures": [
+    {
+      "EatBonusItem-with-gauge.synthetic.root.hex": "ffb0eb4d8adfc0b68c80be6614ea26fd64f1b29c59b2fa98257272bf75c707b6",
+      "original_file": "EatBonusItem-with-gauge.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "pending-03-PcGamePlay_EatBonusItem.root.hex": "7f955066228dcc8976c4da8a5725abeb3d19b1701fefe0a1c6ae136b89877620",
+      "original_file": "pending-03-PcGamePlay_EatBonusItem.root.bin",
+      "origin": "UNKNOWN"
+    },
+    {
+      "pending-04-PcGamePlay_EatBonusItem.root.hex": "553f4b2b917d8dad1ec38a62d75b3d694b48ffd61090c2d0c0c2a33f41b2afe3",
+      "original_file": "pending-04-PcGamePlay_EatBonusItem.root.bin",
+      "origin": "UNKNOWN"
+    }
+  ]
+}

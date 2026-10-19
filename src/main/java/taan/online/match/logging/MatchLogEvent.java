@@ -4,6 +4,7 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    BONUS_IGNORED("match.bonus.ignored", Level.DEBUG, "Match bonus report ignored"),
     DEPARTURE_ACCEPTED("match.departure.accepted", Level.DEBUG, "Match departure accepted"),
     FINISHED("match.finished", Level.INFO, "Match finished without awards"),
     OUTCOME_DECIDED("match.outcome.decided", Level.DEBUG, "Match outcome decided"),

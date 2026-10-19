@@ -4,6 +4,8 @@ import java.util.UUID;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.controller.MatchRequestContext;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlayMove;
@@ -42,7 +44,8 @@ public final class MatchRequestDispatcher {
     }
 
     static boolean accepts(int type) {
-        return type == PcGamePlayLoadingDone.TYPE_ID || type == PcGamePlaySetPos.TYPE_ID
+        return type == PcGamePlaySpendItem.TYPE_ID || type == PcGamePlayEatBonusItem.TYPE_ID
+            || type == PcGamePlayLoadingDone.TYPE_ID || type == PcGamePlaySetPos.TYPE_ID
             || type == PqGameSessionReportEnemies.TYPE_ID || type == PcGamePlayEndScenario.TYPE_ID
             || type == PcGamePlayMove.TYPE_ID || type == PcGamePlayPassTurn.TYPE_ID
             || type == UnsupportedGameplayPacket.USE_ITEM_TYPE_ID || type == UnsupportedGameplayPacket.SCENARIO_TYPE_ID

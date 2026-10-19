@@ -227,9 +227,7 @@ final class MatchTurnExecution {
                 scenarioHash(pending.fingerprint()),
                 awaitingCount(pending.awaitingSessions().size())
             );
-            owner.terminate(RoomMatchEndReason.COMPLETION_TIMEOUT);
-            owner.recipients().stream().filter(s -> pending.awaitingSessions().contains(s.sessionId()))
-                .forEach(s -> s.output().close("SCENARIO_COMPLETION_TIMEOUT"));
+            owner.outcomes.timedOut(pending.awaitingSessions());
             return true;
         }
 

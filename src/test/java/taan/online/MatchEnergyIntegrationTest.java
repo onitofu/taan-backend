@@ -119,6 +119,13 @@ class MatchEnergyIntegrationTest {
         new TurnEndCodec().decode(owner.read());
         new TurnEndCodec().decode(guest.read());
         assertEquals(new TurnStartCodec().decode(owner.read()), new TurnStartCodec().decode(guest.read()));
+
+        var before = matches.current(token).orElseThrow();
+        String fixture = member.slotIndex() == 0 ? "pending-03-PcGamePlay_EatBonusItem"
+            : "pending-04-PcGamePlay_EatBonusItem";
+        active.sendTogether(MatchFixtures.root(fixture), SelectionFixtures.cash(0, 0));
+        assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+        assertEquals(before, matches.current(token).orElseThrow());
     }
 
     private void special(

@@ -164,7 +164,7 @@ class MatchCompletionTest {
     }
 
     @Test
-    void timesOutOnlyTheMissingRecipientAndTechnicallyEndsDeathAndInactivity() throws Exception {
+    void excludesOnlyTheMissingRecipientAndEndsDeathAndInactivity() throws Exception {
         try (var fixture = new LiveMatchFixture()) {
             var f = fixture.f;
             f.runtime.applyScenario(fixture.shot(false, false));
@@ -174,7 +174,7 @@ class MatchCompletionTest {
             f.timers.now = f.runtime.snapshot().deadlineNanos();
             f.timers.commands.getFirst().run();
             f.run();
-            assertEquals(RoomMatchEndReason.COMPLETION_TIMEOUT, f.callbacks.reason);
+            assertEquals(RoomMatchEndReason.DISCONNECTED, f.callbacks.reason);
             assertTrue(f.owner.closed.isEmpty());
             assertEquals(1, f.guest.closed.size());
         }

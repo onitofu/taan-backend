@@ -13,6 +13,7 @@ import static taan.online.logging.LogField.winningTeam;
 import static taan.online.logging.LogField.worldRevision;
 
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.LongSupplier;
@@ -142,6 +143,35 @@ final class MatchOutcomeExecution {
         }
 
         return true;
+    }
+
+    void timedOut(Set<UUID> missing) {
+        var before = owner.snapshot();
+
+        synchronized (admission) {
+            if (!owner.running()) {
+                return;
+            }
+
+            match.exclude(missing);
+            owner.refresh();
+        }
+
+        decided(before, owner.snapshot());
+        owner.recipients().stream().filter(s -> missing.contains(s.sessionId()))
+            .forEach(s -> s.output().close("SCENARIO_COMPLETION_TIMEOUT"));
+        boolean nobody = match.resolution().exits().size() == match.participants().size()
+            && match.resolution().exits().values().stream().allMatch(kind -> kind == MatchExitKind.DEPARTED);
+
+        if (nobody) {
+            if (match.resolution().pendingOutcome().isPresent()) {
+                finish();
+            } else {
+                cancel(RoomMatchEndReason.COMPLETION_TIMEOUT, null);
+            }
+        } else {
+            owner.turns.finish();
+        }
     }
 
     void finish() {

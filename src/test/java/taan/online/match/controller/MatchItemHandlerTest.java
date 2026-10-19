@@ -21,6 +21,7 @@ import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.RecordMatchSpendAction;
+import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -80,7 +81,7 @@ class MatchItemHandlerTest {
             var matches = f.room.scenario.matches;
             var activation = new ActivateSpecialAction(matches);
             var spending = new RecordMatchSpendAction(matches);
-            var direct = new MatchItemPacketHandler(activation, spending);
+            var direct = new MatchItemPacketHandler(activation, spending, new ReportMatchBonusAction(matches));
             var captured = f.handler.capture(f.active().sessionId());
             var command = MatchCommandContext.from(captured.roomContext());
             direct.handle(

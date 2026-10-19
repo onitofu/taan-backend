@@ -41,6 +41,7 @@ import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
@@ -293,6 +294,10 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         var runtime = find(command.context().token());
         return runtime == null ? CompletableFuture.completedFuture(false)
             : runtime.turnWork(() -> runtime.items.activate(command));
+    }
+
+    public CompletionStage<Boolean> reportBonus(ReportMatchBonusCommand command) {
+        return MatchItemExecution.reportBonus(find(command.context().token()), command);
     }
 
     public CompletionStage<Boolean> recordSpend(RecordMatchSpendCommand command) {
