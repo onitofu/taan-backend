@@ -14,6 +14,8 @@ import taan.online.lobby.protocol.packet.PqLobbyLeave;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
@@ -77,8 +79,8 @@ final class RequestEvents {
                 ProtocolEvent.ROOM_CAPTAIN_CANDIDATE;
             case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
             case PcGamePlayLoadingDone.TYPE_ID, PcGamePlaySetPos.TYPE_ID, PqGameSessionReportEnemies.TYPE_ID,
-                PcGamePlayEndScenario.TYPE_ID, UnsupportedGameplayPacket.MOVE_TYPE_ID,
-                UnsupportedGameplayPacket.PASS_TURN_TYPE_ID, UnsupportedGameplayPacket.USE_ITEM_TYPE_ID,
+                PcGamePlayEndScenario.TYPE_ID, PcGamePlayMove.TYPE_ID,
+                PcGamePlayPassTurn.TYPE_ID, UnsupportedGameplayPacket.USE_ITEM_TYPE_ID,
                 UnsupportedGameplayPacket.SCENARIO_TYPE_ID,
                 PcGamePlayGiveUp.TYPE_ID, PqResultRandSelect.TYPE_ID, PqResultSelectCard.TYPE_ID ->
                 ProtocolEvent.MATCH_REQUEST;

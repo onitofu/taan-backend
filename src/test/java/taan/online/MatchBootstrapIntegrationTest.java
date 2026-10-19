@@ -13,6 +13,10 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.List;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
+import taan.online.match.protocol.codec.MoveCodec;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.LoadingPosition;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.codec.StartGameCodec;
@@ -144,7 +148,7 @@ class MatchBootstrapIntegrationTest {
     }
 
     @Test
-    void automaticallyEndsAnInactiveActionWithoutStartingASecondTurn() throws Exception {
+    void watchdogStopsAndPassesAnInactiveActionWithoutChangingPersistentData() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
         String before = durableFingerprint();
@@ -167,6 +171,14 @@ class MatchBootstrapIntegrationTest {
                 new SetPosCodec().decode(guest.read());
                 var first = new TurnStartCodec().decode(owner.read());
                 assertEquals(first, new TurnStartCodec().decode(guest.read()));
+                assertEquals(first.activeSlot(), new TurnEndCodec().decode(owner.read()).slotIndex());
+                assertEquals(first.activeSlot(), new TurnEndCodec().decode(guest.read()).slotIndex());
+                var observer = first.activeSlot() == 0 ? guest : owner;
+                assertEquals(first.activeSlot(), new SetPosCodec().decode(observer.read()).slotIndex());
+                var next = new TurnStartCodec().decode(owner.read());
+                assertEquals(next, new TurnStartCodec().decode(guest.read()));
+                assertEquals(first.activeSlot() == 0 ? 2 : 0, next.activeSlot());
+                owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
                 cash(owner);
@@ -242,6 +254,58 @@ class MatchBootstrapIntegrationTest {
     }
 
     @Test
+    void passesFromTheAirAndFromTheGroundWithoutEchoingTheOwnersMotion() throws Exception {
+        var a = player("alpha");
+        var b = player("bravo");
+        var before = durableFingerprint();
+        var config = database.configuration();
+
+        try (var app = new Application(config)) {
+            app.start();
+
+            try (var host = new CharacterTestClient(config.port()); var peer = new CharacterTestClient(config.port())) {
+                prepare(app, host, a, peer, b);
+                host.send(RoomFixtures.root("start-empty"));
+                var start = started(host);
+                started(peer);
+                host.send(MatchFixtures.root("native-policy-v4-loading-1"));
+                peer.send(MatchFixtures.root("native-policy-v4-loading-0"));
+                new SetPosCodec().decode(host.read());
+                new SetPosCodec().decode(peer.read());
+                var turn = new TurnStartCodec().decode(host.read());
+                assertEquals(turn, new TurnStartCodec().decode(peer.read()));
+
+                for (int count = 0; count < 2; count++) {
+                    int slot = turn.activeSlot();
+                    var active = slot == 0 ? host : peer;
+                    var observer = slot == 0 ? peer : host;
+                    var player = start.players().stream().filter(value -> value.slotIndex() == slot)
+                        .findFirst().orElseThrow();
+                    var spawn = MatchFixtures.definitions().map().spawns().stream()
+                        .filter(value -> value.rawX() == player.x() && value.rawY() == player.y())
+                        .findFirst().orElseThrow();
+                    int y = spawn.settledY() - (count == 0 ? 20 : 0);
+                    var pass = new PcGamePlayPassTurn(slot, spawn.settledX(), y, player.facing(), 0);
+                    active.sendFragmented(new PassTurnCodec().encode(pass));
+                    assertEquals(pass, new PassTurnCodec().decode(observer.read()));
+                    assertEquals(spawn.settledY(), new SetPosCodec().decode(observer.read()).y());
+                    assertEquals(slot, new TurnEndCodec().decode(active.read()).slotIndex());
+                    assertEquals(slot, new TurnEndCodec().decode(observer.read()).slotIndex());
+                    turn = new TurnStartCodec().decode(host.read());
+                    assertEquals(turn, new TurnStartCodec().decode(peer.read()));
+                    assertEquals(slot == 0 ? 2 : 0, turn.activeSlot());
+                }
+
+                host.send(MatchFixtures.root("give-up-empty"));
+                ended(host);
+                ended(peer);
+            }
+        }
+
+        assertEquals(before, durableFingerprint());
+    }
+
+    @Test
     void exchangesThreeScenariosThroughProductionDispatchAndAcknowledgesEachSessionOnce() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
@@ -280,7 +344,24 @@ class MatchBootstrapIntegrationTest {
                         shooter.sendFragmented(root);
                         shooter.sendTogether(ack, ack);
                     } else {
-                        shooter.sendTogether(root, ack);
+                        if (index == 0) {
+                            var pose = start.players().stream().filter(player -> player.slotIndex() == active)
+                                .findFirst().orElseThrow();
+                            var spawn = MatchFixtures.definitions().map().spawns().stream()
+                                .filter(value -> value.rawX() == pose.x() && value.rawY() == pose.y())
+                                .findFirst().orElseThrow();
+                            var move = new PcGamePlayMove(
+                                active,
+                                spawn.settledX() + 1,
+                                spawn.settledY(),
+                                pose.facing()
+                            );
+                            shooter.sendTogether(new MoveCodec().encode(move), root, ack);
+                            assertEquals(move, new MoveCodec().decode(observer.read()));
+                        } else {
+                            shooter.sendTogether(root, ack);
+                        }
+
                         shooter.send(ack);
                     }
 

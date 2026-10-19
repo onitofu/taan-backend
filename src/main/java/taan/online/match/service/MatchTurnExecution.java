@@ -112,8 +112,13 @@ final class MatchTurnExecution {
             accepted.turnRevision(),
             prepared.world().revision(),
             owner.snapshot().loadedSessions(),
-            now + TimeUnit.MILLISECONDS.toNanos(fallEnd),
-            now + TimeUnit.MILLISECONDS.toNanos(journal.endTick()) + settings.completionGraceNanos()
+            Math.max(
+                now + TimeUnit.MILLISECONDS.toNanos(fallEnd),
+                owner.snapshot().movements().get(sender.sessionId())
+                .fall().map(value -> value.endsAtNanos()).orElse(now)
+            ),
+            now + TimeUnit.MILLISECONDS.toNanos(journal.endTick()) + settings.completionGraceNanos(),
+            owner.snapshot().phaseRevision()
         );
     }
 
@@ -162,7 +167,8 @@ final class MatchTurnExecution {
             ? command.worldRevision() == pending.worldRevision()
                 && command.fingerprint().orElseThrow().equals(pending.fingerprint())
             : command.context().sessionId().equals(pending.shooterSessionId())
-                && command.worldRevision() == pending.worldRevision() - 1;
+                && (command.phaseRevision() == pending.actionPhaseRevision()
+                    || command.phaseRevision() == -1 && command.worldRevision() == pending.worldRevision() - 1);
     }
 
     void arm() {
@@ -200,8 +206,12 @@ final class MatchTurnExecution {
 
         if (snapshot.phase() == MatchPhase.ACTION && clock.getAsLong() - snapshot.deadlineNanos() >= 0) {
             LOG.log(MatchLogEvent.TURN_TIMEOUT, matchId(snapshot.id().value()), turnRevision(token.turnRevision()));
-            owner.terminate(RoomMatchEndReason.ACTION_TIMEOUT);
+            owner.movement.timeout();
             return true;
+        }
+
+        if (snapshot.phase() == MatchPhase.SETTLING) {
+            return owner.movement.expired();
         }
 
         if (snapshot.phase() != MatchPhase.COMPLETION) {
@@ -228,36 +238,61 @@ final class MatchTurnExecution {
     }
 
     private void finish() {
-        MatchTurnTransition transition = null;
-        boolean terminal = false;
+        var pending = owner.snapshot().completion().orElseThrow();
+
+        if (!owner.running() || !pending.awaitingSessions().isEmpty()) {
+            return;
+        }
+
+        if (clock.getAsLong() - pending.settleNotBeforeNanos() < 0) {
+            arm();
+            return;
+        }
+
+        boolean walking;
 
         synchronized (admission) {
-            var pending = match.completion();
-
-            if (!owner.running() || !pending.orElseThrow().awaitingSessions().isEmpty()) {
+            if (!owner.running()) {
                 return;
             }
 
-            if (clock.getAsLong() - pending.orElseThrow().settleNotBeforeNanos() >= 0) {
-                terminal = match.actors().values().stream().anyMatch(actor -> actor.hp() == 0);
-                int previous = match.turn().activeSlot();
+            walking = match.movements().values().stream().anyMatch(value -> value.fall().isPresent());
+            match.settleMovement(clock.getAsLong());
+            owner.refresh();
+        }
 
-                if (!terminal) {
-                    match.nextTurn(clock.getAsLong(), settings.actionTimeoutNanos());
-                    owner.refresh();
-                    owner.resetScenario();
-                    transition = new MatchTurnTransition(previous, owner.snapshot());
-                }
+        if (walking) {
+            owner.movement.settled();
+        }
+
+        LOG.log(MatchLogEvent.SCENARIO_COMPLETED, matchId(match.id().value()));
+        advance(true);
+    }
+
+    void advance(boolean turnEndRequired) {
+        MatchTurnTransition transition = null;
+        boolean terminal;
+
+        synchronized (admission) {
+            if (!owner.running()) {
+                return;
+            }
+
+            terminal = match.actors().values().stream().anyMatch(actor -> actor.hp() == 0);
+            int previous = match.turn().activeSlot();
+
+            if (!terminal) {
+                match.nextTurn(clock.getAsLong(), settings.actionTimeoutNanos());
+                owner.refresh();
+                owner.resetScenario();
+                transition = new MatchTurnTransition(previous, owner.snapshot(), turnEndRequired);
             }
         }
 
         if (terminal) {
             owner.terminate(RoomMatchEndReason.PARTICIPANT_ELIMINATED);
-        } else if (transition != null) {
-            LOG.log(MatchLogEvent.SCENARIO_COMPLETED, matchId(transition.snapshot().id().value()));
-            publish(transition);
         } else {
-            arm();
+            publish(transition);
         }
     }
 

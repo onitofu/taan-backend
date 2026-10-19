@@ -22,6 +22,16 @@ public final class ApplyScenarioPacketHandler {
         long worldRevision,
         byte[] root
     ) {
+        return handle(context, turnRevision, worldRevision, -1, root);
+    }
+
+    public CompletionStage<ScenarioApplicationResult> handle(
+        MatchCommandContext context,
+        long turnRevision,
+        long worldRevision,
+        long phaseRevision,
+        byte[] root
+    ) {
         byte[] original = root.clone();
         var packet = codec.decode(original);
         return action.execute(new ApplyScenarioCommand(
@@ -29,7 +39,8 @@ public final class ApplyScenarioPacketHandler {
             turnRevision,
             worldRevision,
             mapper.map(packet),
-            original
+            original,
+            phaseRevision
         ));
     }
 }

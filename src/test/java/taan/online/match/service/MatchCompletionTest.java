@@ -195,7 +195,8 @@ class MatchCompletionTest {
             f.timers.now = f.runtime.snapshot().deadlineNanos();
             f.timers.commands.getFirst().run();
             f.run();
-            assertEquals(RoomMatchEndReason.ACTION_TIMEOUT, f.callbacks.reason);
+            assertEquals(MatchPhase.SETTLING, f.runtime.snapshot().phase());
+            assertEquals(null, f.callbacks.reason);
         }
     }
 

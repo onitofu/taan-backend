@@ -24,6 +24,8 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
+import taan.online.match.service.model.MoveMatchActorCommand;
+import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
@@ -263,16 +265,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
         if (runtime != null) {
             var snapshot = runtime.snapshot();
-            var participant = snapshot.participants().stream().filter(p -> p.sessionId().equals(session))
-                .findFirst().orElseThrow();
-            var context = new MatchCommandContext(
-                snapshot.id(),
-                snapshot.roomId(),
-                snapshot.roomGeneration(),
-                snapshot.channelId(),
-                session,
-                participant.admissionId()
-            );
+            var context = MatchCommandContext.from(snapshot, session);
             return runtime.admits(context) ? context : null;
         }
 
@@ -295,6 +288,18 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         return runtime != null && runtime.live();
     }
 
+    public CompletionStage<Boolean> move(MoveMatchActorCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.movement.move(command));
+    }
+
+    public CompletionStage<Boolean> passTurn(PassMatchTurnCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.movement.pass(command));
+    }
+
     public CompletionStage<Boolean> confirmScenario(ConfirmScenarioCommand command) {
         var runtime = find(command.context().token());
         return runtime == null ? CompletableFuture.completedFuture(false) : runtime.confirmScenario(command);
@@ -304,12 +309,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         var context = context(session);
         var runtime = sessions.get(session);
         var snapshot = runtime == null ? Optional.<MatchSnapshot>empty() : Optional.of(runtime.snapshot());
-        return new MatchRequestBinding(
-            context == null ? null : context.roomContext(),
-            snapshot.map(value -> value.turn().revision()).orElse(-1L),
-            snapshot.map(value -> value.world().revision()).orElse(-1L),
-            snapshot.flatMap(value -> value.completion().map(pending -> pending.fingerprint()))
-        );
+        return MatchRequestBinding.from(context, snapshot);
     }
 
     public CompletionStage<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {

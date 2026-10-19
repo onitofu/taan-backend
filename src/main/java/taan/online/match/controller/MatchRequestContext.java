@@ -7,6 +7,16 @@ public record MatchRequestContext(
     RoomMatchContext roomContext,
     long turnRevision,
     long worldRevision,
-    Optional<String> fingerprint
+    Optional<String> fingerprint,
+    long phaseRevision
 ) {
+    public MatchRequestContext(
+        RoomMatchContext roomContext,
+        long turnRevision,
+        long worldRevision,
+        Optional<String> fingerprint
+    ) {
+        this(roomContext, turnRevision, worldRevision, fingerprint, -1);
+    }
+
 }

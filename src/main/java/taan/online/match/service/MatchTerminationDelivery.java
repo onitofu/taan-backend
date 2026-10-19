@@ -45,7 +45,8 @@ final class MatchTerminationDelivery {
             return RoomMatchTerminationMode.ROLLBACK;
         }
 
-        return phase == MatchPhase.PREVIEW || phase == MatchPhase.ACTION || phase == MatchPhase.COMPLETION
+        return phase == MatchPhase.PREVIEW || phase == MatchPhase.ACTION || phase == MatchPhase.SETTLING
+            || phase == MatchPhase.COMPLETION
             ? RoomMatchTerminationMode.RETURN_TO_ROOM
             : RoomMatchTerminationMode.DISCONNECT;
     }

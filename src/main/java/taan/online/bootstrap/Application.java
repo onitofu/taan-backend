@@ -54,6 +54,8 @@ import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmScenarioAction;
+import taan.online.match.service.MoveMatchActorAction;
+import taan.online.match.service.PassMatchTurnAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
@@ -209,7 +211,9 @@ public final class Application implements AutoCloseable {
                 new ConfirmMatchPositionAction(matches),
                 new ReportMatchEnemiesAction(matches),
                 new ApplyScenarioPacketHandler(new ApplyScenarioAction(matches)),
-                new ConfirmScenarioAction(matches)
+                new ConfirmScenarioAction(matches),
+                new MoveMatchActorAction(matches),
+                new PassMatchTurnAction(matches)
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(

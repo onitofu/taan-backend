@@ -6,10 +6,66 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.UUID;
+import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
+import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomTeam;
 
 public final class MatchTurnPolicy {
     private static final long MASK = 0xffffffffffffL;
+
+    static MatchTurn roster(
+        int channelId,
+        List<MatchParticipant> participants,
+        RoomMode mode,
+        RoomRule rule,
+        UUID ownerSessionId,
+        CaptainSelectionResult captains,
+        MatchDefinitions definitions,
+        int firstTurnSlot
+    ) {
+        if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
+            || mode.usesItems() != (rule == RoomRule.BONUS)) {
+            throw new IllegalArgumentException("Invalid match setup");
+        }
+
+        var sessions = new HashSet<UUID>();
+        var admissions = new HashSet<UUID>();
+        var accounts = new HashSet<Long>();
+        var characters = new HashSet<Long>();
+        var slots = new HashSet<Integer>();
+        var spawns = new HashSet<Integer>();
+        var teams = new HashSet<RoomTeam>();
+
+        for (var participant : participants) {
+            if (!sessions.add(participant.sessionId()) || !admissions.add(participant.admissionId())
+                || !accounts.add(participant.character().accountId().value())
+                || !characters.add(participant.character().id().value()) || !slots.add(participant.slotIndex())
+                || !spawns.add(participant.spawn().index())
+                || !definitions.map().spawns().contains(participant.spawn())) {
+                throw new IllegalArgumentException("Invalid match roster");
+            }
+
+            teams.add(participant.team());
+        }
+
+        if (!slots.contains(firstTurnSlot) || !sessions.contains(ownerSessionId) || teams.size() != 2
+            || mode.requiresCaptainSelection() != (captains != null)) {
+            throw new IllegalArgumentException("Invalid match ownership or teams");
+        }
+
+        if (captains != null
+            && (!slots.contains(captains.blueLeaderSlot()) || !slots.contains(captains.redLeaderSlot()))) {
+            throw new IllegalArgumentException("Invalid match captains");
+        }
+
+        var order = slots.stream().sorted().toList();
+        int first = order.indexOf(firstTurnSlot);
+        var rotated = new ArrayList<>(order.subList(first, order.size()));
+        rotated.addAll(order.subList(0, first));
+        return new MatchTurn(firstTurnSlot, 0, 0, 0, 100, rotated, 1, OptionalLong.empty());
+    }
 
     public MatchTurn initial(List<MatchParticipant> participants, long seed) {
         var blue = new ArrayList<>(participants.stream().filter(p -> p.team() == RoomTeam.BLUE)

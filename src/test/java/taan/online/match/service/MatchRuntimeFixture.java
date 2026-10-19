@@ -28,6 +28,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
     final RoomMatchToken token;
     boolean admitted = true;
     Runnable onAccess = () -> { };
+    Runnable onClock = () -> { };
 
     MatchRuntimeFixture(int capacity) {
         this(capacity, MatchExecutionMode.PREVIEW);
@@ -54,7 +55,10 @@ final class MatchRuntimeFixture implements AutoCloseable {
             match,
             new MatchBootstrapSettings(30, 20, 8, mode),
             timers,
-            () -> timers.now,
+            () -> {
+                onClock.run();
+                return timers.now;
+            },
             new WarningLogLimiter(
                 LoggerFactory.getLogger(MatchRuntime.class),
                 10,
