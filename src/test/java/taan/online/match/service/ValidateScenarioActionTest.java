@@ -183,7 +183,7 @@ class ValidateScenarioActionTest {
     }
 
     @Test
-    void rejectsDeadInactiveForgedShootersItemsEffectsPowerAndDuplicateRefittedActors() throws Exception {
+    void rejectsInvalidClaimsAndIgnoresInactiveShooters() throws Exception {
         try (var world = new ScenarioTestWorld()) {
             var actor = world.actors.get(world.sender.sessionId());
             world.actors.remove(world.sender.sessionId());
@@ -201,7 +201,7 @@ class ValidateScenarioActionTest {
             }
 
             world.activeSlot = 0;
-            rejected(world, world.claims, "INVALID_SHOOTER");
+            assertEquals(ScenarioAdmissionOutcome.IGNORED, world.execute(world.claims).outcome());
             world.activeSlot = 2;
 
             for (var claims : List.of(

@@ -11,6 +11,9 @@ import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
+import taan.online.match.protocol.codec.TurnEndCodec;
+import taan.online.match.protocol.packet.PcGamePlayTurnEnd;
+import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
@@ -120,24 +123,32 @@ public final class ProtocolMatchView implements MatchOutput {
             }
         }
 
-        var turn = snapshot.turn();
-        roots.add(
-            new TurnStartCodec().encode(
-                new PcGamePlayTurnStart(
-                    turn.activeSlot(),
-                    0,
-                    turn.windRaw(),
-                    turn.energyGrant(),
-                    turn.boxAttemptBudget(),
-                    turn.pickerBase(),
-                    0,
-                    0,
-                    0,
-                    0
-                )
-            )
-        );
+        roots.add(turnStart(snapshot));
         return output.send(roots);
+    }
+
+    @Override
+    public CompletionStage<Void> nextTurn(MatchTurnTransition transition) {
+        return output.send(List.of(
+            new TurnEndCodec().encode(new PcGamePlayTurnEnd(transition.previousSlot(), 0)),
+            turnStart(transition.snapshot())
+        ));
+    }
+
+    private byte[] turnStart(MatchSnapshot snapshot) {
+        var turn = snapshot.turn();
+        return new TurnStartCodec().encode(new PcGamePlayTurnStart(
+            turn.activeSlot(),
+            0,
+            turn.windRaw(),
+            turn.energyGrant(),
+            turn.boxAttemptBudget(),
+            turn.pickerBase(),
+            0,
+            0,
+            0,
+            0
+        ));
     }
 
     @Override

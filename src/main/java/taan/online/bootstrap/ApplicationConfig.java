@@ -35,7 +35,9 @@ public record ApplicationConfig(
     int matchPreviewTimeoutSeconds,
     int matchReportsPerSecond,
     int matchWorkerThreads,
-    int matchQueueCapacity
+    int matchQueueCapacity,
+    int matchActionTimeoutSeconds,
+    int matchCompletionGraceSeconds
 ) {
     public static ApplicationConfig fromEnvironment(Map<String, String> environment) {
         String level = required(environment, "LOG_LEVEL");
@@ -76,7 +78,9 @@ public record ApplicationConfig(
             positive(environment, "BACKEND_MATCH_PREVIEW_TIMEOUT_SECONDS"),
             positive(environment, "BACKEND_MATCH_REPORTS_PER_SECOND"),
             positive(environment, "BACKEND_MATCH_WORKER_THREADS"),
-            positive(environment, "BACKEND_MATCH_QUEUE_CAPACITY")
+            positive(environment, "BACKEND_MATCH_QUEUE_CAPACITY"),
+            optionalPositive(environment, "BACKEND_MATCH_ACTION_TIMEOUT_SECONDS", 20),
+            optionalPositive(environment, "BACKEND_MATCH_COMPLETION_GRACE_SECONDS", 10)
         );
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {
@@ -84,6 +88,10 @@ public record ApplicationConfig(
         }
 
         return config;
+    }
+
+    private static int optionalPositive(Map<String, String> environment, String name, int fallback) {
+        return environment.containsKey(name) ? positive(environment, name) : fallback;
     }
 
     private static int positive(Map<String, String> environment, String name) {

@@ -16,7 +16,7 @@ class MatchArchitectureTest {
         "taan.online.bootstrap..",
         "taan.online.server.."
     ).should().dependOnClassesThat().haveNameMatching(
-        "taan\\.online\\.match\\.controller\\.(ValidateScenarioPacketHandler|ApplyScenarioPacketHandler)"
+        "taan\\.online\\.match\\.controller\\.ValidateScenarioPacketHandler"
     );
 
     @ArchTest
@@ -116,7 +116,7 @@ class MatchArchitectureTest {
     static final ArchRule MUTABLE_MATCH = classes().that().haveFullyQualifiedName("taan.online.match.model.Match")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.(model\\.Match|service\\.MatchRegistry|service\\.MatchRuntime"
-                    + "|service\\.model\\.MatchSnapshot)"
+                    + "|service\\.MatchTurnExecution|service\\.model\\.MatchSnapshot)"
         );
 
     @ArchTest
@@ -129,7 +129,8 @@ class MatchArchitectureTest {
     static final ArchRule RUNTIME_OWNER = classes().that().haveSimpleName("MatchRuntime")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.service\\."
-                + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch|MatchScenarioExecution)"
+                + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
+                + "|MatchScenarioExecution|MatchTurnExecution)"
         );
 
     @ArchTest

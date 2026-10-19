@@ -18,6 +18,10 @@ import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
+import taan.online.match.protocol.codec.TurnEndCodec;
+import taan.online.match.protocol.codec.ScenarioCodec;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.protocol.BinaryWriter;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -86,7 +90,7 @@ class MatchBootstrapIntegrationTest {
                 assertEquals(0, guestPose.slotIndex());
                 assertTrue(start.players().stream().anyMatch(player -> player.slotIndex() == first.activeSlot()));
                 assertEquals(0, first.energyGrant());
-                assertEquals(0, first.windRawTenths());
+                assertEquals(start.initialWindRaw(), first.windRawTenths());
                 assertEquals(0, first.boxAttemptBudget());
                 owner.sendTogether(new byte[]{0x6d, 0x08, 0x0b, 0x5e, 0, 0}, new SetPosCodec().encode(guestPose));
                 cash(owner);
@@ -140,11 +144,11 @@ class MatchBootstrapIntegrationTest {
     }
 
     @Test
-    void automaticallyEndsThePreviewWithoutStartingASecondTurn() throws Exception {
+    void automaticallyEndsAnInactiveActionWithoutStartingASecondTurn() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
         String before = durableFingerprint();
-        var config = database.configuration(Map.of("BACKEND_MATCH_PREVIEW_TIMEOUT_SECONDS", "1"));
+        var config = database.configuration(Map.of("BACKEND_MATCH_ACTION_TIMEOUT_SECONDS", "1"));
 
         try (var app = new Application(config)) {
             app.start();
@@ -235,6 +239,76 @@ class MatchBootstrapIntegrationTest {
         }
 
         assertEquals(before, durableFingerprint());
+    }
+
+    @Test
+    void exchangesThreeScenariosThroughProductionDispatchAndAcknowledgesEachSessionOnce() throws Exception {
+        var a = player("alpha");
+        var b = player("bravo");
+        var before = durableFingerprint();
+        var config = database.configuration();
+
+        try (var app = new Application(config)) {
+            app.start();
+
+            try (
+                var owner = new CharacterTestClient(config.port());
+                var guest = new CharacterTestClient(config.port())
+            ) {
+                prepare(app, owner, a, guest, b);
+                owner.send(RoomFixtures.root("start-empty"));
+                var start = started(owner);
+                assertEquals(start, started(guest));
+                owner.send(MatchFixtures.root("native-policy-v4-loading-1"));
+                guest.send(MatchFixtures.root("native-policy-v4-loading-0"));
+                new SetPosCodec().decode(owner.read());
+                new SetPosCodec().decode(guest.read());
+                var turn = new TurnStartCodec().decode(owner.read());
+                assertEquals(turn, new TurnStartCodec().decode(guest.read()));
+                assertEquals(start.initialWindRaw(), turn.windRawTenths());
+
+                for (int index = 0; index < 3; index++) {
+                    int active = turn.activeSlot();
+                    var shooter = active == 0 ? owner : guest;
+                    var observer = active == 0 ? guest : owner;
+                    var shot = MatchScenarioTestPackets.shot(active, active == 0 ? 0 : 1, 10, false);
+                    byte[] root = new ScenarioCodec().encode(shot);
+                    byte[] ack = new BinaryWriter().unsignedInt(PcGamePlayEndScenario.TYPE_ID)
+                        .unsignedByte(active).unsignedByte(0).toByteArray();
+
+                    if (index == 1) {
+                        shooter.sendFragmented(root);
+                        shooter.sendTogether(ack, ack);
+                    } else {
+                        shooter.sendTogether(root, ack);
+                        shooter.send(ack);
+                    }
+
+                    assertArrayEquals(root, observer.read());
+                    cash(shooter);
+                    observer.sendTogether(ack, ack);
+                    assertEquals(active, new TurnEndCodec().decode(owner.read()).slotIndex());
+                    assertEquals(active, new TurnEndCodec().decode(guest.read()).slotIndex());
+                    var next = new TurnStartCodec().decode(owner.read());
+                    assertEquals(next, new TurnStartCodec().decode(guest.read()));
+                    assertEquals(active == 0 ? 2 : 0, next.activeSlot());
+                    assertEquals(0, next.energyGrant());
+                    assertEquals(0, next.boxAttemptBudget());
+                    assertTrue(Math.abs(next.windRawTenths() - turn.windRawTenths()) <= 20);
+
+                    if (index != 1) {
+                        assertEquals(turn.windRawTenths(), next.windRawTenths());
+                    }
+
+                    turn = next;
+                }
+
+                owner.send(MatchFixtures.root("give-up-empty"));
+                ended(owner);
+                ended(guest);
+                assertEquals(before, durableFingerprint());
+            }
+        }
     }
 
     private PcGameSessionStartGame started(CharacterTestClient client) throws Exception {

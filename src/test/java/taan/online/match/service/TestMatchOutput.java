@@ -8,6 +8,7 @@ import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.MatchTurnTransition;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<CommittedScenario> scenarios = new ArrayList<>();
@@ -41,6 +42,12 @@ public final class TestMatchOutput implements MatchOutput {
             throw bootstrapFailure;
         }
 
+        return turnDelivery;
+    }
+
+    @Override
+    public CompletionStage<Void> nextTurn(MatchTurnTransition transition) {
+        turns.add(transition.snapshot());
         return turnDelivery;
     }
 

@@ -1,0 +1,9 @@
+{
+  "fixtures": [
+    {
+      "turn-policy-oracle.csv": "9dac1359284de9964693cc611b30339ac1412748891f1f050350b2e1dce4119d",
+      "original_file": "turn-policy-oracle.csv",
+      "origin": "DERIVED"
+    }
+  ]
+}

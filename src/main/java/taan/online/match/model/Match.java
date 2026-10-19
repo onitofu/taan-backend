@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
@@ -28,6 +30,7 @@ public final class Match {
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
     private MatchWorldState world;
+    private Optional<MatchCompletion> completion = Optional.empty();
     private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
     private long phaseRevision;
@@ -72,6 +75,67 @@ public final class Match {
             )
         );
         world = MatchWorldState.initial(initialActors, definitions.map().terrainLayers());
+    }
+
+    public Match(
+        MatchId id,
+        RoomId roomId,
+        UUID roomGeneration,
+        int channelId,
+        UUID ownerSessionId,
+        RoomMode mode,
+        RoomRule rule,
+        MatchDefinitions definitions,
+        List<MatchParticipant> participants,
+        CaptainSelectionResult captains,
+        MatchTurn initialTurn
+    ) {
+        this(
+            id,
+            roomId,
+            roomGeneration,
+            channelId,
+            ownerSessionId,
+            mode,
+            rule,
+            definitions,
+            participants,
+            captains,
+            initialTurn.activeSlot()
+        );
+        turn = initialTurn;
+    }
+
+    public Optional<MatchCompletion> completion() {
+        return completion;
+    }
+
+    public boolean acknowledgeScenario(UUID session) {
+        if (phase != MatchPhase.COMPLETION || completion.isEmpty()
+            || !completion.orElseThrow().awaitingSessions().contains(session)) {
+            return false;
+        }
+
+        completion = Optional.of(completion.orElseThrow().acknowledged(session));
+        return true;
+    }
+
+    public boolean nextTurn(long now, long timeoutNanos) {
+        if (phase != MatchPhase.COMPLETION || completion.isEmpty()
+            || !completion.orElseThrow().awaitingSessions().isEmpty()
+            || now - completion.orElseThrow().settleNotBeforeNanos() < 0) {
+            return false;
+        }
+
+        var alive = participants.stream().filter(p -> world.actors().get(p.sessionId()).hp() > 0)
+            .map(MatchParticipant::slotIndex).collect(Collectors.toSet());
+        var next = new MatchTurnPolicy().next(turn, alive, now);
+        turn = next;
+        completion = Optional.empty();
+        phase = MatchPhase.ACTION;
+        phaseRevision++;
+        deadlineNanos = now + timeoutNanos;
+        return true;
     }
 
     private MatchTurn initialTurn(int firstTurnSlot) {
@@ -174,6 +238,15 @@ public final class Match {
     }
 
     public boolean commitScenario(long expectedWorldRevision, long expectedTurnRevision, MatchWorldState prepared) {
+        return commitScenario(expectedWorldRevision, expectedTurnRevision, prepared, Optional.empty());
+    }
+
+    public boolean commitScenario(
+        long expectedWorldRevision,
+        long expectedTurnRevision,
+        MatchWorldState prepared,
+        Optional<MatchCompletion> pending
+    ) {
         if (phase != MatchPhase.ACTION || world.revision() != expectedWorldRevision
             || turn.revision() != expectedTurnRevision || prepared.revision() != expectedWorldRevision + 1
             || prepared.receipt().filter(
@@ -187,6 +260,8 @@ public final class Match {
         }
 
         world = prepared;
+        completion = pending;
+        pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
         phase = MatchPhase.COMPLETION;
         phaseRevision++;
         return true;
@@ -285,7 +360,10 @@ public final class Match {
             turn.pickerBase(),
             turn.order(),
             turn.revision(),
-            OptionalLong.of(now)
+            OptionalLong.of(now),
+            turn.round(),
+            turn.remainingThisRound(),
+            turn.randomState()
         );
         phase = MatchPhase.SYNCHRONIZING;
         phaseRevision++;
@@ -306,7 +384,7 @@ public final class Match {
     }
 
     public boolean confirmsPosition(UUID session, int slot, int x, int y, int facing) {
-        if (phase != MatchPhase.SYNCHRONIZING && phase != MatchPhase.PREVIEW) {
+        if (phase != MatchPhase.SYNCHRONIZING && phase != MatchPhase.PREVIEW && phase != MatchPhase.ACTION) {
             return false;
         }
 

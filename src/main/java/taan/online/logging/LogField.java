@@ -15,6 +15,18 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField round(long value) {
+        return new LogField("round", value);
+    }
+
+    public static LogField windRaw(int value) {
+        return new LogField("windRaw", value);
+    }
+
+    public static LogField awaitingCount(int value) {
+        return new LogField("awaitingCount", value);
+    }
+
     public static LogField port(int value) {
         return new LogField("port", value);
     }

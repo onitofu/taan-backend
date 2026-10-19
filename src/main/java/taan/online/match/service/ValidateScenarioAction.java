@@ -59,6 +59,8 @@ public final class ValidateScenarioAction {
 
         if (!matches(context) || member.isEmpty() || !access.current(sender, member.orElseThrow())) {
             result = result(ScenarioAdmissionOutcome.IGNORED, "STALE_MEMBERSHIP");
+        } else if (member.orElseThrow().slotIndex() != match.turn().activeSlot()) {
+            result = result(ScenarioAdmissionOutcome.IGNORED, "INACTIVE_SHOOTER");
         } else if (context.previous().isPresent()) {
             var previous = context.previous().orElseThrow();
             boolean duplicate = match.phase() == MatchPhase.COMPLETION && previous.sender().equals(sender)

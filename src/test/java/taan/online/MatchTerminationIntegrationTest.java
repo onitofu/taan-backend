@@ -50,7 +50,7 @@ class MatchTerminationIntegrationTest {
     }
 
     @Test
-    void endsPreviewWithoutChangingDurableDataAndAcceptsCardsAndAnotherReservation() throws Exception {
+    void endsActiveMatchWithoutChangingDurableDataAndAcceptsCardsAndAnotherReservation() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
         String before = durableFingerprint();
@@ -207,7 +207,7 @@ class MatchTerminationIntegrationTest {
             assertTimeoutPreemptively(
                 Duration.ofSeconds(5),
                 () -> {
-                    while (matches.current(token).orElseThrow().phase() != MatchPhase.PREVIEW) {
+                    while (matches.current(token).orElseThrow().phase() != MatchPhase.ACTION) {
                         Thread.sleep(1);
                     }
                 }

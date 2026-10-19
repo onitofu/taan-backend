@@ -23,6 +23,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
     final TestMatchOutput owner = new TestMatchOutput();
     final TestMatchOutput guest = new TestMatchOutput();
     final MatchRuntime runtime;
+    final Match match;
     final TestMatchCallbacks callbacks;
     final RoomMatchToken token;
     boolean admitted = true;
@@ -36,7 +37,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
         var definitions = MatchFixtures.definitions();
         var draft = room.draft();
         token = draft.token();
-        var match = new Match(
+        match = new Match(
             new MatchId(token.matchId()),
             token.roomId(),
             token.generation(),

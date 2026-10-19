@@ -27,6 +27,11 @@ import taan.online.match.model.Match;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchTurnPolicy;
+import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.MatchRequestBinding;
+import taan.online.room.model.RoomMode;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
@@ -129,7 +134,26 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 draft.captains(),
                 participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex()
             );
-            var runtime = new MatchRuntime(match, settings, scheduler, clock, warnings, executor, capacity, access);
+            var profile = settings.forProfile(draft.settings().mode() == RoomMode.ITEM && participants.size() == 2);
+
+            if (profile.executionMode() == MatchExecutionMode.CANNON_1V1) {
+                var initial = new MatchTurnPolicy().initial(participants, random.nextLong());
+                match = new Match(
+                    match.id(),
+                    match.roomId(),
+                    match.roomGeneration(),
+                    match.channelId(),
+                    match.ownerSessionId(),
+                    match.mode(),
+                    match.rule(),
+                    match.definitions(),
+                    participants,
+                    match.captains(),
+                    initial
+                );
+            }
+
+            var runtime = new MatchRuntime(match, profile, scheduler, clock, warnings, executor, capacity, access);
             matches.put(match.id(), runtime);
             participants.forEach(value -> sessions.put(value.sessionId(), runtime));
             participants.forEach(value -> receipts.remove(value.sessionId()));
@@ -264,6 +288,28 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             : runtime.submit(new TerminateMatchCommand(MatchCommandContext.from(context), reason)).thenApply(
                 accepted -> accepted ? runtime.termination() : RoomMatchTerminationResult.ignored()
             );
+    }
+
+    public boolean scenarioEnabled(RoomMatchContext context) {
+        var runtime = context == null ? null : find(context.token());
+        return runtime != null && runtime.live();
+    }
+
+    public CompletionStage<Boolean> confirmScenario(ConfirmScenarioCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false) : runtime.confirmScenario(command);
+    }
+
+    public MatchRequestBinding capture(UUID session) {
+        var context = context(session);
+        var runtime = sessions.get(session);
+        var snapshot = runtime == null ? Optional.<MatchSnapshot>empty() : Optional.of(runtime.snapshot());
+        return new MatchRequestBinding(
+            context == null ? null : context.roomContext(),
+            snapshot.map(value -> value.turn().revision()).orElse(-1L),
+            snapshot.map(value -> value.world().revision()).orElse(-1L),
+            snapshot.flatMap(value -> value.completion().map(pending -> pending.fingerprint()))
+        );
     }
 
     public CompletionStage<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {

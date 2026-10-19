@@ -4,6 +4,13 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    SCENARIO_ACKNOWLEDGED("match.scenario.acknowledged", Level.DEBUG, "Scenario acknowledgement accepted"),
+    SCENARIO_ACK_IGNORED("match.scenario.ack.ignored", Level.DEBUG, "Stale or duplicate acknowledgement ignored"),
+    SCENARIO_COMPLETED("match.scenario.completed", Level.DEBUG, "Scenario completion barrier passed"),
+    TURN_ISSUED("match.turn.issued", Level.DEBUG, "Next match turn issued"),
+    COMPLETION_TIMEOUT("match.scenario.completion.timeout", Level.WARN, "Scenario acknowledgement deadline expired"),
+    TURN_TIMEOUT("match.turn.timeout", Level.WARN, "Match action deadline expired"),
+    TURN_DELIVERY_FAILED("match.turn.delivery.failed", Level.ERROR, "Match turn delivery failed"),
     SCENARIO_APPLIED("match.scenario.applied", Level.DEBUG, "Scenario applied to match world"),
     SCENARIO_APPLY_FAILED("match.scenario.apply.failed", Level.ERROR, "Scenario application failed"),
     SCENARIO_DELIVERY_FAILED("match.scenario.delivery.failed", Level.ERROR, "Committed scenario delivery failed"),
@@ -17,7 +24,7 @@ public enum MatchLogEvent implements LogEvent {
     COMMAND_FAILED("match.command.failed", Level.ERROR, "Match command failed"),
     LOADING_ACK("match.loading.ack", Level.DEBUG, "Match loading acknowledgement accepted"),
     POSITION_CONFIRMED("match.position.confirmed", Level.DEBUG, "Match position confirmed"),
-    STARTED("match.started", Level.INFO, "Match preview started"),
+    STARTED("match.started", Level.INFO, "Match first turn started"),
     BOOTSTRAP_DELIVERY_FAILED("match.bootstrap.delivery.failed", Level.ERROR, "Match bootstrap delivery failed"),
     RESERVED("match.reserved", Level.DEBUG, "Match reserved"),
     LOADING("match.loading", Level.DEBUG, "Match loading committed"),
