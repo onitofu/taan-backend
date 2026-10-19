@@ -48,6 +48,11 @@ public final class BinaryWriter {
         return unsignedInt(Integer.toUnsignedLong(value));
     }
 
+    public BinaryWriter signedLong(long value) {
+        signedInt((int) value);
+        return signedInt((int) (value >>> 32));
+    }
+
     public BinaryWriter float32(float value) {
         return signedInt(Float.floatToRawIntBits(value));
     }

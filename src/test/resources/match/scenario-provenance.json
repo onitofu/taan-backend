@@ -1,0 +1,44 @@
+{
+  "fixtures": [
+    {
+      "equipment-perks-kind15-fixtures-kind15-slot2-damage10.synthetic.root.hex": "7545becc665f3c3237906ebb5223debd6f13cd3aecdefbfc2559f4caba6a3ba4",
+      "original_file": "equipment-perks-kind15-fixtures-kind15-slot2-damage10.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "native-cannon-0-0.root.hex": "938c5bea8997504408f5a41909e3fc462aa4b2b4d1e4d2a303cbf1624ccadbc0",
+      "original_file": "native-cannon-0-0.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "native-cannon-2-0.root.hex": "b559728f7a7755c63c918c7838f0c99cc8829070b83637cba152d5c67215b88d",
+      "original_file": "native-cannon-2-0.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "native-cannon-2-1.root.hex": "552c7df2b7d8411c8543ba2f8860751c1c25458e324879b2133268eeee75c5b8",
+      "original_file": "native-cannon-2-1.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "native-cannon-guided.root.hex": "e6c7df5eab81f94558918bfaf48894aeaa42741b168455549c48324a3c619694",
+      "original_file": "native-cannon-guided.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "native-cannon-power.root.hex": "6d605b797df46c6190a9864956b5ed6d6d754c541e63592a065ec2104d012f2d",
+      "original_file": "native-cannon-power.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "native-cannon-team-gauge.root.hex": "86873fd3d231ba30c5c0ced2534f27d254832573ba886fe9675c1ab5759e094f",
+      "original_file": "native-cannon-team-gauge.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "weapon-effects-fix-scenario-fish-native.root.hex": "10803920450e8bde5e17871d7437925dc265355f82a18a35e0b694573c2aa1e6",
+      "original_file": "weapon-effects-fix-scenario-fish-native.root.hex",
+      "origin": "CAPTURED"
+    }
+  ]
+}

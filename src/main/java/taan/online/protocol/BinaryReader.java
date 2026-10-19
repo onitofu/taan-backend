@@ -31,6 +31,11 @@ public final class BinaryReader {
         return data.getInt();
     }
 
+    public long signedLong() {
+        require(8);
+        return data.getLong();
+    }
+
     public float float32() {
         return Float.intBitsToFloat(signedInt());
     }

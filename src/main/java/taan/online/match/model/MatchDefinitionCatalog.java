@@ -6,7 +6,8 @@ import java.util.Map;
 public record MatchDefinitionCatalog(
     String catalogVersion,
     Map<Integer, MatchMapDefinition> maps,
-    List<WeaponDefinition> weapons
+    List<WeaponDefinition> weapons,
+    CannonShotDefinition cannonShot
 ) {
     public MatchDefinitionCatalog {
         maps = Map.copyOf(maps);
@@ -17,11 +18,11 @@ public record MatchDefinitionCatalog(
         }
 
         for (var map : maps.values()) {
-            new MatchDefinitions(catalogVersion, map, weapons);
+            new MatchDefinitions(catalogVersion, map, weapons, cannonShot);
         }
     }
 
     public MatchDefinitions select(int mapId) {
-        return new MatchDefinitions(catalogVersion, maps.get(mapId), weapons);
+        return new MatchDefinitions(catalogVersion, maps.get(mapId), weapons, cannonShot);
     }
 }

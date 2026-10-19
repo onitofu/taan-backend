@@ -15,7 +15,12 @@ class MatchDefinitionCatalogTest {
     void rejectsMissingMapsAndIdentityMismatchesAndCopiesReferenceData() {
         var definitions = MatchFixtures.definitions();
         var maps = new HashMap<>(Map.of(1, definitions.map()));
-        var catalog = new MatchDefinitionCatalog(definitions.catalogVersion(), maps, definitions.weapons());
+        var catalog = new MatchDefinitionCatalog(
+            definitions.catalogVersion(),
+            maps,
+            definitions.weapons(),
+            MatchFixtures.cannonShot()
+        );
         maps.clear();
 
         assertEquals(definitions, catalog.select(1));
@@ -23,14 +28,20 @@ class MatchDefinitionCatalogTest {
         assertThrows(NullPointerException.class, () -> catalog.select(200));
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitionCatalog(definitions.catalogVersion(), Map.of(), definitions.weapons())
+            () -> new MatchDefinitionCatalog(
+                definitions.catalogVersion(),
+                Map.of(),
+                definitions.weapons(),
+                MatchFixtures.cannonShot()
+            )
         );
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitionCatalog(
                 definitions.catalogVersion(),
                 Map.of(2, definitions.map()),
-                definitions.weapons()
+                definitions.weapons(),
+                MatchFixtures.cannonShot()
             )
         );
     }

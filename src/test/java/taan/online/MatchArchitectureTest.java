@@ -12,6 +12,14 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class MatchArchitectureTest {
     @ArchTest
+    static final ArchRule SCENARIO_STAGING = noClasses().that().resideInAnyPackage(
+        "taan.online.bootstrap..",
+        "taan.online.server.."
+    ).should().dependOnClassesThat().haveFullyQualifiedName(
+        "taan.online.match.controller.ValidateScenarioPacketHandler"
+    );
+
+    @ArchTest
     static final ArchRule PACKETS = classes().that().resideInAPackage("taan.online.match.protocol.packet..")
         .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "taan.online.match.protocol.packet..");
 

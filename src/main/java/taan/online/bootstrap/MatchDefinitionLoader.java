@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MapSpawnDefinition;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchMapDefinition;
@@ -26,10 +27,11 @@ public final class MatchDefinitionLoader {
         InputStream properties,
         InputStream maps,
         InputStream spawns,
-        InputStream weapons
+        InputStream weapons,
+        InputStream cannon
     ) {
-        try (properties; maps; spawns; weapons) {
-            return definitions(properties, maps, spawns, weapons);
+        try (properties; maps; spawns; weapons; cannon) {
+            return definitions(properties, maps, spawns, weapons, cannon);
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot load match definitions", failure);
         }
@@ -39,7 +41,8 @@ public final class MatchDefinitionLoader {
         InputStream properties,
         InputStream maps,
         InputStream spawns,
-        InputStream weapons
+        InputStream weapons,
+        InputStream cannon
     ) throws IOException {
         var values = new Properties();
         values.load(new InputStreamReader(Objects.requireNonNull(properties), StandardCharsets.UTF_8.newDecoder()));
@@ -103,7 +106,29 @@ public final class MatchDefinitionLoader {
                 Integer.parseInt(row[4])
             )
         );
-        return new MatchDefinitionCatalog(values.getProperty("catalog.version"), definitions, weaponDefinitions);
+        var shots = csv(
+            cannon,
+            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id",
+            row -> new CannonShotDefinition(
+                Integer.parseInt(row[0]),
+                Integer.parseInt(row[1]),
+                Integer.parseInt(row[2]),
+                Integer.parseInt(row[3]),
+                Integer.parseInt(row[4]),
+                Integer.parseInt(row[5])
+            )
+        );
+
+        if (shots.size() != 1) {
+            throw new IllegalArgumentException("Incomplete ordinary cannon definitions");
+        }
+
+        return new MatchDefinitionCatalog(
+            values.getProperty("catalog.version"),
+            definitions,
+            weaponDefinitions,
+            shots.getFirst()
+        );
     }
 
     private Set<Integer> kinds(String[] row) {

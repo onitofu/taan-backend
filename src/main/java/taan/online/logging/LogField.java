@@ -63,6 +63,18 @@ public final class LogField {
         return new LogField("channelKind", value);
     }
 
+    public static LogField admissionId(UUID value) {
+        return new LogField("admissionId", value);
+    }
+
+    public static LogField scenarioHash(String value) {
+        return new LogField("scenarioHash", value);
+    }
+
+    public static LogField commandCount(int value) {
+        return new LogField("commandCount", value);
+    }
+
     public static LogField turnRevision(long value) {
         return new LogField("turnRevision", value);
     }

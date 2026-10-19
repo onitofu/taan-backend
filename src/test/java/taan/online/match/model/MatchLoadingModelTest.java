@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchSnapshot;
@@ -111,7 +112,8 @@ class MatchLoadingModelTest {
             var definitions = new MatchDefinitions(
                 source.definitions().catalogVersion(),
                 new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), spawns, Set.of(0, 1, 6)),
-                source.definitions().weapons()
+                source.definitions().weapons(),
+                MatchFixtures.cannonShot()
             );
             var match = new Match(
                 source.id(),

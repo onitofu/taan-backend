@@ -12,6 +12,7 @@ import taan.online.bootstrap.MatchDefinitionLoader;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
@@ -89,7 +90,8 @@ public final class MatchFixtures {
             new MatchDefinitionCatalog(
                 definitions.catalogVersion(),
                 Map.of(definitions.map().mapId(), definitions.map()),
-                definitions.weapons()
+                definitions.weapons(),
+                definitions.cannonShot()
             ),
             scheduler,
             random,
@@ -161,6 +163,10 @@ public final class MatchFixtures {
         }
     }
 
+    public static CannonShotDefinition cannonShot() {
+        return new CannonShotDefinition(0, 0, 0, 100, 0, 0);
+    }
+
     public static MatchDefinitions definitions() {
         return catalog().select(1);
     }
@@ -170,7 +176,8 @@ public final class MatchFixtures {
             MatchFixtures.class.getResourceAsStream("/match/catalog.properties"),
             MatchFixtures.class.getResourceAsStream("/match/maps.csv"),
             MatchFixtures.class.getResourceAsStream("/match/map-spawns.csv"),
-            MatchFixtures.class.getResourceAsStream("/match/weapons.csv")
+            MatchFixtures.class.getResourceAsStream("/match/weapons.csv"),
+            MatchFixtures.class.getResourceAsStream("/match/cannon-shots.csv")
         );
     }
 }

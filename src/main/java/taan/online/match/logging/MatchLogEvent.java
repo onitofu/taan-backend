@@ -4,6 +4,10 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    SCENARIO_VALIDATED("match.scenario.validated", Level.DEBUG, "Scenario validated without applying game state"),
+    SCENARIO_REJECTED("match.scenario.rejected", Level.DEBUG, "Scenario rejected"),
+    SCENARIO_DUPLICATE("match.scenario.duplicate", Level.DEBUG, "Duplicate scenario ignored"),
+    SCENARIO_IGNORED("match.scenario.ignored", Level.DEBUG, "Stale or inactive scenario ignored"),
     FIRST_TURN_ISSUED("match.first_turn.issued", Level.DEBUG, "First match turn issued"),
     COMMAND_PROCESSED("match.command.processed", Level.TRACE, "Match command processed"),
     COMMAND_REJECTED("match.command.rejected", Level.DEBUG, "Match command rejected"),

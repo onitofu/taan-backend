@@ -178,13 +178,25 @@ class MatchDefinitionLoaderTest {
         }) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> loader.load(input(properties), input(invalid), input(spawns), input(weapons))
+                () -> loader.load(
+                    input(properties),
+                    input(invalid),
+                    input(spawns),
+                    input(weapons),
+                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+                )
             );
         }
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> loader.load(input(properties), input(maps), input(spawns + "22,0,1,1,1,1,0,0,true\n"), input(weapons))
+            () -> loader.load(
+                input(properties),
+                input(maps),
+                input(spawns + "22,0,1,1,1,1,0,0,true\n"),
+                input(weapons),
+                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+            )
         );
         assertThrows(
             IllegalArgumentException.class,
@@ -192,7 +204,8 @@ class MatchDefinitionLoaderTest {
                 input(properties),
                 input(maps),
                 input(spawns.replace("1,0,97,686", "22,0,97,686")),
-                input(weapons)
+                input(weapons),
+                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
             )
         );
 
@@ -203,7 +216,8 @@ class MatchDefinitionLoaderTest {
                     input(properties),
                     new BrokenDefinitionStream(maps.getBytes(StandardCharsets.UTF_8), failRead),
                     input(spawns),
-                    input(weapons)
+                    input(weapons),
+                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
                 )
             );
         }
@@ -228,7 +242,13 @@ class MatchDefinitionLoaderTest {
     }
 
     private MatchDefinitions load(InputStream properties, InputStream spawns, InputStream weapons) {
-        return new MatchDefinitionLoader().load(properties, resource("maps.csv"), spawns, weapons).select(1);
+        return new MatchDefinitionLoader().load(
+            properties,
+            resource("maps.csv"),
+            spawns,
+            weapons,
+            MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+        ).select(1);
     }
 
     private InputStream resource(String name) {
