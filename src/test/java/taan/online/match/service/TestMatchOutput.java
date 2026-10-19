@@ -3,9 +3,10 @@ package taan.online.match.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import taan.online.match.service.model.MatchSnapshot;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import taan.online.match.model.MatchOutcome;
+import taan.online.match.service.model.MatchSnapshot;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<MatchSnapshot> starts = new ArrayList<>();
@@ -42,7 +43,7 @@ public final class TestMatchOutput implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> endPreview() {
+    public CompletionStage<Void> end(MatchOutcome outcome) {
         ends++;
         onEnd.run();
 

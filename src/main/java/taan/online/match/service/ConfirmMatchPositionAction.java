@@ -1,18 +1,19 @@
 package taan.online.match.service;
 
 import java.util.UUID;
-import taan.online.room.service.RoomMatchAccess;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import taan.online.room.service.model.RoomMatchContext;
 
 public final class ConfirmMatchPositionAction {
-    private final RoomMatchAccess rooms;
+    private final MatchRegistry matches;
 
-    public ConfirmMatchPositionAction(RoomMatchAccess rooms) {
-        this.rooms = rooms;
+    public ConfirmMatchPositionAction(MatchRegistry matches) {
+        this.matches = matches;
     }
 
-    public boolean execute(UUID id, RoomMatchContext context, int slot, int x, int y, int facing) {
+    public CompletionStage<Boolean> execute(UUID id, RoomMatchContext context, int slot, int x, int y, int facing) {
         return context != null && context.membership().sessionId().equals(id)
-            ? rooms.confirmPosition(context, slot, x, y, facing) : false;
+            ? matches.confirmPosition(context, slot, x, y, facing) : CompletableFuture.completedFuture(false);
     }
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchPhase;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
@@ -76,7 +77,7 @@ final class MatchTerminationDelivery {
 
     private CompletionStage<Void> deliver(MatchSubscription recipient) {
         try {
-            return recipient.output().endPreview().handle(
+            return recipient.output().end(MatchOutcome.previewAborted()).handle(
                 LogContext.propagate(
                     (ignored, failure) -> {
                         if (failure != null) {

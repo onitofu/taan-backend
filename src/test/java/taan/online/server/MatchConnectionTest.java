@@ -168,18 +168,17 @@ class MatchConnectionTest {
     }
 
     @Test
-    void closesTheFailingRequesterAndLogsUnexpectedMatchFailuresOnceWithoutSecrets() throws Exception {
+    void containsAnUnexpectedDispatchFailureAndCleansUpTheRequestersMatch() throws Exception {
         try (var world = new RoomConnectionWorld(); var logs = new LogCapture()) {
-            var access = new FailingRoomMatchAccess(world.rooms.matchAccess());
+            var matches = world.matches;
             var dispatcher = new MatchRequestDispatcher(
                 new MatchPacketHandler(
-                    access,
-                    world.matches,
-                    new TerminateMatchAction(access),
-                    new ConsumeMatchResultAction(access, world.matches),
-                    new ConfirmMatchLoadingAction(access),
-                    new ConfirmMatchPositionAction(access),
-                    new ReportMatchEnemiesAction(access)
+                    matches,
+                    new TerminateMatchAction(null),
+                    new ConsumeMatchResultAction(matches),
+                    new ConfirmMatchLoadingAction(matches),
+                    new ConfirmMatchPositionAction(matches),
+                    new ReportMatchEnemiesAction(matches)
                 )
             );
             var owner = world.client(1, dispatcher);
@@ -192,15 +191,14 @@ class MatchConnectionTest {
             world.request(guest, RoomScenario.ready(1));
             drain(owner);
             drain(guest);
-            start(world, MatchPhase.PREVIEW);
+            var token = start(world, MatchPhase.PREVIEW);
             world.request(owner, MatchFixtures.root("give-up-empty"));
 
             assertFalse(owner.channel().isActive());
             assertTrue(guest.channel().isActive());
+            assertTrue(matches.current(token).isEmpty());
             assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(guest));
             assertTrue(logs.text().contains("match.operation.failed"));
-            assertFalse(logs.text().contains("secret-account@example.test"));
-            assertFalse(logs.text().contains("verifier-secret"));
             assertEquals(
                 1,
                 logs.events().stream().filter(event -> event.getLevel().toString().equals("ERROR")).count()
@@ -245,12 +243,14 @@ class MatchConnectionTest {
     private RoomMatchToken start(RoomConnectionWorld world, MatchPhase phase) throws Exception {
         var room = RuntimeRoomTestAccess.room(world.rooms, 1);
         var token = world.rooms.reserveMatch(room.ownerSessionId()).token();
-        world.rooms.commitMatch(token);
+        world.matches.activate(token, world.rooms.matchCallbacks());
+        world.rooms.commitMatch(token).toCompletableFuture().join();
 
         if (phase == MatchPhase.PREVIEW) {
             MatchFixtures.loaded(world.matches, token);
         }
 
+        world.drainOutputs();
         return token;
     }
 }

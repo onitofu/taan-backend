@@ -3,15 +3,14 @@ package taan.online.bootstrap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,7 +23,7 @@ import taan.online.room.service.model.RoomMatchToken;
 
 class ScheduledMatchSchedulerTest {
     @Test
-    void executesDeadlinesOnBoundedCommandThreadsAndPreservesTheSchedulingContext() throws Exception {
+    void submitsDeadlinesFromTimerThreadsAndPreservesTheSchedulingContext() throws Exception {
         try (var scheduler = new ScheduledMatchScheduler(2, System::nanoTime)) {
             var done = new CountDownLatch(1);
             var error = new AtomicReference<Throwable>();
@@ -33,7 +32,7 @@ class ScheduledMatchSchedulerTest {
                 new MatchDeadline(token(), System.nanoTime()),
                 () -> {
                     try {
-                        assertTrue(Thread.currentThread().getName().startsWith("match-command-"));
+                        assertTrue(Thread.currentThread().getName().startsWith("match-timer-"));
                         assertEquals("match-deadline", MDC.get("operationId"));
                     } catch (Throwable failure) {
                         error.set(failure);
@@ -93,36 +92,21 @@ class ScheduledMatchSchedulerTest {
     }
 
     @Test
-    void cancelsQueuedCompletionsAndCallsFallbackIfTheCommandExecutorBecomesUnavailable() throws Exception {
+    void submitsCompletionsImmediatelyWithoutAnotherGlobalCommandQueue() {
         try (var scheduler = new ScheduledMatchScheduler(2, System::nanoTime)) {
-            var started = new CountDownLatch(1);
-            var release = new CountDownLatch(1);
-            var finished = new CountDownLatch(1);
-            var count = new AtomicInteger();
+            var caller = Thread.currentThread();
+            var submitted = new AtomicInteger();
             scheduler.execute(
                 token(),
                 () -> {
-                    started.countDown();
-                    await(release);
+                    assertEquals(caller, Thread.currentThread());
+                    submitted.incrementAndGet();
                 },
                 () -> { }
             );
-            assertTrue(started.await(5, TimeUnit.SECONDS));
-            var cancelled = token();
-            scheduler.execute(cancelled, count::incrementAndGet, () -> { });
-            scheduler.cancel(cancelled.match().matchId());
-            scheduler.execute(token(), finished::countDown, () -> { });
-            release.countDown();
 
-            assertTrue(finished.await(5, TimeUnit.SECONDS));
-            assertEquals(0, count.get());
-            var field = ScheduledMatchScheduler.class.getDeclaredField("commands");
-            field.setAccessible(true);
-            ((ThreadPoolExecutor) field.get(scheduler)).shutdownNow();
-            var rejected = new CountDownLatch(1);
-            scheduler.execute(token(), () -> { }, rejected::countDown);
-
-            assertTrue(rejected.await(5, TimeUnit.SECONDS));
+            assertEquals(1, submitted.get());
+            assertEquals(0, scheduler.pendingCount());
         }
     }
 
@@ -147,12 +131,7 @@ class ScheduledMatchSchedulerTest {
             );
             assertEquals(0, scheduler.pendingCount());
             var count = new AtomicInteger();
-            var cancelled = new ScheduledMatchTask(
-                UUID.randomUUID(),
-                count::incrementAndGet,
-                () -> { },
-                ignored -> { }
-            );
+            var cancelled = new ScheduledMatchTask(UUID.randomUUID(), count::incrementAndGet, ignored -> { });
             cancelled.cancel(false);
             var dispatch = ScheduledMatchScheduler.class.getDeclaredMethod("dispatch", ScheduledMatchTask.class);
             dispatch.setAccessible(true);
@@ -164,7 +143,7 @@ class ScheduledMatchSchedulerTest {
 
     @Test
     void cancelsATimerAttachedAfterItsCommandCompletes() {
-        var task = new ScheduledMatchTask(UUID.randomUUID(), () -> { }, () -> { }, ignored -> { });
+        var task = new ScheduledMatchTask(UUID.randomUUID(), () -> { }, ignored -> { });
         task.run();
 
         assertFalse(task.isCancelled());

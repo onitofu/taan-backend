@@ -17,6 +17,7 @@ public final class TestMatchScheduler implements MatchScheduler {
     public boolean delayCompletions;
     public boolean rejectSchedule;
     public boolean rejectExecute;
+    public Runnable onSchedule = () -> { };
 
     @Override
     public void schedule(MatchDeadline deadline, Runnable command, Runnable onRejected) {
@@ -24,6 +25,7 @@ public final class TestMatchScheduler implements MatchScheduler {
             throw new RejectedExecutionException("test scheduler unavailable");
         }
 
+        onSchedule.run();
         deadlines.add(deadline);
         commands.add(command);
         rejected.add(onRejected);

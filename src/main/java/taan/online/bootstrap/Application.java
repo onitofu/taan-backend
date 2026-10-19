@@ -10,12 +10,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.random.RandomGenerator;
-import taan.online.match.service.model.MatchBootstrapSettings;
-import taan.online.match.service.ConfirmMatchLoadingAction;
-import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ReportMatchEnemiesAction;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.random.RandomGenerator;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.LoggerFactory;
 import taan.online.account.controller.CheckAccountPacketHandler;
@@ -55,10 +51,13 @@ import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
-import taan.online.server.MatchRequestDispatcher;
+import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
@@ -82,6 +81,7 @@ import taan.online.room.service.SetRoomSlotAvailabilityAction;
 import taan.online.server.ConnectionContext;
 import taan.online.server.InventoryRequestDispatcher;
 import taan.online.server.LobbyRequestDispatcher;
+import taan.online.server.MatchRequestDispatcher;
 import taan.online.server.RoomRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
@@ -102,6 +102,7 @@ public final class Application implements AutoCloseable {
     private final RoomRegistry rooms;
     private final ScheduledRoomSelectionScheduler selectionScheduler;
     private final ScheduledMatchScheduler matchScheduler;
+    private final BoundedMatchExecutor matchExecutor;
     private final ItemCatalog itemCatalog = new ItemCatalog();
     private final ThreadPoolExecutor workers;
     private final TcpServer server;
@@ -167,6 +168,7 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/match/jungle-spawns.csv"),
             Application.class.getResourceAsStream("/match/weapons.csv")
         );
+        matchExecutor = new BoundedMatchExecutor(config.matchWorkerThreads(), config.maxConnections());
         matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
         var matches = new MatchRegistry(
             matchDefinitions,
@@ -183,18 +185,20 @@ public final class Application implements AutoCloseable {
                 config.logWarnBurst(),
                 Duration.ofSeconds(config.logWarnIntervalSeconds()),
                 System::nanoTime
-            )
+            ),
+            matchExecutor,
+            config.matchQueueCapacity(),
+            new ChannelMatchAccess(channels)
         );
         rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
         var matchDispatcher = new MatchRequestDispatcher(
             new MatchPacketHandler(
-                rooms.matchAccess(),
                 matches,
-                new TerminateMatchAction(rooms.matchAccess()),
-                new ConsumeMatchResultAction(rooms.matchAccess(), matches),
-                new ConfirmMatchLoadingAction(rooms.matchAccess()),
-                new ConfirmMatchPositionAction(rooms.matchAccess()),
-                new ReportMatchEnemiesAction(rooms.matchAccess())
+                new TerminateMatchAction(matches),
+                new ConsumeMatchResultAction(matches),
+                new ConfirmMatchLoadingAction(matches),
+                new ConfirmMatchPositionAction(matches),
+                new ReportMatchEnemiesAction(matches)
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(
@@ -352,7 +356,17 @@ public final class Application implements AutoCloseable {
             server.close();
             rooms.close();
             selectionScheduler.close();
-            matchScheduler.close();
+
+            try {
+                if (!matchExecutor.awaitTermination(Math.max(0, deadline - System.nanoTime()))) {
+                    LOG.log(ServerLogEvent.SHUTDOWN_TIMEOUT);
+                }
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+            } finally {
+                matchScheduler.close();
+                matchExecutor.close();
+            }
             terminated.countDown();
 
             LOG.log(ServerLogEvent.STOPPED);

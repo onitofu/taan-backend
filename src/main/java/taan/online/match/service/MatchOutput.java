@@ -2,6 +2,7 @@ package taan.online.match.service;
 
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
+import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchSnapshot;
 
 public interface MatchOutput {
@@ -9,7 +10,7 @@ public interface MatchOutput {
 
     CompletionStage<Void> firstTurn(MatchSnapshot snapshot, UUID recipient);
 
-    CompletionStage<Void> endPreview();
+    CompletionStage<Void> end(MatchOutcome outcome);
 
     void close(String reason);
 }

@@ -3,9 +3,9 @@ package taan.online;
 import java.util.List;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.TestMatchOutput;
@@ -30,13 +30,12 @@ public final class MatchTerminalFixture implements AutoCloseable {
         var rooms = room.scenario.rooms;
         var matches = room.scenario.matches;
         handler = new MatchPacketHandler(
-            rooms.matchAccess(),
             matches,
-            new TerminateMatchAction(rooms.matchAccess()),
-            new ConsumeMatchResultAction(rooms.matchAccess(), matches),
-            new ConfirmMatchLoadingAction(rooms.matchAccess()),
-            new ConfirmMatchPositionAction(rooms.matchAccess()),
-            new ReportMatchEnemiesAction(rooms.matchAccess())
+            new TerminateMatchAction(matches),
+            new ConsumeMatchResultAction(matches),
+            new ConfirmMatchLoadingAction(matches),
+            new ConfirmMatchPositionAction(matches),
+            new ReportMatchEnemiesAction(matches)
         );
 
         if (mode.requiresCaptainSelection()) {
@@ -45,8 +44,10 @@ public final class MatchTerminalFixture implements AutoCloseable {
 
         token = rooms.reserveMatch(room.owner).token();
 
+        matches.activate(token, rooms.matchCallbacks());
+
         if (phase != MatchPhase.RESERVED) {
-            rooms.commitMatch(token);
+            rooms.commitMatch(token).toCompletableFuture().join();
         }
 
         if (phase == MatchPhase.PREVIEW) {

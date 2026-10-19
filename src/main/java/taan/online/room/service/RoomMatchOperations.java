@@ -1,20 +1,21 @@
 package taan.online.room.service;
 
-import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.roomGeneration;
+import static taan.online.logging.LogField.roomId;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import taan.online.room.service.model.RoomMatchProgressToken;
 import java.util.function.Consumer;
 import taan.online.channel.service.ChannelRegistry;
-import taan.online.logging.EventLogger;
-import taan.online.room.logging.RoomLogEvent;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.InventoryMoveContext;
+import taan.online.logging.EventLogger;
+import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.CaptainSelectionPhase;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.Room;
@@ -22,20 +23,22 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.service.model.RoomMatchContext;
-import taan.online.room.service.model.RoomMatchEndReason;
-import taan.online.room.service.model.RoomMatchTerminationMode;
-import taan.online.room.service.model.RoomMatchTerminationResult;
-import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomMatchDraft;
+import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchParticipant;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchReservationResult;
+import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchToken;
+import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
 
 final class RoomMatchOperations {
     private static final EventLogger LOG = EventLogger.forClass(RoomMatchOperations.class);
 
+    private final Object monitor;
+    private final Map<RoomMatchToken, CompletableFuture<Void>> pending = new HashMap<>();
     private final ChannelRegistry channels;
     private final Map<RoomId, Room> rooms;
     private final Map<UUID, RoomSubscription> memberships;
@@ -44,6 +47,7 @@ final class RoomMatchOperations {
     private final Consumer<Room> changed;
 
     RoomMatchOperations(
+        Object monitor,
         ChannelRegistry channels,
         Map<RoomId, Room> rooms,
         Map<UUID, RoomSubscription> memberships,
@@ -51,6 +55,7 @@ final class RoomMatchOperations {
         RoomMatchLifecycle lifecycle,
         Consumer<Room> changed
     ) {
+        this.monitor = monitor;
         this.channels = channels;
         this.rooms = rooms;
         this.memberships = memberships;
@@ -145,18 +150,22 @@ final class RoomMatchOperations {
         }
     }
 
-    RoomMatchReservationResult commit(RoomMatchToken token) {
+    String startRejection(RoomMatchToken token) {
         var room = current(token);
+        return room == null ? "STALE_MATCH" : contextRejection(room);
+    }
 
-        if (room == null) {
-            return stale();
-        }
-
-        String rejection = contextRejection(room);
+    CompletionStage<RoomMatchReservationResult> commit(RoomMatchToken token) {
+        String rejection = startRejection(token);
 
         if (rejection != null) {
-            cancel(room, rejection);
-            return rejected(rejection);
+            var room = current(token);
+
+            if (room != null) {
+                cancel(room, rejection);
+            }
+
+            return CompletableFuture.completedFuture(room == null ? stale() : rejected(rejection));
         }
 
         return lifecycle.commit(token);
@@ -201,32 +210,8 @@ final class RoomMatchOperations {
         return lifecycle.activate(token, callbacks);
     }
 
-    RoomMatchProgressToken progress(RoomMatchToken token) {
-        return current(token) == null ? null : lifecycle.progress(token);
-    }
-
-    CompletionStage<Void> publish(RoomMatchProgressToken token, UUID requester) {
-        return lifecycle.publish(token, requester);
-    }
-
-    RoomMatchProgressToken loadingDone(RoomMatchContext context, int slot, int x, int y) {
-        return lifecycle.loadingDone(context, slot, x, y);
-    }
-
-    RoomMatchProgressToken deliveryCompleted(RoomMatchProgressToken token, UUID recipient) {
-        return lifecycle.deliveryCompleted(token, recipient);
-    }
-
-    boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
-        return lifecycle.confirmPosition(context, slot, x, y, facing);
-    }
-
-    boolean reportEnemies(RoomMatchContext context) {
-        return lifecycle.reportEnemies(context);
-    }
-
-    RoomMatchEndReason timeoutReason(RoomMatchProgressToken token) {
-        return lifecycle.timeoutReason(token);
+    CompletionStage<Void> publish(RoomMatchToken token) {
+        return lifecycle.publish(token);
     }
 
     RoomMatchTerminationResult terminate(
@@ -259,6 +244,23 @@ final class RoomMatchOperations {
         );
     }
 
+    boolean deferDeparture(Room room, Runnable departure) {
+        var ending = pending.get(room.matchId() == null ? null : token(room));
+
+        if (ending == null) {
+            return false;
+        }
+
+        ending.thenRun(
+            () -> {
+                synchronized (monitor) {
+                    departure.run();
+                }
+            }
+        );
+        return true;
+    }
+
     void forget(RoomMembership expected) {
         if (lifecycle != null) {
             lifecycle.release(expected);
@@ -271,6 +273,11 @@ final class RoomMatchOperations {
         }
 
         var token = token(room);
+
+        if (pending.containsKey(token)) {
+            return RoomMatchTerminationResult.ignored();
+        }
+
         var previous = room.slots();
         var terminal = lifecycle.prepareTermination(token, reason, departing);
 
@@ -291,21 +298,43 @@ final class RoomMatchOperations {
             return RoomMatchTerminationResult.ignored();
         }
 
-        var delivery = lifecycle.dispatchTermination(terminal, requester);
-        room.rollbackMatch(token.matchId());
-        changed.accept(room);
+        var queued = new CompletableFuture<Void>();
+        pending.put(token, queued);
+        Runnable returned = () -> {
+            synchronized (monitor) {
+                if (current(token) == room) {
+                    room.rollbackMatch(token.matchId());
+                    changed.accept(room);
 
-        for (var slot : previous) {
-            if (slot.state() == RoomSlotState.READY) {
-                var participant = slot.participant();
-                RoomNotifications.readyChanged(
-                    List.copyOf(memberships.values()),
-                    memberships.get(participant.sessionId()).membership(),
-                    participant.character().accountId(),
-                    false
-                );
+                    for (var slot : previous) {
+                        if (slot.state() == RoomSlotState.READY) {
+                            var participant = slot.participant();
+                            var subscription = memberships.get(participant.sessionId());
+
+                            RoomNotifications.readyChanged(
+                                List.copyOf(memberships.values()),
+                                subscription.membership(),
+                                participant.character().accountId(),
+                                false
+                            );
+                        }
+                    }
+                }
+
+                pending.remove(token);
+                queued.complete(null);
             }
+        };
+
+        if (terminal.mode() == RoomMatchTerminationMode.ROLLBACK) {
+            returned.run();
         }
+
+        var delivery = lifecycle.dispatchTermination(
+            terminal,
+            requester,
+            terminal.mode() == RoomMatchTerminationMode.ROLLBACK ? () -> { } : returned
+        );
 
         return new RoomMatchTerminationResult(terminal, delivery);
     }

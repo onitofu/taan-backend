@@ -79,13 +79,13 @@ class MatchBootstrapTest {
             assertEquals(30_000_000_000L, f.snapshot().deadlineNanos());
             assertEquals(1, f.outputs.getFirst().turns.size());
             assertTrue(
-                f.room.scenario.rooms.matchAccess().confirmPosition(
+                f.room.scenario.matches.confirmPosition(
                     f.context(1),
                     f.snapshot().participants().get(1).slotIndex(),
-                    f.snapshot().placements().get(f.room.players.get(1)).settledX(),
-                    f.snapshot().placements().get(f.room.players.get(1)).settledY(),
+                    f.snapshot().actors().get(f.room.players.get(1)).x(),
+                    f.snapshot().actors().get(f.room.players.get(1)).y(),
                     f.snapshot().participants().get(1).facing()
-                )
+                ).toCompletableFuture().join()
             );
             f.outputs.get(1).turnDelivery.complete(null);
 
@@ -98,24 +98,24 @@ class MatchBootstrapTest {
     void fixesTheFirstValidPlacementAndAcceptsAlternateAndNeutralSpawnsWithoutTrustingOtherPositions() {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
             f.start();
-            var rooms = f.room.scenario.rooms.matchAccess();
+            var rooms = f.room.scenario.rooms;
             var owner = f.context(0);
-            rooms.loadingDone(owner, 2, 1110, 685);
-            rooms.loadingDone(owner, 0, 500, 500);
-            rooms.loadingDone(owner, 0, 1110, 685);
+            f.room.scenario.matches.loadingDone(owner, 2, 1110, 685).toCompletableFuture().join();
+            f.room.scenario.matches.loadingDone(owner, 0, 500, 500).toCompletableFuture().join();
+            f.room.scenario.matches.loadingDone(owner, 0, 1110, 685).toCompletableFuture().join();
 
-            assertTrue(f.snapshot().placements().isEmpty());
-            rooms.loadingDone(owner, 0, 336, 676);
-            rooms.loadingDone(owner, 0, 97, 685);
+            assertTrue(f.snapshot().loadedSessions().isEmpty());
+            f.room.scenario.matches.loadingDone(owner, 0, 336, 676).toCompletableFuture().join();
+            f.room.scenario.matches.loadingDone(owner, 0, 97, 685).toCompletableFuture().join();
 
-            assertEquals(336, f.snapshot().placements().get(f.room.owner).settledX());
-            rooms.loadingDone(f.context(1), 2, 847, 658);
+            assertEquals(336, f.snapshot().actors().get(f.room.owner).x());
+            f.room.scenario.matches.loadingDone(f.context(1), 2, 847, 658).toCompletableFuture().join();
 
             assertEquals(MatchPhase.PREVIEW, f.snapshot().phase());
-            assertTrue(rooms.confirmPosition(owner, 0, 336, 676, 0));
-            assertFalse(rooms.confirmPosition(owner, 0, 336, 676, 1));
-            assertFalse(rooms.confirmPosition(owner, 2, 847, 658, 1));
-            assertFalse(rooms.confirmPosition(owner, 0, 500, 500, 0));
+            assertTrue(f.room.scenario.matches.confirmPosition(owner, 0, 336, 676, 0).toCompletableFuture().join());
+            assertFalse(f.room.scenario.matches.confirmPosition(owner, 0, 336, 676, 1).toCompletableFuture().join());
+            assertFalse(f.room.scenario.matches.confirmPosition(owner, 2, 847, 658, 1).toCompletableFuture().join());
+            assertFalse(f.room.scenario.matches.confirmPosition(owner, 0, 500, 500, 0).toCompletableFuture().join());
             assertEquals(1, f.outputs.getFirst().turns.size());
         }
     }
@@ -147,7 +147,9 @@ class MatchBootstrapTest {
 
             assertTrue(f.room.scenario.matches.current(next).isEmpty());
             assertTrue(f.outputs.stream().allMatch(output -> output.ends == 1));
-            assertNull(f.room.scenario.matches.deliveryCompleted(oldProgress, UUID.randomUUID()));
+            assertNull(
+                f.room.scenario.matches.deliveryCompleted(oldProgress, UUID.randomUUID()).toCompletableFuture().join()
+            );
         }
     }
 

@@ -1,16 +1,9 @@
 package taan.online.room.service;
 
-import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import taan.online.logging.EventLogger;
-import taan.online.room.logging.RoomLogEvent;
-import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
-import taan.online.room.service.model.RoomMatchProgressToken;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchToken;
@@ -18,9 +11,7 @@ import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomStartOutcome;
 import taan.online.room.service.model.RoomStartResult;
 
-final class RoomMatchCoordinator implements RoomMatchAccess, RoomMatchCallbacks {
-    private static final EventLogger LOG = EventLogger.forClass(RoomMatchCoordinator.class);
-
+final class RoomMatchCoordinator implements RoomMatchCallbacks {
     private final Object monitor;
     private final RoomMatchOperations matches;
     private final RoomStartOperations starts;
@@ -61,141 +52,34 @@ final class RoomMatchCoordinator implements RoomMatchAccess, RoomMatchCallbacks 
 
             var token = reserved.token();
 
-            try {
-                if (!matches.activate(token, this)) {
-                    matches.rollback(token, "OUTPUT_UNAVAILABLE");
-                    return starts.unavailable(id, "OUTPUT_UNAVAILABLE", check.captains());
-                }
-
-                var committed = matches.commit(token);
-
-                if (committed.outcome() != RoomMatchReservationOutcome.COMMITTED) {
-                    return starts.unavailable(id, committed.reason(), check.captains());
-                }
-
-                var delivery = matches.publish(matches.progress(token), id);
-                return new RoomStartResult(RoomStartOutcome.STARTED, "STARTED", check.captains(), delivery);
-            } catch (RuntimeException failure) {
-                matches.terminate(token, RoomMatchEndReason.PREPARATION_FAILED, null);
-                throw failure;
+            if (!matches.activate(token, this)) {
+                matches.rollback(token, "OUTPUT_UNAVAILABLE");
+                return starts.unavailable(id, "OUTPUT_UNAVAILABLE", check.captains());
             }
+
+            String invalid = matches.startRejection(token);
+
+            if (invalid != null) {
+                matches.rollback(token, invalid);
+                return starts.unavailable(id, invalid, check.captains());
+            }
+
+            var delivery = matches.commit(token).thenCompose(result -> matches.publish(token));
+            return new RoomStartResult(RoomStartOutcome.STARTED, "STARTED", check.captains(), delivery);
         }
     }
 
     @Override
-    public RoomMatchContext matchContext(UUID id) {
+    public RoomMatchTerminationResult terminateMatch(RoomMatchToken token, RoomMatchEndReason reason, UUID requester) {
         synchronized (monitor) {
-            return matches.context(id, phase.get());
+            return matches.terminate(token, reason, requester);
         }
     }
 
     @Override
-    public CompletionStage<Void> loadingDone(RoomMatchContext context, int slot, int x, int y) {
+    public boolean startCurrent(RoomMatchToken token) {
         synchronized (monitor) {
-            if (!current(context) || expired(context.token())) {
-                return CompletableFuture.completedFuture(null);
-            }
-
-            try {
-                var next = matches.loadingDone(context, slot, x, y);
-
-                if (next == null) {
-                    return CompletableFuture.completedFuture(null);
-                }
-
-                return matches.publish(next, context.membership().sessionId());
-            } catch (RuntimeException failure) {
-                matches.terminate(context.token(), RoomMatchEndReason.PREPARATION_FAILED, null);
-                throw failure;
-            }
+            return phase.get() == RoomRegistryPhase.OPEN && matches.startRejection(token) == null;
         }
-    }
-
-    @Override
-    public boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
-        synchronized (monitor) {
-            if (!current(context) || expired(context.token())) {
-                return false;
-            }
-
-            return matches.confirmPosition(context, slot, x, y, facing);
-        }
-    }
-
-    @Override
-    public boolean reportEnemies(RoomMatchContext context) {
-        synchronized (monitor) {
-            return current(context) && !expired(context.token()) && matches.reportEnemies(context);
-        }
-    }
-
-    @Override
-    public RoomMatchTerminationResult terminateMatch(RoomMatchContext context, RoomMatchEndReason reason) {
-        synchronized (monitor) {
-            return matches.terminate(context, reason, phase.get());
-        }
-    }
-
-    @Override
-    public RoomMatchTerminationResult terminateMatch(RoomMatchToken token, RoomMatchEndReason reason) {
-        synchronized (monitor) {
-            return matches.terminate(token, reason, null);
-        }
-    }
-
-    @Override
-    public boolean deliveryCompleted(RoomMatchProgressToken token, UUID recipient, boolean success) {
-        synchronized (monitor) {
-            if (!Objects.equals(token, matches.progress(token.match())) || expired(token.match())) {
-                return false;
-            }
-
-            if (!success) {
-                matches.terminate(token.match(), RoomMatchEndReason.START_DELIVERY_FAILED, null);
-                return true;
-            }
-
-            try {
-                var next = matches.deliveryCompleted(token, recipient);
-
-                if (next != null) {
-                    matches.publish(next, null);
-                }
-            } catch (RuntimeException failure) {
-                failed(token, failure);
-            }
-
-            return true;
-        }
-    }
-
-    @Override
-    public void deadlineExpired(RoomMatchProgressToken token) {
-        synchronized (monitor) {
-            if (Objects.equals(token, matches.progress(token.match()))) {
-                expired(token.match());
-            }
-        }
-    }
-
-    private boolean current(RoomMatchContext context) {
-        return context != null && context.equals(matches.context(context.membership().sessionId(), phase.get()));
-    }
-
-    private boolean expired(RoomMatchToken token) {
-        var progress = matches.progress(token);
-        var reason = progress == null ? null : matches.timeoutReason(progress);
-
-        if (reason == null) {
-            return false;
-        }
-
-        matches.terminate(token, reason, null);
-        return true;
-    }
-
-    private void failed(RoomMatchProgressToken token, RuntimeException failure) {
-        LOG.failure(RoomLogEvent.OPERATION_FAILED, failure);
-        matches.terminate(token.match(), RoomMatchEndReason.PREPARATION_FAILED, null);
     }
 }

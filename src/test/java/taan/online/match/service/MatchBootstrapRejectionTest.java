@@ -2,28 +2,39 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.RejectedExecutionException;
 import org.junit.jupiter.api.Test;
-import taan.online.MatchBootstrapFixture;
 import taan.online.LogCapture;
+import taan.online.MatchBootstrapFixture;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomState;
-import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchProgressToken;
+import taan.online.room.service.model.RoomMatchTerminationMode;
 import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomStartOutcome;
-import taan.online.room.service.model.RoomMatchTerminationMode;
 
 class MatchBootstrapRejectionTest {
+    @Test
+    void disconnectsAnExplicitlyEndedLoadingMatchEvenBeforeItsFirstStartWrite() {
+        try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
+            f.room.scenario.matchTimers.onSchedule = () -> f.room.scenario.rooms.terminateMatch(
+                f.token(),
+                RoomMatchEndReason.GIVE_UP
+            );
+            f.start();
+
+            assertTrue(f.outputs.stream().allMatch(output -> output.starts.isEmpty() && output.closed.size() == 1));
+            assertTrue(f.room.scenario.matchTimers.deadlines.isEmpty());
+        }
+    }
+
     @Test
     void rejectsMissingAndForgedBindingsBeforeChangingAnyBootstrapState() {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
@@ -32,22 +43,24 @@ class MatchBootstrapRejectionTest {
             var token = rooms.reserveMatch(f.room.owner).token();
             var context = f.context(0);
             var reserved = matches.progress(token);
-            assertTrue(matches.publish(reserved, f.room.owner).toCompletableFuture().isDone());
-            assertFalse(matches.reportEnemies(context));
-            assertFalse(matches.confirmPosition(context, 0, 97, 685, 0));
-            assertNull(matches.loadingDone(context, 0, 97, 685));
-            assertNull(matches.deliveryCompleted(reserved, f.room.owner));
+            assertTrue(matches.publish(reserved.match()).toCompletableFuture().isDone());
+            assertFalse(matches.reportEnemies(context).toCompletableFuture().join());
+            assertFalse(matches.confirmPosition(context, 0, 97, 685, 0).toCompletableFuture().join());
+            assertNull(matches.loadingDone(context, 0, 97, 685).toCompletableFuture().join());
+            assertNull(matches.deliveryCompleted(reserved, f.room.owner).toCompletableFuture().join());
             matches.unsubscribe(f.room.players.get(1));
-            assertFalse(matches.activate(token, (RoomMatchCallbacks) rooms.matchAccess()));
+            assertFalse(matches.activate(token, rooms.matchCallbacks()));
             matches.subscribe(f.room.players.get(1), f.outputs.get(1));
-            assertTrue(matches.activate(token, (RoomMatchCallbacks) rooms.matchAccess()));
-            rooms.commitMatch(token);
-            assertFalse(matches.activate(token, (RoomMatchCallbacks) rooms.matchAccess()));
-            matches.publish(matches.progress(token), f.room.owner);
-            matches.publish(matches.progress(token), f.room.owner);
+            assertTrue(matches.activate(token, rooms.matchCallbacks()));
+            rooms.commitMatch(token).toCompletableFuture().join();
+            assertFalse(matches.activate(token, rooms.matchCallbacks()));
+            matches.publish(token);
+            matches.publish(token);
             assertEquals(1, f.outputs.getFirst().starts.size());
-            assertNull(matches.deliveryCompleted(matches.progress(token), f.room.owner));
-            assertNull(matches.deliveryCompleted(matches.progress(token), UUID.randomUUID()));
+            assertNull(matches.deliveryCompleted(matches.progress(token), f.room.owner).toCompletableFuture().join());
+            assertNull(
+                matches.deliveryCompleted(matches.progress(token), UUID.randomUUID()).toCompletableFuture().join()
+            );
 
             var stale = new RoomMatchToken(token.roomId(), token.generation(), UUID.randomUUID());
             var member = context.membership();
@@ -85,25 +98,24 @@ class MatchBootstrapRejectionTest {
                     token
                 )
             }) {
-                assertNull(matches.loadingDone(forged, 0, 97, 685));
-                assertFalse(matches.reportEnemies(forged));
-                assertFalse(matches.confirmPosition(forged, 0, 97, 685, 0));
-                assertTrue(rooms.matchAccess().loadingDone(forged, 0, 97, 685).toCompletableFuture().isDone());
-                assertFalse(rooms.matchAccess().reportEnemies(forged));
-                assertFalse(rooms.matchAccess().confirmPosition(forged, 0, 97, 685, 0));
+                assertNull(matches.loadingDone(forged, 0, 97, 685).toCompletableFuture().join());
+                assertFalse(matches.reportEnemies(forged).toCompletableFuture().join());
+                assertFalse(matches.confirmPosition(forged, 0, 97, 685, 0).toCompletableFuture().join());
+                assertTrue(f.room.scenario.matches.loadingDone(forged, 0, 97, 685).toCompletableFuture().isDone());
+                assertFalse(f.room.scenario.matches.reportEnemies(forged).toCompletableFuture().join());
+                assertFalse(
+                    f.room.scenario.matches.confirmPosition(forged, 0, 97, 685, 0).toCompletableFuture().join()
+                );
             }
 
             var old = new RoomMatchProgressToken(token, -1);
-            assertTrue(matches.publish(old, f.room.owner).toCompletableFuture().isDone());
-            assertTrue(
-                matches.publish(new RoomMatchProgressToken(stale, 0), f.room.owner).toCompletableFuture().isDone()
-            );
-            assertNull(matches.timeoutReason(old));
+            assertTrue(matches.publish(old.match()).toCompletableFuture().isDone());
+            assertTrue(matches.publish(stale).toCompletableFuture().isDone());
             assertNull(matches.progress(stale));
-            assertFalse(matches.activate(stale, (RoomMatchCallbacks) rooms.matchAccess()));
-            assertFalse(rooms.matchAccess().reportEnemies(null));
-            assertFalse(rooms.matchAccess().confirmPosition(null, 0, 97, 685, 0));
-            assertTrue(rooms.matchAccess().loadingDone(null, 0, 97, 685).toCompletableFuture().isDone());
+            assertFalse(matches.activate(stale, rooms.matchCallbacks()));
+            assertFalse(f.room.scenario.matches.reportEnemies(null).toCompletableFuture().join());
+            assertFalse(f.room.scenario.matches.confirmPosition(null, 0, 97, 685, 0).toCompletableFuture().join());
+            assertTrue(f.room.scenario.matches.loadingDone(null, 0, 97, 685).toCompletableFuture().isDone());
         }
     }
 
@@ -111,25 +123,25 @@ class MatchBootstrapRejectionTest {
     void boundsOpaqueReportsAndRejectsUnauthenticatedActionContexts() {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM); var logs = new LogCapture()) {
             f.start();
-            var rooms = f.room.scenario.rooms.matchAccess();
-            var reports = new ReportMatchEnemiesAction(rooms);
-            var loading = new ConfirmMatchLoadingAction(rooms);
-            var position = new ConfirmMatchPositionAction(rooms);
+            var rooms = f.room.scenario.rooms;
+            var reports = new ReportMatchEnemiesAction(f.room.scenario.matches);
+            var loading = new ConfirmMatchLoadingAction(f.room.scenario.matches);
+            var position = new ConfirmMatchPositionAction(f.room.scenario.matches);
             var context = f.context(0);
 
             for (int index = 0; index < 8; index++) {
-                assertTrue(reports.execute(f.room.owner, context));
+                assertTrue(reports.execute(f.room.owner, context).toCompletableFuture().join());
             }
 
-            assertFalse(reports.execute(f.room.owner, context));
+            assertFalse(reports.execute(f.room.owner, context).toCompletableFuture().join());
             f.room.scenario.matchTimers.now = 1_000_000_000L;
-            assertTrue(reports.execute(f.room.owner, context));
-            assertTrue(f.snapshot().placements().isEmpty());
+            assertTrue(reports.execute(f.room.owner, context).toCompletableFuture().join());
+            assertTrue(f.snapshot().loadedSessions().isEmpty());
 
             for (var invalid : new RoomMatchContext[]{null, context}) {
                 UUID actor = invalid == null ? f.room.owner : UUID.randomUUID();
-                assertFalse(reports.execute(actor, invalid));
-                assertFalse(position.execute(actor, invalid, 0, 97, 685, 0));
+                assertFalse(reports.execute(actor, invalid).toCompletableFuture().join());
+                assertFalse(position.execute(actor, invalid, 0, 97, 685, 0).toCompletableFuture().join());
                 assertTrue(loading.execute(actor, invalid, 0, 97, 685).toCompletableFuture().isDone());
             }
 
@@ -138,8 +150,8 @@ class MatchBootstrapRejectionTest {
             f.ack(1);
             rooms.terminateMatch(context.token(), RoomMatchEndReason.GIVE_UP);
 
-            assertFalse(reports.execute(f.room.owner, context));
-            assertFalse(position.execute(f.room.owner, context, 0, 97, 685, 0));
+            assertFalse(reports.execute(f.room.owner, context).toCompletableFuture().join());
+            assertFalse(position.execute(f.room.owner, context, 0, 97, 685, 0).toCompletableFuture().join());
             assertTrue(loading.execute(f.room.owner, context, 0, 97, 685).toCompletableFuture().isDone());
         }
     }
@@ -151,27 +163,30 @@ class MatchBootstrapRejectionTest {
                 f.start();
                 var context = f.context(0);
                 var token = f.token();
-                var rooms = f.room.scenario.rooms.matchAccess();
+                var rooms = f.room.scenario.rooms;
 
                 if (request == 2) {
                     f.ack(0);
                     f.ack(1);
                     f.room.scenario.matchTimers.now = 20_000_000_000L;
-                    assertFalse(rooms.confirmPosition(context, 0, 97, 685, 0));
+                    assertFalse(
+                        f.room.scenario.matches.confirmPosition(context, 0, 97, 685, 0).toCompletableFuture().join()
+                    );
                 } else {
                     f.room.scenario.matchTimers.now = 30_000_000_000L;
 
                     if (request == 0) {
-                        assertFalse(rooms.reportEnemies(context));
+                        assertFalse(f.room.scenario.matches.reportEnemies(context).toCompletableFuture().join());
                     } else if (request == 1) {
-                        assertTrue(rooms.loadingDone(context, 0, 97, 685).toCompletableFuture().isDone());
+                        assertTrue(
+                            f.room.scenario.matches.loadingDone(context, 0, 97, 685).toCompletableFuture().isDone()
+                        );
                     } else {
-                        assertFalse(
-                            ((RoomMatchCallbacks) rooms).deliveryCompleted(
+                        assertNull(
+                            f.room.scenario.matches.deliveryCompleted(
                                 f.room.scenario.matches.progress(token),
-                                f.room.owner,
-                                true
-                            )
+                                f.room.owner
+                            ).toCompletableFuture().join()
                         );
                     }
                 }
@@ -186,7 +201,7 @@ class MatchBootstrapRejectionTest {
     void rollsBackWithoutDisconnectBeforeStartButClosesPartialBootstrapAfterSchedulingFailure() {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
             f.room.scenario.matchTimers.rejectSchedule = true;
-            assertThrows(RejectedExecutionException.class, f::start);
+            f.start().delivery().toCompletableFuture().join();
             assertTrue(f.outputs.stream().allMatch(output -> output.starts.isEmpty() && output.closed.isEmpty()));
             assertEquals(RoomState.WAITING, f.room.scenario.rooms.current(f.room.owner).orElseThrow().state());
         }
@@ -196,7 +211,7 @@ class MatchBootstrapRejectionTest {
             var token = f.token();
             f.ack(0);
             f.room.scenario.matchTimers.rejectSchedule = true;
-            assertThrows(RejectedExecutionException.class, () -> f.ack(1));
+            f.ack(1).toCompletableFuture().join();
 
             assertTrue(f.outputs.stream().allMatch(output -> output.closed.size() == 1 && output.ends == 0));
             assertTrue(f.room.scenario.matches.current(token).isEmpty());
@@ -213,7 +228,7 @@ class MatchBootstrapRejectionTest {
 
             assertTrue(f.room.scenario.matches.current(token).isEmpty());
             assertTrue(f.outputs.stream().allMatch(output -> output.closed.size() == 1));
-            assertTrue(logs.text().contains("room.operation.failed"));
+            assertTrue(logs.text().contains("match.command.failed"));
         }
     }
 
@@ -255,8 +270,8 @@ class MatchBootstrapRejectionTest {
             var rooms = f.room.scenario.rooms;
             var matches = f.room.scenario.matches;
             var token = rooms.reserveMatch(f.room.owner).token();
-            rooms.commitMatch(token);
-            matches.publish(matches.progress(token), f.room.owner);
+            rooms.commitMatch(token).toCompletableFuture().join();
+            matches.publish(token);
 
             assertTrue(f.outputs.getFirst().starts.isEmpty());
             assertEquals(RoomStartOutcome.REJECTED, rooms.requestStart(f.room.players.get(1)).outcome());
@@ -265,9 +280,9 @@ class MatchBootstrapRejectionTest {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
             var rooms = f.room.scenario.rooms;
             var token = rooms.reserveMatch(f.room.owner).token();
-            assertTrue(f.room.scenario.matches.activate(token, (RoomMatchCallbacks) rooms.matchAccess()));
-            rooms.commitMatch(token);
-            var result = rooms.matchAccess().terminateMatch(token, RoomMatchEndReason.GIVE_UP);
+            assertTrue(f.room.scenario.matches.activate(token, rooms.matchCallbacks()));
+            rooms.commitMatch(token).toCompletableFuture().join();
+            var result = rooms.terminateMatch(token, RoomMatchEndReason.GIVE_UP);
 
             assertEquals(RoomMatchTerminationMode.DISCONNECT, result.termination().mode());
             assertTrue(f.outputs.stream().allMatch(output -> output.closed.size() == 1));

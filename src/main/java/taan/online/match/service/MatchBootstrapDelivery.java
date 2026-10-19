@@ -2,8 +2,8 @@ package taan.online.match.service;
 
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.recipientSessionId;
-import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.roomGeneration;
+import static taan.online.logging.LogField.roomId;
 
 import java.util.List;
 import java.util.UUID;
@@ -11,13 +11,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
-import taan.online.logging.WarningLogLimiter;
 import taan.online.logging.WarningEvent;
+import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchDeadline;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.model.RoomMatchProgressToken;
 
 final class MatchBootstrapDelivery {
@@ -25,7 +24,7 @@ final class MatchBootstrapDelivery {
 
     private final MatchSnapshot snapshot;
     private final List<MatchSubscription> recipients;
-    private final RoomMatchCallbacks callbacks;
+    private final MatchRuntime callbacks;
     private final MatchScheduler scheduler;
     private final RoomMatchProgressToken token;
     private final WarningLogLimiter warnings;
@@ -33,7 +32,7 @@ final class MatchBootstrapDelivery {
     MatchBootstrapDelivery(
         MatchSnapshot snapshot,
         List<MatchSubscription> recipients,
-        RoomMatchCallbacks callbacks,
+        MatchRuntime callbacks,
         MatchScheduler scheduler,
         RoomMatchProgressToken token,
         WarningLogLimiter warnings
@@ -54,7 +53,7 @@ final class MatchBootstrapDelivery {
             this::closeAll
         );
 
-        if (snapshot.phase() == MatchPhase.PREVIEW) {
+        if (!callbacks.beginPublication(snapshot) || snapshot.phase() == MatchPhase.PREVIEW) {
             return CompletableFuture.completedFuture(null);
         }
 
@@ -93,18 +92,21 @@ final class MatchBootstrapDelivery {
         scheduler.execute(
             token,
             () -> {
-                boolean handled = callbacks.deliveryCompleted(token, recipient.sessionId(), failure == null);
+                callbacks.deliveryCompleted(token, recipient.sessionId(), failure == null).thenAccept(
+                    handled -> {
+                        if (handled && failure != null) {
+                            LOG.failure(
+                                MatchLogEvent.BOOTSTRAP_DELIVERY_FAILED,
+                                failure,
+                                matchId(token.match().matchId()),
+                                roomId(token.match().roomId().value()),
+                                roomGeneration(token.match().generation()),
+                                recipientSessionId(recipient.sessionId())
+                            );
+                        }
 
-                if (handled && failure != null) {
-                    LOG.failure(
-                        MatchLogEvent.BOOTSTRAP_DELIVERY_FAILED,
-                        failure,
-                        matchId(token.match().matchId()),
-                        roomId(token.match().roomId().value()),
-                        roomGeneration(token.match().generation()),
-                        recipientSessionId(recipient.sessionId())
-                    );
-                }
+                    }
+                );
             },
             this::closeAll
         );

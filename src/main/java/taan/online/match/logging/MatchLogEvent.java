@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    COMMAND_PROCESSED("match.command.processed", Level.TRACE, "Match command processed"),
+    COMMAND_REJECTED("match.command.rejected", Level.DEBUG, "Match command rejected"),
+    COMMAND_FAILED("match.command.failed", Level.ERROR, "Match command failed"),
     LOADING_ACK("match.loading.ack", Level.DEBUG, "Match loading acknowledgement accepted"),
     POSITION_CONFIRMED("match.position.confirmed", Level.DEBUG, "Match position confirmed"),
     STARTED("match.started", Level.INFO, "Match preview started"),

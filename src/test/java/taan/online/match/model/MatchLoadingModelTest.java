@@ -2,11 +2,11 @@ package taan.online.match.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.UUID;
 import java.util.ArrayList;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchRoomFixture;
 import taan.online.match.service.model.MatchBootstrapSettings;
@@ -52,7 +52,7 @@ class MatchLoadingModelTest {
             assertEquals(30, match.deadlineNanos());
             assertFalse(match.deliveryCompleted(owner.sessionId()));
             assertEquals("UNCHANGED", match.loadingDone(owner.sessionId(), 0, 97, 685));
-            assertThrows(UnsupportedOperationException.class, () -> match.placements().clear());
+            assertThrows(UnsupportedOperationException.class, () -> match.loadedSessions().clear());
         }
     }
 
@@ -114,7 +114,7 @@ class MatchLoadingModelTest {
             match.commit(0, 30);
 
             assertEquals("INVALID_POSITION", match.loadingDone(source.ownerSessionId(), 0, 500, 500));
-            assertTrue(match.placements().isEmpty());
+            assertTrue(match.loadedSessions().isEmpty());
         }
     }
 

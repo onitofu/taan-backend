@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
-import taan.online.RoomScenario;
 import taan.online.MatchFixtures;
+import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
@@ -214,7 +214,7 @@ class ConnectionWorkCancellationTest {
             SelectionFixtures.lobby(sessions, channels),
             InventoryFixtures.dispatcher(sessions, new TestInventoryRepository()),
             RoomScenario.dispatcher(sessions, channels, characters, rooms),
-            MatchFixtures.dispatcher(rooms, matches),
+            MatchFixtures.dispatcher(matches),
             64,
             1048576,
             16384

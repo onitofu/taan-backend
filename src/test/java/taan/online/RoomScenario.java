@@ -8,11 +8,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.bootstrap.ChannelMatchAccess;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
-import taan.online.protocol.BinaryWriter;
+import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
 import taan.online.room.model.RoomBootstrapDefinition;
@@ -53,65 +55,94 @@ import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionRegistry;
 
 public final class RoomScenario implements AutoCloseable {
-    public final SessionRegistry sessions = new SessionRegistry();
-    public final SessionChannelAccess access = new SessionChannelAccess(sessions);
-    public final ChannelRegistry channels = SelectionFixtures.registry(access);
-    public final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
-    public final TestMatchScheduler matchTimers = new TestMatchScheduler();
-    public final MatchRegistry matches = MatchFixtures.registry(matchTimers);
-    public final RoomRegistry rooms = new RoomRegistry(
-        channels,
-        new RoomIdPool(),
-        RoomScenario.maps(),
-        timers,
-        timers::nanoTime,
-        new Random(1),
-        matches
-    );
-    public final TestCharacterRepository characters = new TestCharacterRepository();
-    public final CreateRoomAction create = new CreateRoomAction(
-        access,
-        channels,
-        rooms,
-        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-        new RoomTitleFilter(List.of("denied")),
-        new RoomBootstrapDefinition(1, 0)
-    );
-    public final EnterRoomAction enter = new EnterRoomAction(
-        access,
-        channels,
-        rooms,
-        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-        new RoomBootstrapDefinition(1, 0)
-    );
-    public final QuickJoinRoomAction quickJoin = new QuickJoinRoomAction(
-        access,
-        channels,
-        rooms,
-        new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
-        new RoomBootstrapDefinition(1, 0)
-    );
-    public final Map<UUID, CollectingPacketOutput> outputs = new ConcurrentHashMap<>();
+    public final SessionRegistry sessions;
+    public final SessionChannelAccess access;
+    public final ChannelRegistry channels;
+    public final TestRoomSelectionScheduler timers;
+    public final TestMatchScheduler matchTimers;
+    public final MatchRegistry matches;
+    public final RoomRegistry rooms;
+    public final TestCharacterRepository characters;
+    public final CreateRoomAction create;
+    public final EnterRoomAction enter;
+    public final QuickJoinRoomAction quickJoin;
+    public final Map<UUID, CollectingPacketOutput> outputs;
     public CollectingPacketOutput lastOutput;
-    public final LeaveRoomAction leave = new LeaveRoomAction(rooms);
-    public final RequestRoomStartAction start = new RequestRoomStartAction(rooms);
-    public final RoomPacketHandler handler = new RoomPacketHandler(
-        access,
-        create,
-        enter,
-        quickJoin,
-        new ExpelRoomParticipantAction(rooms),
-        new ChangeRoomSettingsAction(rooms),
-        new ChangeRoomTeamAction(rooms),
-        new ChangeRoomWeaponAction(rooms),
-        new SetRoomReadyAction(rooms),
-        new SetRoomSlotAvailabilityAction(rooms),
-        leave,
-        start,
-        new BeginCaptainSelectionAction(rooms),
-        new SetCaptainCandidateAction(rooms),
-        rooms
-    );
+    public final LeaveRoomAction leave;
+    public final RequestRoomStartAction start;
+    public final RoomPacketHandler handler;
+
+    public RoomScenario() {
+        this(Runnable::run, 64);
+    }
+
+    public RoomScenario(MatchCommandExecutor executor, int capacity) {
+        sessions = new SessionRegistry();
+        access = new SessionChannelAccess(sessions);
+        channels = SelectionFixtures.registry(access);
+        timers = new TestRoomSelectionScheduler();
+        matchTimers = new TestMatchScheduler();
+        matches = MatchFixtures.registry(
+            MatchFixtures.definitions(),
+            matchTimers,
+            new Random(1),
+            new ChannelMatchAccess(channels),
+            executor,
+            capacity
+        );
+        rooms = new RoomRegistry(
+            channels,
+            new RoomIdPool(),
+            RoomScenario.maps(),
+            timers,
+            timers::nanoTime,
+            new Random(1),
+            matches
+        );
+        characters = new TestCharacterRepository();
+        create = new CreateRoomAction(
+            access,
+            channels,
+            rooms,
+            new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+            new RoomTitleFilter(List.of("denied")),
+            new RoomBootstrapDefinition(1, 0)
+        );
+        enter = new EnterRoomAction(
+            access,
+            channels,
+            rooms,
+            new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+            new RoomBootstrapDefinition(1, 0)
+        );
+        quickJoin = new QuickJoinRoomAction(
+            access,
+            channels,
+            rooms,
+            new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
+            new RoomBootstrapDefinition(1, 0)
+        );
+        outputs = new ConcurrentHashMap<>();
+        leave = new LeaveRoomAction(rooms);
+        start = new RequestRoomStartAction(rooms);
+        handler = new RoomPacketHandler(
+            access,
+            create,
+            enter,
+            quickJoin,
+            new ExpelRoomParticipantAction(rooms),
+            new ChangeRoomSettingsAction(rooms),
+            new ChangeRoomTeamAction(rooms),
+            new ChangeRoomWeaponAction(rooms),
+            new SetRoomReadyAction(rooms),
+            new SetRoomSlotAvailabilityAction(rooms),
+            leave,
+            start,
+            new BeginCaptainSelectionAction(rooms),
+            new SetCaptainCandidateAction(rooms),
+            rooms
+        );
+    }
 
     public UUID player(long id, int channel) {
         var character = CharacterFixtures.character(id, new AccountId(id), AccountGender.FEMALE, "Hero" + id);

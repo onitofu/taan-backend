@@ -8,15 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
-import taan.online.logging.LogContext;
-import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.MatchTerminalFixture;
+import taan.online.logging.LogContext;
 import taan.online.match.model.MatchPhase;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 
 class MatchTerminationTest {
     @Test
@@ -72,15 +72,21 @@ class MatchTerminationTest {
                     assertEquals(1, f.outputs.get(1).ends);
                 }
             );
-            var result = new TerminateMatchAction(rooms.matchAccess()).execute(owner, context);
+            var result = new TerminateMatchAction(f.room.scenario.matches).execute(
+                owner,
+                context
+            ).toCompletableFuture().join();
 
             assertTrue(result.delivery().toCompletableFuture().isDone());
             assertFalse(f.outputs.get(1).delivery.isDone());
             assertEquals(f.token, rooms.matchContext(owner).token());
-            assertTrue(
-                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(owner, context)
+            assertTrue(new ConsumeMatchResultAction(f.room.scenario.matches).execute(owner, context));
+            assertNull(
+                new TerminateMatchAction(f.room.scenario.matches).execute(
+                    owner,
+                    context
+                ).toCompletableFuture().join().termination()
             );
-            assertNull(new TerminateMatchAction(rooms.matchAccess()).execute(owner, context).termination());
         }
     }
 
