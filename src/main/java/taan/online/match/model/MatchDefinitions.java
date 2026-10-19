@@ -2,23 +2,28 @@ package taan.online.match.model;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 
 public record MatchDefinitions(
     String catalogVersion,
     MatchMapDefinition map,
     List<WeaponDefinition> weapons,
-    CannonShotDefinition cannonShot,
+    Map<Integer, CannonShotDefinition> cannonShots,
     Map<Integer, MissileTerrainDefinition> missiles
 ) {
     public MatchDefinitions {
         Objects.requireNonNull(catalogVersion);
         Objects.requireNonNull(map);
-        Objects.requireNonNull(cannonShot);
+        cannonShots = Map.copyOf(cannonShots);
         weapons = List.copyOf(weapons);
         missiles = Map.copyOf(missiles);
 
-        if (!missiles.containsKey(cannonShot.missileTypeId())
+        var terrain = missiles;
+
+        if (!cannonShots.keySet().equals(Set.of(0, 2))
+            || cannonShots.entrySet().stream().anyMatch(e -> e.getKey() != e.getValue().attackKind()
+                || !terrain.containsKey(e.getValue().missileTypeId()))
             || missiles.entrySet().stream().anyMatch(entry -> entry.getKey() != entry.getValue().missileTypeId())) {
             throw new IllegalArgumentException("Missing or inconsistent missile terrain definitions");
         }

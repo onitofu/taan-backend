@@ -282,9 +282,11 @@ final class MatchTurnExecution {
             int previous = match.turn().activeSlot();
 
             if (!terminal) {
+                var before = owner.snapshot();
                 match.nextTurn(clock.getAsLong(), settings.actionTimeoutNanos());
                 owner.refresh();
                 owner.resetScenario();
+                MatchEnergyLog.turn(before, owner.snapshot());
                 transition = new MatchTurnTransition(previous, owner.snapshot(), turnEndRequired);
             }
         }

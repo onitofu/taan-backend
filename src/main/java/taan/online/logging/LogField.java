@@ -15,6 +15,22 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField energyBefore(int value) {
+        return new LogField("energyBefore", value);
+    }
+
+    public static LogField energyAfter(int value) {
+        return new LogField("energyAfter", value);
+    }
+
+    public static LogField headerEnergyGrant(int value) {
+        return new LogField("headerEnergyGrant", value);
+    }
+
+    public static LogField damageEnergyMaximum(int value) {
+        return new LogField("damageEnergyMaximum", value);
+    }
+
     public static LogField round(long value) {
         return new LogField("round", value);
     }

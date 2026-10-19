@@ -1,19 +1,17 @@
 package taan.online.match.service;
 
-import static taan.online.logging.LogField.channelId;
-import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomGeneration;
 import static taan.online.logging.LogField.roomId;
-import static taan.online.logging.LogField.roomMode;
-import static taan.online.logging.LogField.sessionId;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import taan.online.match.service.model.ActivateSpecialCommand;
+import taan.online.match.service.model.RecordMatchSpendCommand;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +115,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         );
 
         if (rejection != null) {
-            log(MatchLogEvent.RESERVATION_REJECTED, draft, rejection);
+            MatchReservationLog.log(MatchLogEvent.RESERVATION_REJECTED, draft, rejection);
             return result(RoomMatchReservationOutcome.REJECTED, null, rejection);
         }
 
@@ -160,7 +158,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             participants.forEach(value -> sessions.put(value.sessionId(), runtime));
             participants.forEach(value -> receipts.remove(value.sessionId()));
         } catch (IllegalArgumentException failure) {
-            log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
+            MatchReservationLog.log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
             return result(RoomMatchReservationOutcome.REJECTED, null, "INVALID_SETUP");
         } catch (RuntimeException failure) {
             LOG.failure(
@@ -173,7 +171,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             throw failure;
         }
 
-        log(MatchLogEvent.RESERVED, draft, "RESERVED");
+        MatchReservationLog.log(MatchLogEvent.RESERVED, draft, "RESERVED");
         return result(RoomMatchReservationOutcome.RESERVED, token, "RESERVED");
     }
 
@@ -286,6 +284,18 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     public boolean scenarioEnabled(RoomMatchContext context) {
         var runtime = context == null ? null : find(context.token());
         return runtime != null && runtime.live();
+    }
+
+    public CompletionStage<Boolean> activateSpecial(ActivateSpecialCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.activate(command));
+    }
+
+    public CompletionStage<Boolean> recordSpend(RecordMatchSpendCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.record(command));
     }
 
     public CompletionStage<Boolean> move(MoveMatchActorCommand command) {
@@ -424,14 +434,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             return CompletableFuture.completedFuture(null);
         }
 
-        var sending = new CompletableFuture<CompletionStage<Void>>();
-        return pending.runtime().finish(
-            () -> {
-                var delivery = pending.delivery().dispatch(requester);
-                queued.run();
-                sending.complete(delivery);
-            }
-        ).thenCompose(ignored -> sending.thenCompose(value -> value));
+        return pending.dispatch(requester, queued);
     }
 
     @Override
@@ -482,17 +485,4 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         );
     }
 
-    private static void log(MatchLogEvent event, RoomMatchDraft draft, String result) {
-        LOG.log(
-            event,
-            matchId(draft.token().matchId()),
-            roomId(draft.token().roomId().value()),
-            roomGeneration(draft.token().generation()),
-            sessionId(draft.ownerSessionId()),
-            channelId(draft.channelId()),
-            mapId(draft.settings().mapId()),
-            roomMode(draft.settings().mode().name()),
-            reason(result)
-        );
-    }
 }

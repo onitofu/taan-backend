@@ -150,13 +150,13 @@ class MatchDefinitionsTest {
             "a".repeat(64),
             map,
             weapons,
-            MatchFixtures.cannonShot(),
+            MatchFixtures.cannonShots(),
             MatchFixtures.missileTerrain()
         );
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShot(), MatchFixtures.missileTerrain())
+            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShots(), MatchFixtures.missileTerrain())
         );
         assertEquals(
             2,
@@ -172,7 +172,7 @@ class MatchDefinitionsTest {
                     MatchFixtures.terrainLayers()
                 ),
                 weapons,
-                MatchFixtures.cannonShot(),
+                MatchFixtures.cannonShots(),
                 MatchFixtures.missileTerrain()
             ).map().mapId()
         );
@@ -182,7 +182,7 @@ class MatchDefinitionsTest {
                 "a".repeat(64),
                 map,
                 weapons.subList(0, 11),
-                MatchFixtures.cannonShot(),
+                MatchFixtures.cannonShots(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -205,7 +205,7 @@ class MatchDefinitionsTest {
                     MatchFixtures.terrainLayers()
                 ),
                 weapons,
-                MatchFixtures.cannonShot(),
+                MatchFixtures.cannonShots(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -220,7 +220,7 @@ class MatchDefinitionsTest {
                 "a".repeat(64),
                 map,
                 swapped,
-                MatchFixtures.cannonShot(),
+                MatchFixtures.cannonShots(),
                 MatchFixtures.missileTerrain()
             )
         );

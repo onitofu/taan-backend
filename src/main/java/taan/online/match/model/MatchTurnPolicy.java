@@ -132,7 +132,7 @@ public final class MatchTurnPolicy {
                 return new MatchTurn(
                     slot,
                     wind,
-                    0,
+                    round > 1 ? 10 : 0,
                     0,
                     previous.pickerBase(),
                     order,

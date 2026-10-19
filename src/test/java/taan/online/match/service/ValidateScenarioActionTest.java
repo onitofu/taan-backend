@@ -447,6 +447,7 @@ class ValidateScenarioActionTest {
             facing,
             flags,
             power,
+            0,
             items,
             effects,
             refitted,

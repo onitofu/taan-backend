@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.OptionalLong;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +28,7 @@ public final class Match {
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
     private MatchWorldState world;
+    private final Map<UUID, MatchAttackSelection> attacks = new HashMap<>();
     private final Map<UUID, MatchMovementState> movements = new HashMap<>();
     private Optional<MatchTurnClosure> closure = Optional.empty();
     private Optional<MatchCompletion> completion = Optional.empty();
@@ -71,20 +71,7 @@ public final class Match {
             definitions,
             firstTurnSlot
         );
-        var initialActors = new HashMap<UUID, MatchActorState>();
-        participants.forEach(
-            value -> initialActors.put(
-                value.sessionId(),
-                new MatchActorState(
-                    value.spawn().rawX(),
-                    value.spawn().rawY(),
-                    value.facing(),
-                    value.hp(),
-                    value.energy()
-                )
-            )
-        );
-        world = MatchWorldState.initial(initialActors, definitions.map().terrainLayers());
+        world = MatchWorldState.initial(participants, definitions.map().terrainLayers());
     }
 
     public Match(
@@ -145,12 +132,37 @@ public final class Match {
             .map(MatchParticipant::slotIndex).collect(Collectors.toSet());
         var next = new MatchTurnPolicy().next(turn, alive, now);
         turn = next;
+        var member = participants.stream().filter(p -> p.slotIndex() == next.activeSlot()).findFirst().orElseThrow();
+        int energy = MatchEnergyRules.adjust(
+            actors().get(member.sessionId()).energy(),
+            next.energyGrant(),
+            member.maxEnergy()
+        );
+        world = world.energy(member.sessionId(), energy);
         completion = Optional.empty();
         phase = MatchPhase.ACTION;
         phaseRevision++;
         deadlineNanos = now + timeoutNanos;
         closure = Optional.empty();
         startMovement(now);
+        return true;
+    }
+
+    public Map<UUID, MatchAttackSelection> attacks() {
+        return Map.copyOf(attacks);
+    }
+
+    public boolean activateSpecial(UUID session) {
+        var actor = world.actors().get(session);
+
+        if (phase != MatchPhase.ACTION || !activeSession().equals(session) || actor.dead()
+            || actor.energy() != participants.stream().filter(p -> p.sessionId().equals(session))
+                .findFirst().orElseThrow().maxEnergy()) {
+            return false;
+        }
+
+        world = world.energy(session, 0);
+        attacks.put(session, MatchAttackSelection.SPECIAL);
         return true;
     }
 
@@ -241,6 +253,7 @@ public final class Match {
             movements.put(activeSession(), new MatchMovementState(moving.allowance(), Optional.empty()));
         }
 
+        attacks.remove(activeSession());
         world = prepared;
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
@@ -335,19 +348,7 @@ public final class Match {
             return false;
         }
 
-        turn = new MatchTurn(
-            turn.activeSlot(),
-            turn.windRaw(),
-            turn.energyGrant(),
-            turn.boxAttemptBudget(),
-            turn.pickerBase(),
-            turn.order(),
-            turn.revision(),
-            OptionalLong.of(now),
-            turn.round(),
-            turn.remainingThisRound(),
-            turn.randomState()
-        );
+        turn = turn.issuedAt(now);
         phase = MatchPhase.SYNCHRONIZING;
         phaseRevision++;
         delivered.clear();
@@ -482,6 +483,7 @@ public final class Match {
             return false;
         }
 
+        attacks.clear();
         phase = MatchPhase.CANCELLED;
         return true;
     }

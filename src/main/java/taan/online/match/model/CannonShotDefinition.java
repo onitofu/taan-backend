@@ -9,9 +9,9 @@ public record CannonShotDefinition(
     int missileTypeId
 ) {
     public CannonShotDefinition {
-        if (weaponId != 0 || attackKind != 0 || minPower < 0 || maxPower > 100 || minPower > maxPower
-            || missileVariant != 0 || missileTypeId != 0) {
-            throw new IllegalArgumentException("Unsupported ordinary cannon definition");
+        if (weaponId != 0 || attackKind != 0 && attackKind != 2 || minPower < 0 || maxPower > 100 || minPower > maxPower
+            || missileVariant != attackKind || missileTypeId != attackKind) {
+            throw new IllegalArgumentException("Unsupported cannon definition");
         }
     }
 }

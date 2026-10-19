@@ -25,8 +25,8 @@ class CannonDefinitionLoaderTest {
             provenance = new String(evidence.readAllBytes(), StandardCharsets.UTF_8);
         }
 
-        assertEquals(new CannonShotDefinition(0, 0, 0, 100, 0, 0), catalog.cannonShot());
-        assertEquals(catalog.cannonShot(), catalog.select(1).cannonShot());
+        assertEquals(new CannonShotDefinition(0, 0, 0, 100, 0, 0), catalog.cannonShots().get(0));
+        assertEquals(catalog.cannonShots().get(0), catalog.select(1).cannonShots().get(0));
         assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
         String csv = new String(bytes, StandardCharsets.UTF_8);
 

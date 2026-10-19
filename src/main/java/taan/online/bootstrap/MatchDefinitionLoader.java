@@ -143,7 +143,7 @@ public final class MatchDefinitionLoader {
             )
         );
 
-        if (shots.size() != 1) {
+        if (shots.size() != 2) {
             throw new IllegalArgumentException("Incomplete ordinary cannon definitions");
         }
 
@@ -151,7 +151,7 @@ public final class MatchDefinitionLoader {
             values.getProperty("catalog.version"),
             definitions,
             weaponDefinitions,
-            shots.getFirst(),
+            shots.stream().collect(Collectors.toUnmodifiableMap(CannonShotDefinition::attackKind, shot -> shot)),
             missiles
         );
     }

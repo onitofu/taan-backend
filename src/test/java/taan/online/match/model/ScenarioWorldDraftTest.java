@@ -19,7 +19,7 @@ import taan.online.match.service.ScenarioTestWorld;
 
 class ScenarioWorldDraftTest {
     @Test
-    void appliesNativeDamageDropAndFallWithoutUsingSimulationHpOrChangingEnergy() throws Exception {
+    void appliesNativeDamageDropFallAndEnergyWithoutUsingSimulationHp() throws Exception {
         try (var f = new ScenarioTestWorld()) {
             var before = f.snapshot();
             var accepted = f.execute(f.claims).accepted().orElseThrow();
@@ -28,7 +28,7 @@ class ScenarioWorldDraftTest {
             var session = f.sender.sessionId();
 
             assertEquals(0, after.actors().get(session).hp());
-            assertEquals(20, after.actors().get(session).energy());
+            assertEquals(80, after.actors().get(session).energy());
             assertEquals(1150, after.actors().get(session).y());
             assertEquals(1000, before.actors().get(session).hp());
             assertEquals(650, before.actors().get(session).y());

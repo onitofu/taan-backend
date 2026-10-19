@@ -27,6 +27,7 @@ public final class ScenarioClaimsMapper {
             packet.facing(),
             scene.flags(),
             scene.power(),
+            packet.scalar1c(),
             scene.selectedItems(),
             !scene.effects().isEmpty(),
             scene.refittedSlots(),

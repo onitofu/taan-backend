@@ -51,6 +51,9 @@ import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.controller.MatchItemPacketHandler;
+import taan.online.match.service.ActivateSpecialAction;
+import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmScenarioAction;
@@ -213,7 +216,8 @@ public final class Application implements AutoCloseable {
                 new ApplyScenarioPacketHandler(new ApplyScenarioAction(matches)),
                 new ConfirmScenarioAction(matches),
                 new MoveMatchActorAction(matches),
-                new PassMatchTurnAction(matches)
+                new PassMatchTurnAction(matches),
+                new MatchItemPacketHandler(new ActivateSpecialAction(matches), new RecordMatchSpendAction(matches))
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(

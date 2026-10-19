@@ -8,6 +8,7 @@ public record ScenarioClaims(
     int facing,
     int flags,
     float power,
+    int headerEnergyGrant,
     List<Integer> selectedItems,
     boolean effectsPresent,
     List<Integer> refittedSlots,

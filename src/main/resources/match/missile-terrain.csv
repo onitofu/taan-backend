@@ -1,2 +1,3 @@
 missile_type_id,width,height,center_x,center_y,resource,sha256
 0,256,256,128,150,terrain/cannon-0-mask.rle,eea0b238518bea2dcc0ae24931f96f900e38c00fe435a795e3d2eeeae97a486f
+2,256,256,128,163,terrain/cannon-2-mask.rle,dbda2cec6d42f6a77f662de799f2b63c5eda0f4cfba1bc49b1392ae80dbff464

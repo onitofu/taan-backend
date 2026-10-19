@@ -721,11 +721,6 @@
       "origin": "DERIVED"
     },
     {
-      "missile-terrain.csv": "491b0d795a835efe0bd1456bb64bcfae962d863e8ca89f519f3506d3a7b16e7d",
-      "original_file": "missile-terrain.csv",
-      "origin": "DERIVED"
-    },
-    {
       "terrain-layers.csv": "6d9c61f03e2f1de742b2443f1f6b78a8fd8bb35ddfa31f19676b59d0694c1cb3",
       "original_file": "terrain-layers.csv",
       "origin": "DERIVED"

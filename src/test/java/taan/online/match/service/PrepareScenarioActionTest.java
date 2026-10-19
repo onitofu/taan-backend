@@ -30,7 +30,7 @@ class PrepareScenarioActionTest {
             )) {
                 var events = new ArrayList<>(accepted.journal().events());
                 events.add(event);
-                var journal = new ScenarioJournal(events, accepted.journal().missileDefinitions(), List.of(), 5000);
+                var journal = new ScenarioJournal(events, accepted.journal().missileDefinitions(), List.of(), 0, 5000);
                 var malformed = new AcceptedScenario(
                     accepted.sender(),
                     accepted.turnRevision(),
@@ -46,13 +46,14 @@ class PrepareScenarioActionTest {
                 accepted.journal().events(),
                 accepted.journal().missileDefinitions(),
                 List.of(7),
+                0,
                 5000
             );
             assertThrows(
                 ScenarioWorldException.class,
                 () -> prepare.execute(before, new AcceptedScenario(f.sender, 7, f.root, missingRefit))
             );
-            var unknownMissile = new ScenarioJournal(accepted.journal().events(), Map.of(), List.of(), 5000);
+            var unknownMissile = new ScenarioJournal(accepted.journal().events(), Map.of(), List.of(), 0, 5000);
             assertThrows(
                 ScenarioWorldException.class,
                 () -> prepare.execute(before, new AcceptedScenario(f.sender, 7, f.root, unknownMissile))
@@ -67,7 +68,7 @@ class PrepareScenarioActionTest {
             var events = new ArrayList<>(accepted.journal().events());
             events.addFirst(new ScenarioActorClaim(new ScenarioEventTime(2, 5, 0, 0)));
             events.add(new ScenarioActorClaim(new ScenarioEventTime(2, 5, 4000, 0)));
-            var journal = new ScenarioJournal(events, accepted.journal().missileDefinitions(), List.of(), 5000);
+            var journal = new ScenarioJournal(events, accepted.journal().missileDefinitions(), List.of(), 0, 5000);
             var result = new PrepareScenarioAction().execute(
                 f.snapshot(),
                 new AcceptedScenario(f.sender, 7, f.root, journal)

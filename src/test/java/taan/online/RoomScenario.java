@@ -117,7 +117,7 @@ public final class RoomScenario implements AutoCloseable {
             baseline.catalogVersion(),
             Map.of(1, baseline.map()),
             baseline.weapons(),
-            MatchFixtures.cannonShot(),
+            MatchFixtures.cannonShots(),
             MatchFixtures.missileTerrain()
         ) : MatchFixtures.catalog();
         timers = new TestRoomSelectionScheduler();

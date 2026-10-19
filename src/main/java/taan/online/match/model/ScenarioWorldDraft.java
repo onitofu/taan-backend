@@ -17,6 +17,7 @@ public final class ScenarioWorldDraft {
     private final Map<UUID, MatchActorState> actors;
     private final Map<UUID, List<MatchFall>> falls = new HashMap<>();
     private final Set<UUID> deaths;
+    private final Map<UUID, Integer> energyMaxima = new HashMap<>();
     private final ScenarioTerrainDraft terrain;
 
     public ScenarioWorldDraft(MatchWorldState original, MatchDefinitions definitions, List<MatchParticipant> roster) {
@@ -29,6 +30,23 @@ public final class ScenarioWorldDraft {
         actors = new HashMap<>(original.actors());
         deaths = new HashSet<>(original.processedDeaths());
         terrain = new ScenarioTerrainDraft(original.terrain());
+    }
+
+    public void grantEnergy(UUID session, int delta) {
+        var actor = actor(session);
+        int energy = MatchEnergyRules.adjust(actor.energy(), delta, participants.get(session).maxEnergy());
+        actors.put(session, new MatchActorState(actor.x(), actor.y(), actor.facing(), actor.hp(), energy));
+    }
+
+    public void damageEnergy(UUID session, int contribution) {
+        actor(session);
+        energyMaxima.compute(
+            session,
+            (ignored, previous) -> MatchEnergyRules.maximum(
+                previous == null ? 0 : previous,
+                contribution
+            )
+        );
     }
 
     public void damage(UUID session, int delta) {
@@ -80,6 +98,10 @@ public final class ScenarioWorldDraft {
     public MatchWorldState finish(ScenarioCommitReceipt receipt, Set<UUID> refitted, long endTick) {
         if (receipt.worldRevision() != Math.incrementExact(original.revision())) {
             throw new ScenarioWorldException("INVALID_WORLD_REVISION");
+        }
+
+        for (int pass = 0; pass < 2; pass++) {
+            energyMaxima.forEach(this::grantEnergy);
         }
 
         var layers = terrain.freeze();
