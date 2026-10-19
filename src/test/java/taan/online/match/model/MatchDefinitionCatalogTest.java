@@ -19,7 +19,8 @@ class MatchDefinitionCatalogTest {
             definitions.catalogVersion(),
             maps,
             definitions.weapons(),
-            MatchFixtures.cannonShot()
+            MatchFixtures.cannonShot(),
+            MatchFixtures.missileTerrain()
         );
         maps.clear();
 
@@ -32,7 +33,8 @@ class MatchDefinitionCatalogTest {
                 definitions.catalogVersion(),
                 Map.of(),
                 definitions.weapons(),
-                MatchFixtures.cannonShot()
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
             )
         );
         assertThrows(
@@ -41,7 +43,8 @@ class MatchDefinitionCatalogTest {
                 definitions.catalogVersion(),
                 Map.of(2, definitions.map()),
                 definitions.weapons(),
-                MatchFixtures.cannonShot()
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
             )
         );
     }
@@ -50,7 +53,15 @@ class MatchDefinitionCatalogTest {
     void acceptsOnlyConfirmedOrdinaryChannelKindsAndCopiesTheirSet() {
         var map = MatchFixtures.definitions().map();
         var kinds = new HashSet<>(Set.of(0, 1, 4, 6));
-        var copy = new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), map.spawns(), kinds);
+        var copy = new MatchMapDefinition(
+            map.mapId(),
+            map.asset(),
+            map.width(),
+            map.height(),
+            map.spawns(),
+            kinds,
+            MatchFixtures.terrainLayers()
+        );
         kinds.clear();
 
         assertEquals(Set.of(0, 1, 4, 6), copy.channelKinds());
@@ -59,7 +70,15 @@ class MatchDefinitionCatalogTest {
         for (var invalid : Set.of(Set.<Integer>of(), Set.of(2), Set.of(7))) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), map.spawns(), invalid)
+                () -> new MatchMapDefinition(
+                    map.mapId(),
+                    map.asset(),
+                    map.width(),
+                    map.height(),
+                    map.spawns(),
+                    invalid,
+                    MatchFixtures.terrainLayers()
+                )
             );
         }
     }

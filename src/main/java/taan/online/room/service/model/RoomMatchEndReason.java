@@ -1,6 +1,8 @@
 package taan.online.room.service.model;
 
 public enum RoomMatchEndReason {
+    INVALID_SCENARIO,
+    SCENARIO_DELIVERY_FAILED,
     GIVE_UP,
     ROOM_LEAVE,
     DISCONNECTED,

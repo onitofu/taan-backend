@@ -47,7 +47,7 @@ public final class ValidateScenarioAction {
         }
     }
 
-    private ScenarioAdmissionResult evaluate(ScenarioAdmissionContext context, ScenarioClaims claims, byte[] root) {
+    ScenarioAdmissionResult evaluate(ScenarioAdmissionContext context, ScenarioClaims claims, byte[] root) {
         long started = System.nanoTime();
         var match = context.match();
         var sender = context.sender();

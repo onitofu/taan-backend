@@ -1,0 +1,142 @@
+package taan.online.match.model;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+public final class ScenarioWorldDraft {
+    private final MatchWorldState original;
+    private final MatchDefinitions definitions;
+    private final Map<UUID, MatchParticipant> participants;
+    private final Map<UUID, MatchActorState> actors;
+    private final Map<UUID, List<MatchFall>> falls = new HashMap<>();
+    private final Set<UUID> deaths;
+    private final ScenarioTerrainDraft terrain;
+
+    public ScenarioWorldDraft(MatchWorldState original, MatchDefinitions definitions, List<MatchParticipant> roster) {
+        this.original = original;
+        this.definitions = definitions;
+        participants = roster.stream().collect(Collectors.toUnmodifiableMap(
+            MatchParticipant::sessionId,
+            value -> value
+        ));
+        actors = new HashMap<>(original.actors());
+        deaths = new HashSet<>(original.processedDeaths());
+        terrain = new ScenarioTerrainDraft(original.terrain());
+    }
+
+    public void damage(UUID session, int delta) {
+        if (delta < 0) {
+            throw new ScenarioWorldException("INVALID_DAMAGE");
+        }
+
+        var actor = actor(session);
+        int hp = Math.clamp((long) actor.hp() - delta, 0, participants.get(session).maxHp());
+        actors.put(session, new MatchActorState(actor.x(), actor.y(), actor.facing(), hp, actor.energy()));
+    }
+
+    public void dead(UUID session) {
+        var actor = actor(session);
+        actors.put(session, new MatchActorState(actor.x(), actor.y(), actor.facing(), 0, actor.energy()));
+        deaths.add(session);
+    }
+
+    public void explode(int missileTypeId, int x, int y, float factor) {
+        var missile = definitions.missiles().get(missileTypeId);
+
+        if (missile == null) {
+            throw new ScenarioWorldException("UNKNOWN_MISSILE_TERRAIN");
+        }
+
+        terrain.explode(missile, x, y, factor);
+    }
+
+    public void fall(UUID session, long tick, int duration, int startY, int endY) {
+        var actor = actor(session);
+
+        if (tick < 0 || tick > 120000 || duration <= 0 || tick + duration > 120000
+            || startY < 0 || endY < startY || endY > (long) definitions.map().height() + 200) {
+            throw new ScenarioWorldException("INVALID_FALL");
+        }
+
+        var previous = falls.computeIfAbsent(session, ignored -> new ArrayList<>());
+
+        if (previous.stream().anyMatch(
+            old -> old.tick() <= tick && old.tick() + old.duration() + 3 >= tick && old.endY() > endY
+        )) {
+            return;
+        }
+
+        int currentY = at(actor.y(), previous, tick);
+        previous.add(new MatchFall(participants.get(session).slotIndex(), tick, duration, startY, endY, currentY));
+    }
+
+    public MatchWorldState finish(ScenarioCommitReceipt receipt, Set<UUID> refitted, long endTick) {
+        if (receipt.worldRevision() != Math.incrementExact(original.revision())) {
+            throw new ScenarioWorldException("INVALID_WORLD_REVISION");
+        }
+
+        var layers = terrain.freeze();
+        var repositioned = new HashSet<>(refitted);
+        repositioned.addAll(falls.keySet());
+
+        for (var session : repositioned) {
+            var actor = actor(session);
+            int endpoint = at(actor.y(), falls.getOrDefault(session, List.of()), endTick);
+            int y = MatchTerrainSupport.settledY(layers, actor.x(), endpoint, definitions.map().height());
+            actors.put(session, new MatchActorState(actor.x(), y, actor.facing(), actor.hp(), actor.energy()));
+        }
+
+        return new MatchWorldState(
+            receipt.worldRevision(),
+            actors,
+            layers,
+            falls,
+            deaths,
+            Optional.of(receipt)
+        );
+    }
+
+    public int changedCells() {
+        return terrain.changedCells();
+    }
+
+    private MatchActorState actor(UUID session) {
+        var actor = actors.get(session);
+
+        if (actor == null || !participants.containsKey(session)) {
+            throw new ScenarioWorldException("UNKNOWN_ACTOR");
+        }
+
+        return actor;
+    }
+
+    private int at(int initialY, List<MatchFall> reports, long tick) {
+        int y = initialY;
+
+        for (var report : reports) {
+            if (report.tick() > tick) {
+                continue;
+            }
+
+            int candidate;
+
+            if (report.tick() + report.duration() <= tick) {
+                candidate = report.endY();
+            } else {
+                float ratio = (float) ((tick - report.tick()) / (double) report.duration());
+                candidate = report.effectiveStartY() + (int) (ratio * (report.endY() - report.effectiveStartY()));
+            }
+
+            y = Math.max(y, candidate);
+        }
+
+        return y;
+    }
+}

@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    SCENARIO_APPLIED("match.scenario.applied", Level.DEBUG, "Scenario applied to match world"),
+    SCENARIO_APPLY_FAILED("match.scenario.apply.failed", Level.ERROR, "Scenario application failed"),
+    SCENARIO_DELIVERY_FAILED("match.scenario.delivery.failed", Level.ERROR, "Committed scenario delivery failed"),
     SCENARIO_VALIDATED("match.scenario.validated", Level.DEBUG, "Scenario validated without applying game state"),
     SCENARIO_REJECTED("match.scenario.rejected", Level.DEBUG, "Scenario rejected"),
     SCENARIO_DUPLICATE("match.scenario.duplicate", Level.DEBUG, "Duplicate scenario ignored"),

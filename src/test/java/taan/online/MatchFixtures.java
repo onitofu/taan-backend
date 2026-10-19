@@ -5,6 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.List;
+import taan.online.match.model.TerrainLayerDefinition;
+import taan.online.match.model.MissileTerrainDefinition;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,8 @@ import taan.online.room.service.model.RoomMembership;
 import taan.online.server.MatchRequestDispatcher;
 
 public final class MatchFixtures {
+    private static final MatchDefinitionCatalog CATALOG = loadCatalog();
+
     private MatchFixtures() {
     }
 
@@ -91,7 +96,8 @@ public final class MatchFixtures {
                 definitions.catalogVersion(),
                 Map.of(definitions.map().mapId(), definitions.map()),
                 definitions.weapons(),
-                definitions.cannonShot()
+                definitions.cannonShot(),
+                MatchFixtures.missileTerrain()
             ),
             scheduler,
             random,
@@ -171,7 +177,19 @@ public final class MatchFixtures {
         return catalog().select(1);
     }
 
+    public static List<TerrainLayerDefinition> terrainLayers() {
+        return catalog().select(1).map().terrainLayers();
+    }
+
+    public static Map<Integer, MissileTerrainDefinition> missileTerrain() {
+        return catalog().missiles();
+    }
+
     public static MatchDefinitionCatalog catalog() {
+        return CATALOG;
+    }
+
+    private static MatchDefinitionCatalog loadCatalog() {
         return new MatchDefinitionLoader().load(
             MatchFixtures.class.getResourceAsStream("/match/catalog.properties"),
             MatchFixtures.class.getResourceAsStream("/match/maps.csv"),

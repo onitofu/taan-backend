@@ -56,10 +56,17 @@ class RoomMatchFailureTest {
                     false
                 )
             ).toList(),
-            Set.of(0, 1, 6)
+            Set.of(0, 1, 6),
+            MatchFixtures.terrainLayers()
         );
         var runtime = MatchFixtures.registry(
-            new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons(), MatchFixtures.cannonShot())
+            new MatchDefinitions(
+                definitions.catalogVersion(),
+                map,
+                definitions.weapons(),
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
+            )
         );
 
         try (

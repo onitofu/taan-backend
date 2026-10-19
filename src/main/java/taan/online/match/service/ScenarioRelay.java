@@ -2,35 +2,45 @@ package taan.online.match.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.service.model.ScenarioAdmissionOutcome;
-import taan.online.match.service.model.ScenarioAdmissionResult;
+import taan.online.match.service.model.ScenarioApplicationOutcome;
+import taan.online.match.service.model.ScenarioApplicationResult;
 
 final class ScenarioRelay {
     private final MatchAdmissionAccess access;
+    private final BooleanSupplier running;
 
     ScenarioRelay(MatchAdmissionAccess access) {
+        this(access, () -> true);
+    }
+
+    ScenarioRelay(MatchAdmissionAccess access, BooleanSupplier running) {
         this.access = access;
+        this.running = running;
     }
 
     CompletionStage<Void> deliver(
-        ScenarioAdmissionResult result,
+        ScenarioApplicationResult result,
         MatchSnapshot match,
         List<MatchSubscription> subscriptions
     ) {
-        if (result.outcome() != ScenarioAdmissionOutcome.ACCEPTED) {
+        if (result.outcome() != ScenarioApplicationOutcome.APPLIED) {
             return CompletableFuture.completedFuture(null);
         }
 
-        var accepted = result.accepted().orElseThrow();
+        var committed = result.committed().orElseThrow();
+        var accepted = committed.scenario();
         var sender = accepted.sender();
-        boolean phase = match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.COMPLETION;
+        boolean phase = match.phase() == MatchPhase.COMPLETION;
+        boolean world = match.world().revision() == committed.snapshot().world().revision()
+            && match.world().receipt().map(value -> value.fingerprint().equals(accepted.hash())).orElse(false);
 
-        if (!phase || !match.id().equals(sender.matchId()) || !match.roomId().equals(sender.roomId())
+        if (!phase || !world || !match.id().equals(sender.matchId()) || !match.roomId().equals(sender.roomId())
             || !match.roomGeneration().equals(sender.roomGeneration()) || match.channelId() != sender.channelId()
             || match.turn().revision() != accepted.turnRevision()) {
             return CompletableFuture.completedFuture(null);
@@ -69,8 +79,8 @@ final class ScenarioRelay {
                 member.admissionId()
             );
 
-            if (access.current(context, member)) {
-                deliveries.add(subscription.output().scenario(accepted).toCompletableFuture());
+            if (running.getAsBoolean() && access.current(context, member)) {
+                deliveries.add(subscription.output().scenario(committed).toCompletableFuture());
             }
         }
 

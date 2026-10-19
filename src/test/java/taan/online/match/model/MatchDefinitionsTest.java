@@ -51,17 +51,33 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchMapDefinition(values[0], "jungle", values[1], values[2], spawns, Set.of(0, 1, 6))
+                () -> new MatchMapDefinition(
+                    values[0],
+                    "jungle",
+                    values[1],
+                    values[2],
+                    spawns,
+                    Set.of(0, 1, 6),
+                    MatchFixtures.terrainLayers()
+                )
             );
         }
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchMapDefinition(1, " ", 1300, 950, spawns, Set.of(0, 1, 6))
+            () -> new MatchMapDefinition(1, " ", 1300, 950, spawns, Set.of(0, 1, 6), MatchFixtures.terrainLayers())
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(), Set.of(0, 1, 6))
+            () -> new MatchMapDefinition(
+                1,
+                "jungle",
+                1300,
+                950,
+                List.of(),
+                Set.of(0, 1, 6),
+                MatchFixtures.terrainLayers()
+            )
         );
         assertThrows(
             IllegalArgumentException.class,
@@ -71,7 +87,8 @@ class MatchDefinitionsTest {
                 1300,
                 950,
                 List.of(spawns.getFirst(), spawns.getFirst()),
-                Set.of(0, 1, 6)
+                Set.of(0, 1, 6),
+                MatchFixtures.terrainLayers()
             )
         );
 
@@ -83,7 +100,15 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(spawn), Set.of(0, 1, 6))
+                () -> new MatchMapDefinition(
+                    1,
+                    "jungle",
+                    1300,
+                    950,
+                    List.of(spawn),
+                    Set.of(0, 1, 6),
+                    MatchFixtures.terrainLayers()
+                )
             );
         }
     }
@@ -112,25 +137,54 @@ class MatchDefinitionsTest {
     void validatesVersionsAndOrderingWithoutAssumingOneMapOrSpawnCount() {
         var spawns = new ArrayList<>(spawns());
         var weapons = new ArrayList<>(weapons());
-        var map = new MatchMapDefinition(1, "jungle", 1300, 950, spawns, Set.of(0, 1, 6));
-        var definitions = new MatchDefinitions("a".repeat(64), map, weapons, MatchFixtures.cannonShot());
+        var map = new MatchMapDefinition(
+            1,
+            "jungle",
+            1300,
+            950,
+            spawns,
+            Set.of(0, 1, 6),
+            MatchFixtures.terrainLayers()
+        );
+        var definitions = new MatchDefinitions(
+            "a".repeat(64),
+            map,
+            weapons,
+            MatchFixtures.cannonShot(),
+            MatchFixtures.missileTerrain()
+        );
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShot())
+            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShot(), MatchFixtures.missileTerrain())
         );
         assertEquals(
             2,
             new MatchDefinitions(
                 "a".repeat(64),
-                new MatchMapDefinition(2, "other", 1300, 950, spawns.subList(0, 13), Set.of(6)),
+                new MatchMapDefinition(
+                    2,
+                    "other",
+                    1300,
+                    950,
+                    spawns.subList(0, 13),
+                    Set.of(6),
+                    MatchFixtures.terrainLayers()
+                ),
                 weapons,
-                MatchFixtures.cannonShot()
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
             ).map().mapId()
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("a".repeat(64), map, weapons.subList(0, 11), MatchFixtures.cannonShot())
+            () -> new MatchDefinitions(
+                "a".repeat(64),
+                map,
+                weapons.subList(0, 11),
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
+            )
         );
 
         var reordered = new ArrayList<>(spawns);
@@ -141,9 +195,18 @@ class MatchDefinitionsTest {
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
                 "a".repeat(64),
-                new MatchMapDefinition(1, "jungle", 1300, 950, reordered, Set.of(0, 1, 6)),
+                new MatchMapDefinition(
+                    1,
+                    "jungle",
+                    1300,
+                    950,
+                    reordered,
+                    Set.of(0, 1, 6),
+                    MatchFixtures.terrainLayers()
+                ),
                 weapons,
-                MatchFixtures.cannonShot()
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
             )
         );
 
@@ -153,7 +216,13 @@ class MatchDefinitionsTest {
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("a".repeat(64), map, swapped, MatchFixtures.cannonShot())
+            () -> new MatchDefinitions(
+                "a".repeat(64),
+                map,
+                swapped,
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
+            )
         );
         spawns.clear();
         weapons.clear();

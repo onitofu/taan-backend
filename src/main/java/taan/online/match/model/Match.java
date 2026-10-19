@@ -27,7 +27,7 @@ public final class Match {
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
-    private final Map<UUID, MatchActorState> actors = new HashMap<>();
+    private MatchWorldState world;
     private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
     private long phaseRevision;
@@ -58,8 +58,9 @@ public final class Match {
         this.participants = List.copyOf(participants);
         this.captains = captains;
         turn = initialTurn(firstTurnSlot);
+        var initialActors = new HashMap<UUID, MatchActorState>();
         participants.forEach(
-            value -> actors.put(
+            value -> initialActors.put(
                 value.sessionId(),
                 new MatchActorState(
                     value.spawn().rawX(),
@@ -70,6 +71,7 @@ public final class Match {
                 )
             )
         );
+        world = MatchWorldState.initial(initialActors, definitions.map().terrainLayers());
     }
 
     private MatchTurn initialTurn(int firstTurnSlot) {
@@ -164,7 +166,42 @@ public final class Match {
     }
 
     public Map<UUID, MatchActorState> actors() {
-        return Map.copyOf(actors);
+        return world.actors();
+    }
+
+    public MatchWorldState world() {
+        return world;
+    }
+
+    public boolean commitScenario(long expectedWorldRevision, long expectedTurnRevision, MatchWorldState prepared) {
+        if (phase != MatchPhase.ACTION || world.revision() != expectedWorldRevision
+            || turn.revision() != expectedTurnRevision || prepared.revision() != expectedWorldRevision + 1
+            || prepared.receipt().filter(
+                value -> value.worldRevision() == prepared.revision() && value.turnRevision() == turn.revision()
+                    && participants.stream().anyMatch(
+                        member -> member.sessionId().equals(value.sessionId())
+                            && member.admissionId().equals(value.admissionId())
+                    )
+            ).isEmpty()) {
+            return false;
+        }
+
+        world = prepared;
+        phase = MatchPhase.COMPLETION;
+        phaseRevision++;
+        return true;
+    }
+
+    public boolean actionStarted(long now, long timeoutNanos) {
+        if (phase != MatchPhase.SYNCHRONIZING || delivered.size() != participants.size()) {
+            return false;
+        }
+
+        phase = MatchPhase.ACTION;
+        phaseRevision++;
+        deadlineNanos = now + timeoutNanos;
+        delivered.clear();
+        return true;
     }
 
     public MatchTurn turn() {
@@ -201,7 +238,7 @@ public final class Match {
             return "FOREIGN_SLOT";
         }
 
-        var accepted = loaded.contains(session) ? actors.get(session) : null;
+        var accepted = loaded.contains(session) ? world.actors().get(session) : null;
 
         if (accepted != null) {
             return accepted.x() == x && accepted.y() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
@@ -220,7 +257,7 @@ public final class Match {
             return "INVALID_POSITION";
         }
 
-        actors.put(session, new MatchActorState(x, y, actor.facing(), actor.hp(), actor.energy()));
+        world = world.placed(session, new MatchActorState(x, y, actor.facing(), actor.hp(), actor.energy()));
         loaded.add(session);
         return "ACCEPTED";
     }
@@ -274,7 +311,7 @@ public final class Match {
         }
 
         var actor = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElse(null);
-        var placement = actors.get(session);
+        var placement = world.actors().get(session);
         return actor != null && actor.slotIndex() == slot && placement.facing() == facing
             && placement.x() == x && placement.y() == y;
     }

@@ -88,6 +88,10 @@ final class ScenarioRules {
 
                     require(Float.isFinite(value.terrainFactor()) && value.terrainFactor() >= 0, "INVALID_TERRAIN");
 
+                    if (header.kind() == 2) {
+                        require(value.terrainFactor() <= 1, "INVALID_TERRAIN");
+                    }
+
                     if (header.kind() == 2 || header.kind() == 3) {
                         require(!terminated, "DUPLICATE_PROJECTILE_TERMINAL");
                         terminated = true;

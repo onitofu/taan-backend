@@ -30,6 +30,8 @@ import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchResultReceipt;
@@ -262,6 +264,12 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             : runtime.submit(new TerminateMatchCommand(MatchCommandContext.from(context), reason)).thenApply(
                 accepted -> accepted ? runtime.termination() : RoomMatchTerminationResult.ignored()
             );
+    }
+
+    public CompletionStage<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(ScenarioApplicationResult.ignored("STALE_MATCH"))
+            : runtime.applyScenario(command);
     }
 
     public CompletionStage<Boolean> submit(MatchCommand command) {

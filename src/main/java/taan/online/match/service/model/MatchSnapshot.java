@@ -11,6 +11,7 @@ import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurn;
+import taan.online.match.model.MatchWorldState;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
@@ -29,7 +30,7 @@ public record MatchSnapshot(
     CaptainSelectionResult captains,
     MatchPhase phase,
     Set<UUID> loadedSessions,
-    Map<UUID, MatchActorState> actors,
+    MatchWorldState world,
     MatchTurn turn,
     long phaseRevision,
     long deadlineNanos
@@ -37,7 +38,31 @@ public record MatchSnapshot(
     public MatchSnapshot {
         participants = List.copyOf(participants);
         loadedSessions = Set.copyOf(loadedSessions);
-        actors = Map.copyOf(actors);
+    }
+
+    public Map<UUID, MatchActorState> actors() {
+        return world.actors();
+    }
+
+    public MatchSnapshot completed(MatchWorldState applied) {
+        return new MatchSnapshot(
+            id,
+            roomId,
+            roomGeneration,
+            channelId,
+            ownerSessionId,
+            mode,
+            rule,
+            definitions,
+            participants,
+            captains,
+            MatchPhase.COMPLETION,
+            loadedSessions,
+            applied,
+            turn,
+            phaseRevision + 1,
+            deadlineNanos
+        );
     }
 
     public int firstTurnSlot() {
@@ -62,7 +87,7 @@ public record MatchSnapshot(
             match.captains(),
             match.phase(),
             match.loadedSessions(),
-            match.actors(),
+            match.world(),
             match.turn(),
             match.phaseRevision(),
             match.deadlineNanos()
