@@ -118,6 +118,7 @@ public final class ScenarioTestWorld implements AutoCloseable {
             claims.facing(),
             claims.flags(),
             claims.power(),
+            0,
             claims.selectedItems(),
             claims.effectsPresent(),
             claims.refittedSlots(),

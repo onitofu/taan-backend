@@ -6,6 +6,7 @@ import static taan.online.match.protocol.packet.UnsupportedGameplayPacket.SCENAR
 import static taan.online.match.protocol.packet.UnsupportedGameplayPacket.USE_ITEM_TYPE_ID;
 
 import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.protocol.BinaryReader;
 import taan.online.protocol.MalformedPacketException;
 
@@ -16,6 +17,10 @@ public final class UnsupportedGameplayCodec {
             case MOVE_TYPE_ID -> 10;
             case PASS_TURN_TYPE_ID -> 14;
             case USE_ITEM_TYPE_ID -> 7;
+            case PcGamePlaySpendItem.TYPE_ID -> {
+                new SpendItemCodec().decode(root);
+                yield -1;
+            }
             case SCENARIO_TYPE_ID -> -1;
             default -> throw new MalformedPacketException("UNSUPPORTED_MATCH_PACKET");
         };
@@ -29,6 +34,6 @@ public final class UnsupportedGameplayCodec {
 
     public static boolean accepts(int type) {
         return type == MOVE_TYPE_ID || type == PASS_TURN_TYPE_ID
-            || type == USE_ITEM_TYPE_ID || type == SCENARIO_TYPE_ID;
+            || type == USE_ITEM_TYPE_ID || type == SCENARIO_TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID;
     }
 }

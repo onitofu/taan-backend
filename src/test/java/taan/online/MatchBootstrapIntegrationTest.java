@@ -373,7 +373,7 @@ class MatchBootstrapIntegrationTest {
                     var next = new TurnStartCodec().decode(owner.read());
                     assertEquals(next, new TurnStartCodec().decode(guest.read()));
                     assertEquals(active == 0 ? 2 : 0, next.activeSlot());
-                    assertEquals(0, next.energyGrant());
+                    assertEquals(index == 0 ? 0 : 10, next.energyGrant());
                     assertEquals(0, next.boxAttemptBudget());
                     assertTrue(Math.abs(next.windRawTenths() - turn.windRawTenths()) <= 20);
 

@@ -32,6 +32,27 @@ public record MatchWorldState(
         return new MatchWorldState(0, actors, terrain, Map.of(), Set.of(), Optional.empty());
     }
 
+    public static MatchWorldState initial(List<MatchParticipant> roster, List<TerrainLayerDefinition> terrain) {
+        var actors = new HashMap<UUID, MatchActorState>();
+        roster.forEach(p -> actors.put(
+            p.sessionId(),
+            new MatchActorState(
+                p.spawn().rawX(),
+                p.spawn().rawY(),
+                p.facing(),
+                p.hp(),
+                p.energy()
+            )
+        ));
+        return initial(actors, terrain);
+    }
+
+    public MatchWorldState energy(UUID session, int value) {
+        var actor = actors.get(session);
+        return actor.energy() == value ? this
+            : placed(session, new MatchActorState(actor.x(), actor.y(), actor.facing(), actor.hp(), value));
+    }
+
     public MatchWorldState placed(UUID session, MatchActorState actor) {
         var updated = new HashMap<>(actors);
         updated.put(session, actor);

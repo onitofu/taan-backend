@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import java.util.ArrayList;
+import taan.online.match.service.model.PendingMatchSpend;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +14,8 @@ import taan.online.match.service.model.MatchTurnTransition;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<MatchMovementNotice> movements = new ArrayList<>();
+    public final List<Integer> specials = new ArrayList<>();
+    public final List<PendingMatchSpend> spends = new ArrayList<>();
     public final List<Integer> stops = new ArrayList<>();
     public final List<CommittedScenario> scenarios = new ArrayList<>();
     public final List<MatchSnapshot> starts = new ArrayList<>();
@@ -25,6 +28,7 @@ public final class TestMatchOutput implements MatchOutput {
     public CompletableFuture<Void> delivery = CompletableFuture.completedFuture(null);
     public RuntimeException failure;
     public RuntimeException motionFailure;
+    public Runnable onSpend = () -> { };
     public Runnable onMovement = () -> { };
     public Runnable onEnd = () -> { };
 
@@ -72,6 +76,30 @@ public final class TestMatchOutput implements MatchOutput {
     public CompletionStage<Void> stopTurn(int slot) {
         stops.add(slot);
         onMovement.run();
+
+        if (motionFailure != null) {
+            throw motionFailure;
+        }
+
+        return delivery;
+    }
+
+    @Override
+    public CompletionStage<Void> special(int slot, int team) {
+        specials.add(slot);
+        onMovement.run();
+
+        if (motionFailure != null) {
+            throw motionFailure;
+        }
+
+        return delivery;
+    }
+
+    @Override
+    public CompletionStage<Void> spend(PendingMatchSpend spend) {
+        spends.add(spend);
+        onSpend.run();
 
         if (motionFailure != null) {
             throw motionFailure;

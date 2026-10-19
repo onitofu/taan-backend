@@ -28,7 +28,7 @@ class TerrainDefinitionInvariantTest {
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions(d.catalogVersion(), m, d.weapons(), d.cannonShot(), Map.of())
+            () -> new MatchDefinitions(d.catalogVersion(), m, d.weapons(), d.cannonShots(), Map.of())
         );
         assertThrows(
             IllegalArgumentException.class,
@@ -36,8 +36,32 @@ class TerrainDefinitionInvariantTest {
                 d.catalogVersion(),
                 m,
                 d.weapons(),
-                d.cannonShot(),
+                d.cannonShots(),
                 Map.of(0, d.missiles().get(0), 1, d.missiles().get(0))
+            )
+        );
+    }
+
+    @Test
+    void requiresBothAttacksAndMatchingAttackAndMissileKeys() {
+        var d = MatchFixtures.definitions();
+        for (var shots : List.of(
+            Map.of(0, d.cannonShots().get(0)),
+            Map.of(0, d.cannonShots().get(2), 2, d.cannonShots().get(0))
+        )) {
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> new MatchDefinitions(d.catalogVersion(), d.map(), d.weapons(), shots, d.missiles())
+            );
+        }
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new MatchDefinitions(
+                d.catalogVersion(),
+                d.map(),
+                d.weapons(),
+                d.cannonShots(),
+                Map.of(0, d.missiles().get(0), 2, d.missiles().get(2), 1, d.missiles().get(0))
             )
         );
     }

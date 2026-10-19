@@ -68,7 +68,7 @@ class MatchCompletionTest {
             assertEquals(3, f.runtime.snapshot().turn().revision());
             assertEquals(2, f.runtime.snapshot().turn().round());
             assertTrue(Math.abs(f.runtime.snapshot().turn().windRaw()) <= 20);
-            assertEquals(0, f.runtime.snapshot().turn().energyGrant());
+            assertEquals(10, f.runtime.snapshot().turn().energyGrant());
         }
     }
 

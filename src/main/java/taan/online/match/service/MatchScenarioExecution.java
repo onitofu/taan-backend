@@ -15,6 +15,8 @@ import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.worldRevision;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
@@ -118,6 +120,7 @@ final class MatchScenarioExecution {
             return refusal;
         }
 
+        var spend = owner.items.prepare();
         var prepared = prepare.execute(before, admission.accepted().orElseThrow());
         var publication = before.completed(prepared.world(), owner.completion(prepared));
         var committed = new CommittedScenario(
@@ -143,6 +146,7 @@ final class MatchScenarioExecution {
         }
 
         previous = committed;
+        MatchEnergyLog.scenario(before, committed);
         var sender = command.context();
         LOG.log(
             MatchLogEvent.SCENARIO_APPLIED,
@@ -159,13 +163,19 @@ final class MatchScenarioExecution {
             processedDeaths(committed.deaths()),
             durationMs((System.nanoTime() - started) / 1000000)
         );
-        publish(committed, result);
+        publish(committed, result, spend);
         return result;
     }
 
-    private void publish(CommittedScenario committed, ScenarioApplicationResult result) {
+    private void publish(
+        CommittedScenario committed,
+        ScenarioApplicationResult result,
+        Optional<PendingMatchSpend> spend
+    ) {
         try {
-            owner.publishScenario(committed, result).handle(
+            var spending = owner.items.committed(spend);
+            var scenario = owner.publishScenario(committed, result);
+            CompletableFuture.allOf(spending.toCompletableFuture(), scenario.toCompletableFuture()).handle(
                 LogContext.propagate(
                     (ignored, failure) -> {
                         if (failure != null) {

@@ -55,6 +55,7 @@ final class MatchRuntime {
     private final MatchScenarioExecution scenarios;
     final MatchTurnExecution turns;
     final MatchMovementExecution movement;
+    final MatchItemExecution items;
     private final MatchMailbox mailbox;
     private final MatchAdmissionAccess access;
     private final MatchBootstrapSettings settings;
@@ -92,6 +93,7 @@ final class MatchRuntime {
         snapshot = MatchSnapshot.from(match);
         scenarios = new MatchScenarioExecution(this, access);
         turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
+        items = new MatchItemExecution(this, match, admission, clock);
         movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
     }
 
@@ -119,6 +121,7 @@ final class MatchRuntime {
                 return false;
             }
 
+            items.clear();
             snapshot = publication;
             publishedRevision = publication.phaseRevision();
             return true;
@@ -474,6 +477,7 @@ final class MatchRuntime {
                 scheduler.cancel(snapshot.id().value());
                 match.beginTermination();
                 match.cancel();
+                items.clear();
                 delivery.run();
                 return true;
             }

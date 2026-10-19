@@ -1,6 +1,12 @@
 package taan.online.match.view;
 
 import java.util.ArrayList;
+import taan.online.match.service.model.PendingMatchSpend;
+import taan.online.match.protocol.codec.UseItemCodec;
+import taan.online.match.protocol.codec.SpendItemCodec;
+import taan.online.match.protocol.packet.SpentItem;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
@@ -189,6 +195,22 @@ public final class ProtocolMatchView implements MatchOutput {
             0,
             0
         ));
+    }
+
+    @Override
+    public CompletionStage<Void> special(int slot, int team) {
+        return output.send(List.of(new UseItemCodec().encode(new PcGamePlayUseItem(slot, team, 0, 0, 255, 6))));
+    }
+
+    @Override
+    public CompletionStage<Void> spend(PendingMatchSpend spend) {
+        var items = spend.items().stream().map(item -> new SpentItem(item.itemId(), item.scalar2())).toList();
+        return output.send(List.of(new SpendItemCodec().encode(new PcGamePlaySpendItem(
+            spend.slot(),
+            spend.teamClear11(),
+            spend.teamClear12(),
+            items
+        ))));
     }
 
     @Override

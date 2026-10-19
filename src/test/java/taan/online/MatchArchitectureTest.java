@@ -116,7 +116,8 @@ class MatchArchitectureTest {
     static final ArchRule MUTABLE_MATCH = classes().that().haveFullyQualifiedName("taan.online.match.model.Match")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.(model\\.Match|service\\.MatchRegistry|service\\.MatchRuntime"
-                    + "|service\\.MatchTurnExecution|service\\.MatchMovementExecution|service\\.model\\.MatchSnapshot)"
+                    + "|service\\.MatchTurnExecution|service\\.MatchItemExecution|service\\.MatchMovementExecution"
+                    + "|service\\.model\\.MatchSnapshot)"
         );
 
     @ArchTest
@@ -130,7 +131,7 @@ class MatchArchitectureTest {
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.service\\."
                 + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
-                + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution)"
+                + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution|MatchItemExecution)"
         );
 
     @ArchTest

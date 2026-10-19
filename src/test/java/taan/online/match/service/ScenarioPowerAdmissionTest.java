@@ -3,6 +3,7 @@ package taan.online.match.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import java.util.Map;
 import taan.online.MatchFixtures;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchDefinitions;
@@ -18,7 +19,12 @@ class ScenarioPowerAdmissionTest {
                 original.catalogVersion(),
                 original.map(),
                 original.weapons(),
-                new CannonShotDefinition(0, 0, 25, 75, 0, 0),
+                Map.of(
+                    0,
+                    new CannonShotDefinition(0, 0, 25, 75, 0, 0),
+                    2,
+                    new CannonShotDefinition(0, 2, 0, 100, 2, 2)
+                ),
                 MatchFixtures.missileTerrain()
             );
 
@@ -46,6 +52,7 @@ class ScenarioPowerAdmissionTest {
             claims.facing(),
             claims.flags(),
             power,
+            0,
             claims.selectedItems(),
             claims.effectsPresent(),
             claims.refittedSlots(),

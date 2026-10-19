@@ -101,6 +101,10 @@ final class MatchMovementExecution {
             return ignored(context);
         }
 
+        if (notice.kind() == MatchMovementKind.PASS_TURN && !owner.items.canCloseTurn()) {
+            return false;
+        }
+
         long now = clock.getAsLong();
 
         if (match.phase() == MatchPhase.ACTION && match.expired(now)) {
@@ -166,6 +170,10 @@ final class MatchMovementExecution {
     }
 
     void timeout() {
+        if (!owner.items.canCloseTurn()) {
+            return;
+        }
+
         synchronized (admission) {
             if (!owner.running() || match.phase() != MatchPhase.ACTION) {
                 return;

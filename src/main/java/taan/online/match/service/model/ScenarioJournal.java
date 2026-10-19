@@ -7,6 +7,7 @@ public record ScenarioJournal(
     List<ScenarioClaim> events,
     Map<Integer, Integer> missileDefinitions,
     List<Integer> refittedSlots,
+    int headerEnergyGrant,
     long endTick
 ) {
     public ScenarioJournal {

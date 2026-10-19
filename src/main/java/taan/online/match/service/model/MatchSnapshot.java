@@ -1,6 +1,7 @@
 package taan.online.match.service.model;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import taan.online.match.model.MatchCompletion;
@@ -9,6 +10,7 @@ import taan.online.match.model.MatchTurnClosure;
 import java.util.Set;
 import java.util.UUID;
 import taan.online.match.model.Match;
+import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
@@ -40,7 +42,8 @@ public record MatchSnapshot(
     long deadlineNanos,
     Optional<MatchCompletion> completion,
     Map<UUID, MatchMovementState> movements,
-    Optional<MatchTurnClosure> closure
+    Optional<MatchTurnClosure> closure,
+    Map<UUID, MatchAttackSelection> attacks
 ) {
     public MatchSnapshot(
         MatchId id,
@@ -79,7 +82,8 @@ public record MatchSnapshot(
             deadlineNanos,
             Optional.empty(),
             Map.of(),
-            Optional.empty()
+            Optional.empty(),
+            Map.of()
         );
     }
 
@@ -87,6 +91,7 @@ public record MatchSnapshot(
         participants = List.copyOf(participants);
         loadedSessions = Set.copyOf(loadedSessions);
         movements = Map.copyOf(movements);
+        attacks = Map.copyOf(attacks);
     }
 
     public Map<UUID, MatchActorState> actors() {
@@ -98,6 +103,9 @@ public record MatchSnapshot(
     }
 
     public MatchSnapshot completed(MatchWorldState applied, Optional<MatchCompletion> pending) {
+        var remaining = new HashMap<>(attacks);
+        participants.stream().filter(p -> p.slotIndex() == turn.activeSlot())
+            .forEach(p -> remaining.remove(p.sessionId()));
         return new MatchSnapshot(
             id,
             roomId,
@@ -117,7 +125,8 @@ public record MatchSnapshot(
             pending.map(MatchCompletion::deadlineNanos).orElse(deadlineNanos),
             pending,
             movements,
-            closure
+            closure,
+            remaining
         );
     }
 
@@ -149,7 +158,8 @@ public record MatchSnapshot(
             match.deadlineNanos(),
             match.completion(),
             match.movements(),
-            match.closure()
+            match.closure(),
+            match.attacks()
         );
     }
 }

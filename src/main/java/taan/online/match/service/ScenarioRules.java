@@ -2,10 +2,12 @@ package taan.online.match.service;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioClaims;
@@ -27,12 +29,18 @@ final class ScenarioRules {
                 && claims.facing() == actor.facing(),
             "INVALID_SHOOTER"
         );
+        boolean special = match.attacks().get(shooter.sessionId()) == MatchAttackSelection.SPECIAL;
         require(
-            claims.selectedItems().isEmpty() && !claims.effectsPresent() && (claims.flags() & 1) == 0
+            claims.selectedItems().equals(special ? List.of(6) : List.of()) && !claims.effectsPresent()
+                && (claims.flags() & 1) == (special ? 1 : 0)
                 && match.turn().boxAttemptBudget() == 0,
             "UNSUPPORTED_ATTACK_FEATURE"
         );
-        var definition = match.definitions().cannonShot();
+        require(
+            claims.headerEnergyGrant() >= 0 && claims.headerEnergyGrant() <= shooter.maxEnergy(),
+            "INVALID_HEADER_ENERGY"
+        );
+        var definition = match.definitions().cannonShots().get(special ? 2 : 0);
         float power = claims.power();
         require(
             Float.isFinite(power) && power >= 0 && power <= 1
@@ -118,6 +126,7 @@ final class ScenarioRules {
             claims.commands(),
             Map.of(fire.sequence(), definition.missileTypeId()),
             claims.refittedSlots(),
+            claims.headerEnergyGrant(),
             endTick
         );
     }

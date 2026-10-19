@@ -25,6 +25,9 @@ public final class PrepareScenarioAction {
         var journal = scenario.journal();
         var draft = new ScenarioWorldDraft(snapshot.world(), snapshot.definitions(), snapshot.participants());
 
+        var shooter = scenario.sender().sessionId();
+        draft.grantEnergy(shooter, journal.headerEnergyGrant());
+
         for (var event : journal.events()) {
             var header = event.header();
             var session = sessions.get(header.slot());
@@ -34,7 +37,11 @@ public final class PrepareScenarioAction {
             }
 
             switch (event) {
-                case ScenarioDamageClaim damage -> draft.damage(session, damage.damage());
+                case ScenarioDamageClaim damage -> {
+                    draft.damage(session, damage.damage());
+                    draft.damageEnergy(session, damage.energy1e());
+                    draft.damageEnergy(shooter, damage.energy1c());
+                }
                 case ScenarioFallClaim fall -> draft.fall(
                     session,
                     header.tick(),

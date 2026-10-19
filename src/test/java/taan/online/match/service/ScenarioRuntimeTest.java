@@ -48,7 +48,7 @@ class ScenarioRuntimeTest {
             assertEquals(MatchPhase.COMPLETION, after.phase());
             assertEquals(923, after.actors().get(victim).hp());
             assertEquals(1000, before.actors().get(victim).hp());
-            assertEquals(before.actors().get(victim).energy(), after.actors().get(victim).energy());
+            assertEquals(60, after.actors().get(victim).energy());
             assertTrue(result.committed().orElseThrow().changedCells() > 0);
             assertTrue(f.owner.scenarios.isEmpty());
             assertEquals(1, f.guest.scenarios.size());

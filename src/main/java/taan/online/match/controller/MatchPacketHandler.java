@@ -1,6 +1,10 @@
 package taan.online.match.controller;
 
 import java.util.UUID;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.service.ActivateSpecialAction;
+import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.model.ConfirmScenarioCommand;
@@ -44,6 +48,7 @@ import taan.online.room.service.model.RoomMatchEndReason;
 
 public final class MatchPacketHandler {
     private final MatchRegistry matches;
+    private final MatchItemPacketHandler items;
     private final MoveMatchActorAction movement;
     private final PassMatchTurnAction passing;
     private final TerminateMatchAction terminate;
@@ -110,6 +115,35 @@ public final class MatchPacketHandler {
         MoveMatchActorAction movement,
         PassMatchTurnAction passing
     ) {
+        this(
+            matches,
+            terminate,
+            consume,
+            loading,
+            position,
+            reports,
+            scenarios,
+            acknowledgements,
+            movement,
+            passing,
+            new MatchItemPacketHandler(new ActivateSpecialAction(matches), new RecordMatchSpendAction(matches))
+        );
+    }
+
+    public MatchPacketHandler(
+        MatchRegistry matches,
+        TerminateMatchAction terminate,
+        ConsumeMatchResultAction consume,
+        ConfirmMatchLoadingAction loading,
+        ConfirmMatchPositionAction position,
+        ReportMatchEnemiesAction reports,
+        ApplyScenarioPacketHandler scenarios,
+        ConfirmScenarioAction acknowledgements,
+        MoveMatchActorAction movement,
+        PassMatchTurnAction passing,
+        MatchItemPacketHandler items
+    ) {
+        this.items = items;
         this.movement = movement;
         this.passing = passing;
         this.scenarios = scenarios;
@@ -205,6 +239,11 @@ public final class MatchPacketHandler {
                 request.phaseRevision(),
                 root
             ).thenApply(ignored -> null);
+        }
+
+        if ((type == PcGamePlayUseItem.TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID)
+            && matches.scenarioEnabled(context)) {
+            return items.handle(id, type, root, request);
         }
 
         if (UnsupportedGameplayCodec.accepts(type)) {

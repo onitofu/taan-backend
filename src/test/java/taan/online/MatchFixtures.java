@@ -97,7 +97,7 @@ public final class MatchFixtures {
                 definitions.catalogVersion(),
                 Map.of(definitions.map().mapId(), definitions.map()),
                 definitions.weapons(),
-                definitions.cannonShot(),
+                definitions.cannonShots(),
                 MatchFixtures.missileTerrain()
             ),
             scheduler,
@@ -180,6 +180,10 @@ public final class MatchFixtures {
                 new String(input.readAllBytes(), StandardCharsets.US_ASCII).replaceAll("\\s+", "")
             );
         }
+    }
+
+    public static Map<Integer, CannonShotDefinition> cannonShots() {
+        return Map.of(0, cannonShot(), 2, new CannonShotDefinition(0, 2, 0, 100, 2, 2));
     }
 
     public static CannonShotDefinition cannonShot() {

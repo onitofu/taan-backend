@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import java.util.UUID;
+import taan.online.match.service.model.PendingMatchSpend;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchMovementNotice;
@@ -18,6 +19,10 @@ public interface MatchOutput {
     CompletionStage<Void> movement(MatchMovementNotice notice);
 
     CompletionStage<Void> stopTurn(int slot);
+
+    CompletionStage<Void> special(int slot, int team);
+
+    CompletionStage<Void> spend(PendingMatchSpend spend);
 
     CompletionStage<Void> scenario(CommittedScenario scenario);
 

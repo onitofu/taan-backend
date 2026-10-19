@@ -43,6 +43,22 @@ public record MatchTurn(
         );
     }
 
+    public MatchTurn issuedAt(long now) {
+        return new MatchTurn(
+            activeSlot,
+            windRaw,
+            energyGrant,
+            boxAttemptBudget,
+            pickerBase,
+            order,
+            revision,
+            OptionalLong.of(now),
+            round,
+            remainingThisRound,
+            randomState
+        );
+    }
+
     public MatchTurn {
         order = List.copyOf(order);
         remainingThisRound = Set.copyOf(remainingThisRound);

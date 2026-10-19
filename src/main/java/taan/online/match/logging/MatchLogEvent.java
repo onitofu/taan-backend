@@ -4,6 +4,14 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    ITEM_DELIVERY_FAILED("match.item.delivery.failed", Level.ERROR, "Match item delivery failed"),
+    SPEND_COMMITTED("match.spend.committed", Level.DEBUG, "Item spending committed"),
+    SPEND_RECORDED("match.spend.recorded", Level.DEBUG, "Item spending staged"),
+    SPECIAL_REJECTED("match.special.rejected", Level.DEBUG, "Special item sequence rejected"),
+    SPECIAL_DUPLICATE("match.special.duplicate", Level.DEBUG, "Duplicate special activation ignored"),
+    SPECIAL_ACTIVATED("match.special.activated", Level.DEBUG, "Special ability activated"),
+    ENERGY_TURN_GRANTED("match.energy.turn.granted", Level.DEBUG, "Turn energy granted"),
+    ENERGY_SCENARIO_APPLIED("match.energy.scenario.applied", Level.DEBUG, "Scenario energy applied"),
     MOVEMENT_ACCEPTED("match.movement.accepted", Level.DEBUG, "Movement anchor accepted"),
     MOVEMENT_REJECTED("match.movement.rejected", Level.DEBUG, "Movement anchor rejected"),
     MOVEMENT_IGNORED("match.movement.ignored", Level.DEBUG, "Stale or inactive movement ignored"),
