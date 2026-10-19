@@ -1,8 +1,8 @@
 package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -97,4 +97,23 @@ class MatchSpecialDeliveryTest {
         }
     }
 
+    @Test
+    void cancelsSafelyWhenAnAsynchronousItemDeliveryFailsAgainstAFullCommandQueue() throws Exception {
+        try (var e = new EnergyRuntimeFixture(); var logs = new LogCapture()) {
+            e.charge();
+            var pending = new CompletableFuture<Void>();
+            e.f.owner.delivery = pending;
+            assertTrue(e.activate(e.use()));
+
+            for (int index = 0; index < 8; index++) {
+                e.f.runtime.turnWork(() -> true);
+            }
+
+            pending.completeExceptionally(new IllegalStateException("delivery-secret"));
+            e.f.run();
+            assertEquals(RoomMatchEndReason.SCENARIO_DELIVERY_FAILED, e.f.callbacks.reason);
+            assertEquals(1, logs.text().split("event=\"match.item.delivery.failed\"", -1).length - 1);
+            assertFalse(logs.text().contains("delivery-secret"));
+        }
+    }
 }

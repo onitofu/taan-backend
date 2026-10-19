@@ -1,16 +1,16 @@
 package taan.online.match.service;
 
 import java.util.ArrayList;
-import taan.online.match.service.model.PendingMatchSpend;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.MatchTurnTransition;
+import taan.online.match.service.model.PendingMatchSpend;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<MatchMovementNotice> movements = new ArrayList<>();
@@ -24,6 +24,7 @@ public final class TestMatchOutput implements MatchOutput {
     public CompletableFuture<Void> turnDelivery = CompletableFuture.completedFuture(null);
     public RuntimeException bootstrapFailure;
     public int ends;
+    public final List<MatchOutcome> outcomes = new ArrayList<>();
     public final List<String> closed = new ArrayList<>();
     public CompletableFuture<Void> delivery = CompletableFuture.completedFuture(null);
     public RuntimeException failure;
@@ -116,6 +117,7 @@ public final class TestMatchOutput implements MatchOutput {
 
     @Override
     public CompletionStage<Void> end(MatchOutcome outcome) {
+        outcomes.add(outcome);
         ends++;
         onEnd.run();
 

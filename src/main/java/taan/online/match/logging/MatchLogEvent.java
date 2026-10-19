@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    DEPARTURE_ACCEPTED("match.departure.accepted", Level.DEBUG, "Match departure accepted"),
+    FINISHED("match.finished", Level.INFO, "Match finished without awards"),
+    OUTCOME_DECIDED("match.outcome.decided", Level.DEBUG, "Match outcome decided"),
     ITEM_DELIVERY_FAILED("match.item.delivery.failed", Level.ERROR, "Match item delivery failed"),
     SPEND_COMMITTED("match.spend.committed", Level.DEBUG, "Item spending committed"),
     SPEND_RECORDED("match.spend.recorded", Level.DEBUG, "Item spending staged"),

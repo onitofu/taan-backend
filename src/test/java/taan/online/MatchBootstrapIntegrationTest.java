@@ -10,23 +10,8 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.List;
-import taan.online.match.protocol.codec.LoadingDoneCodec;
-import taan.online.match.protocol.codec.MoveCodec;
-import taan.online.match.protocol.codec.PassTurnCodec;
-import taan.online.match.protocol.packet.PcGamePlayMove;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
-import taan.online.match.protocol.packet.LoadingPosition;
-import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
-import taan.online.match.protocol.codec.StartGameCodec;
-import taan.online.match.protocol.codec.SetPosCodec;
-import taan.online.match.protocol.codec.TurnStartCodec;
-import taan.online.match.protocol.codec.TurnEndCodec;
-import taan.online.match.protocol.codec.ScenarioCodec;
-import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.protocol.BinaryWriter;
-import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +19,21 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
+import taan.online.match.protocol.codec.LoadingDoneCodec;
+import taan.online.match.protocol.codec.MoveCodec;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.codec.ScenarioCodec;
+import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.protocol.codec.TurnEndCodec;
+import taan.online.match.protocol.codec.TurnStartCodec;
+import taan.online.match.protocol.packet.LoadingPosition;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
 
@@ -439,7 +439,7 @@ class MatchBootstrapIntegrationTest {
     }
 
     private void ended(CharacterTestClient client) throws Exception {
-        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), client.read());
+        assertArrayEquals(MatchFixtures.endGame(2), client.read());
         assertFalse(wire.ready(client.read()).ready());
     }
 

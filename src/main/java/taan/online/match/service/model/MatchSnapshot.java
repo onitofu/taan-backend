@@ -1,22 +1,23 @@
 package taan.online.match.service.model;
 
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import taan.online.match.model.MatchCompletion;
-import taan.online.match.model.MatchMovementState;
-import taan.online.match.model.MatchTurnClosure;
 import java.util.Set;
 import java.util.UUID;
 import taan.online.match.model.Match;
-import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchActorState;
+import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
+import taan.online.match.model.MatchMovementState;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchResolutionState;
 import taan.online.match.model.MatchTurn;
+import taan.online.match.model.MatchTurnClosure;
 import taan.online.match.model.MatchWorldState;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
@@ -43,7 +44,8 @@ public record MatchSnapshot(
     Optional<MatchCompletion> completion,
     Map<UUID, MatchMovementState> movements,
     Optional<MatchTurnClosure> closure,
-    Map<UUID, MatchAttackSelection> attacks
+    Map<UUID, MatchAttackSelection> attacks,
+    MatchResolutionState resolution
 ) {
     public MatchSnapshot(
         MatchId id,
@@ -83,7 +85,8 @@ public record MatchSnapshot(
             Optional.empty(),
             Map.of(),
             Optional.empty(),
-            Map.of()
+            Map.of(),
+            MatchResolutionState.initial()
         );
     }
 
@@ -126,7 +129,8 @@ public record MatchSnapshot(
             pending,
             movements,
             closure,
-            remaining
+            remaining,
+            resolution.evaluate(participants, applied, turn.activeSlot())
         );
     }
 
@@ -159,7 +163,8 @@ public record MatchSnapshot(
             match.completion(),
             match.movements(),
             match.closure(),
-            match.attacks()
+            match.attacks(),
+            match.resolution()
         );
     }
 }

@@ -3,20 +3,21 @@ package taan.online;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.List;
-import taan.online.match.model.TerrainLayerDefinition;
-import taan.online.match.model.MissileTerrainDefinition;
+import java.util.Map;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 import org.slf4j.LoggerFactory;
 import taan.online.bootstrap.MatchDefinitionLoader;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
-import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchDefinitionCatalog;
+import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.MissileTerrainDefinition;
+import taan.online.match.model.TerrainLayerDefinition;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
@@ -172,6 +173,15 @@ public final class MatchFixtures {
         snapshot.participants().forEach(
             member -> matches.deliveryCompleted(synchronizedToken, member.sessionId()).toCompletableFuture().join()
         );
+    }
+
+    public static byte[] endGame(int winner) throws IOException {
+        String name = "/match/EndGame-result" + winner + "-no-awards.frame.hex";
+        try (var input = MatchFixtures.class.getResourceAsStream(name)) {
+            var frame = HexFormat.of().parseHex(new String(input.readAllBytes(), StandardCharsets.US_ASCII)
+                .replaceAll("\\s+", ""));
+            return Arrays.copyOfRange(frame, 4, frame.length);
+        }
     }
 
     public static byte[] root(String name) throws IOException {

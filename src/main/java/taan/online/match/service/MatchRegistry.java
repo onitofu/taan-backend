@@ -4,14 +4,13 @@ import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomGeneration;
 import static taan.online.logging.LogField.roomId;
+import static taan.online.match.service.MatchReservationLog.log;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import taan.online.match.service.model.ActivateSpecialCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,28 +21,31 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
-import taan.online.match.service.model.MoveMatchActorCommand;
-import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurnPolicy;
-import taan.online.match.service.model.MatchExecutionMode;
-import taan.online.match.service.model.ConfirmScenarioCommand;
-import taan.online.match.service.model.MatchRequestBinding;
-import taan.online.room.model.RoomMode;
+import taan.online.match.service.model.ActivateSpecialCommand;
+import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.DepartMatchCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
-import taan.online.match.service.model.ApplyScenarioCommand;
-import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchRequestBinding;
 import taan.online.match.service.model.MatchResultReceipt;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.MoveMatchActorCommand;
+import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
+import taan.online.room.model.RoomMode;
 import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.RoomMatchLifecycle;
 import taan.online.room.service.model.RoomMatchContext;
@@ -276,8 +278,9 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     public CompletionStage<RoomMatchTerminationResult> terminate(RoomMatchContext context, RoomMatchEndReason reason) {
         var runtime = find(context.token());
         return runtime == null ? CompletableFuture.completedFuture(RoomMatchTerminationResult.ignored())
-            : runtime.submit(new TerminateMatchCommand(MatchCommandContext.from(context), reason)).thenApply(
-                accepted -> accepted ? runtime.termination() : RoomMatchTerminationResult.ignored()
+            : runtime.submit(new TerminateMatchCommand(MatchCommandContext.from(context), reason)).thenCompose(
+                accepted -> accepted ? runtime.outcomes.result()
+                    : CompletableFuture.completedFuture(RoomMatchTerminationResult.ignored())
             );
     }
 
@@ -364,6 +367,27 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             : submit(new ReportMatchEnemiesCommand(MatchCommandContext.from(context)));
     }
 
+    public CompletionStage<ScenarioApplicationResult> rejectMalformedScenario(
+        MatchCommandContext context,
+        long turn,
+        long world,
+        long phase
+    ) {
+        return MatchScenarioExecution.rejectMalformed(find(context.token()), context, turn, world, phase);
+    }
+
+    @Override
+    public CompletionStage<Boolean> requestDeparture(
+        RoomMatchToken token,
+        RoomMembership expected,
+        RoomMatchEndReason reason
+    ) {
+        var runtime = find(token);
+        var command = new DepartMatchCommand(MatchCommandContext.from(new RoomMatchContext(expected, token)), reason);
+        return runtime == null || !runtime.outcomes.acceptsDeparture() ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.outcomes.depart(command));
+    }
+
     @Override
     public RoomMatchTermination prepareTermination(
         RoomMatchToken token,
@@ -383,25 +407,20 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             closeReason,
             snapshot.phase() == MatchPhase.LOADING && runtime.unpublished()
         );
-        var recipients = snapshot.participants().stream()
-            .filter(value -> mode != RoomMatchTerminationMode.RETURN_TO_ROOM || !value.sessionId().equals(departing))
-            .map(
-                value -> new RoomMembership(
-                    value.sessionId(),
-                    snapshot.roomId(),
-                    snapshot.roomGeneration(),
-                    snapshot.channelId(),
-                    value.admissionId()
-                )
-            ).toList();
+        var recipients = MatchTerminationDelivery.memberships(snapshot, mode, departing);
         var terminal = new RoomMatchTermination(token, closeReason, mode, recipients);
         var outputs = mode == RoomMatchTerminationMode.ROLLBACK ? List.<MatchSubscription>of() : recipients.stream()
             .map(value -> subscriptions.get(value.sessionId())).filter(Objects::nonNull).toList();
         var exiting = mode == RoomMatchTerminationMode.RETURN_TO_ROOM && closeReason == RoomMatchEndReason.ROOM_LEAVE
             ? departing == null ? null : subscriptions.get(departing) : null;
+        var outcome = MatchOutcomeExecution.terminal(snapshot, runtime.live(), closeReason);
+        MatchOutcomeExecution.finished(snapshot, outcome, closeReason);
         terminations.put(
             token,
-            new MatchTerminationDispatch(runtime, new MatchTerminationDelivery(terminal, outputs, exiting))
+            new MatchTerminationDispatch(
+                runtime,
+                new MatchTerminationDelivery(terminal, outputs, exiting, outcome)
+            )
         );
 
         if (mode == RoomMatchTerminationMode.RETURN_TO_ROOM) {
@@ -410,7 +429,6 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
         matches.remove(snapshot.id(), runtime);
         snapshot.participants().forEach(value -> sessions.remove(value.sessionId(), runtime));
-        log(MatchLogEvent.CANCELLED, token, closeReason.name());
         return terminal;
     }
 
@@ -474,15 +492,4 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     ) {
         return new RoomMatchReservationResult(outcome, reason, token);
     }
-
-    private static void log(MatchLogEvent event, RoomMatchToken token, String result) {
-        LOG.log(
-            event,
-            matchId(token.matchId()),
-            roomId(token.roomId().value()),
-            roomGeneration(token.generation()),
-            reason(result)
-        );
-    }
-
 }

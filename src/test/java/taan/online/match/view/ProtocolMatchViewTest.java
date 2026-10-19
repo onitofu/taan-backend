@@ -8,27 +8,30 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
-import taan.online.MatchFixtures;
 import taan.online.MatchBootstrapFixture;
-import taan.online.room.model.RoomMode;
-import taan.online.match.service.model.MatchMovementKind;
-import taan.online.match.service.model.MatchMovementNotice;
-import taan.online.match.service.model.MatchTurnTransition;
+import taan.online.MatchFixtures;
+import taan.online.match.model.MatchOutcome;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
-import taan.online.match.model.MatchOutcome;
+import taan.online.match.service.model.MatchMovementKind;
+import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchTurnTransition;
+import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomTeam;
 
 class ProtocolMatchViewTest {
     @Test
-    void refusesOutcomesWhoseRewardAndWinnerContractHasNotBeenImplemented() {
+    void refusesRewardedAndInconsistentOutcomes() {
         var output = new CollectingPacketOutput();
         var view = new ProtocolMatchView(output);
 
-        assertThrows(IllegalArgumentException.class, () -> view.end(new MatchOutcome(Set.of(RoomTeam.BLUE), false)));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> view.end(new MatchOutcome(Set.of(RoomTeam.BLUE, RoomTeam.RED), false))
+        );
         assertThrows(IllegalArgumentException.class, () -> view.end(new MatchOutcome(Set.of(), true)));
         assertEquals(0, output.batches.size());
     }
@@ -79,5 +82,4 @@ class ProtocolMatchViewTest {
             assertEquals(0xffffffffL, new PassTurnCodec().decode(output.batches.getLast().getFirst()).scalar20());
         }
     }
-
 }

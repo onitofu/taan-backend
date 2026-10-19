@@ -20,6 +20,8 @@ public interface RoomMatchLifecycle {
 
     CompletionStage<Void> publish(RoomMatchToken token);
 
+    CompletionStage<Boolean> requestDeparture(RoomMatchToken token, RoomMembership expected, RoomMatchEndReason reason);
+
     RoomMatchTermination prepareTermination(RoomMatchToken token, RoomMatchEndReason reason, UUID departing);
 
     CompletionStage<Void> dispatchTermination(RoomMatchTermination terminal, UUID requester, Runnable queued);

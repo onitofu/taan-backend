@@ -1,12 +1,12 @@
 package taan.online.match.service;
 
 import static taan.online.logging.LogField.admissionId;
-import static taan.online.logging.LogField.reason;
-import static taan.online.logging.LogField.roomId;
+import static taan.online.logging.LogField.awaitingCount;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.mapId;
-import static taan.online.logging.LogField.awaitingCount;
 import static taan.online.logging.LogField.matchId;
+import static taan.online.logging.LogField.reason;
+import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.round;
 import static taan.online.logging.LogField.scenarioHash;
 import static taan.online.logging.LogField.sessionId;
@@ -27,8 +27,8 @@ import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
+import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchDeadline;
@@ -237,7 +237,7 @@ final class MatchTurnExecution {
         return true;
     }
 
-    private void finish() {
+    void finish() {
         var pending = owner.snapshot().completion().orElseThrow();
 
         if (!owner.running() || !pending.awaitingSessions().isEmpty()) {
@@ -257,8 +257,10 @@ final class MatchTurnExecution {
             }
 
             walking = match.movements().values().stream().anyMatch(value -> value.fall().isPresent());
+            var before = owner.snapshot();
             match.settleMovement(clock.getAsLong());
             owner.refresh();
+            MatchOutcomeExecution.decided(before, owner.snapshot());
         }
 
         if (walking) {
@@ -278,7 +280,7 @@ final class MatchTurnExecution {
                 return;
             }
 
-            terminal = match.actors().values().stream().anyMatch(actor -> actor.hp() == 0);
+            terminal = match.resolution().pendingOutcome().isPresent();
             int previous = match.turn().activeSlot();
 
             if (!terminal) {
@@ -292,7 +294,7 @@ final class MatchTurnExecution {
         }
 
         if (terminal) {
-            owner.terminate(RoomMatchEndReason.PARTICIPANT_ELIMINATED);
+            owner.outcomes.finish();
         } else {
             publish(transition);
         }

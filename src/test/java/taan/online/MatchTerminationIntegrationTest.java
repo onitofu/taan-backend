@@ -20,9 +20,12 @@ import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.model.RoomMatchToken;
@@ -66,8 +69,8 @@ class MatchTerminationIntegrationTest {
                 var rooms = prepare(app, owner, a, guest, b);
                 var token = reserve(rooms, owner, guest, true);
                 owner.send(MatchFixtures.root("give-up-empty"));
-                ended(owner);
-                ended(guest);
+                ended(owner, 2);
+                ended(guest, 2);
                 owner.send(MatchFixtures.root("PqResult_RandSelect.captured"));
                 owner.send(MatchFixtures.root("PqResult_SelectCard"));
                 owner.send(MatchFixtures.root("give-up-empty"));
@@ -80,8 +83,8 @@ class MatchTerminationIntegrationTest {
 
                 assertFalse(token.equals(next));
                 guest.send(MatchFixtures.root("give-up-empty"));
-                ended(owner);
-                ended(guest);
+                ended(owner, 1);
+                ended(guest, 1);
                 assertEquals(before, durableFingerprint());
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                 assertFalse(logs.text().contains("alpha@example.test"));
@@ -156,6 +159,59 @@ class MatchTerminationIntegrationTest {
         assertEquals(before, durableFingerprint());
     }
 
+    @Test
+    void completesALethalScenarioOverTcpThenPlaysAnotherMatchWithoutChangingDurableData() throws Exception {
+        var a = player("alpha");
+        var b = player("bravo");
+        String before = durableFingerprint();
+        var config = database.configuration();
+
+        try (var app = new Application(config)) {
+            app.start();
+            try (
+                var owner = new CharacterTestClient(config.port());
+                var guest = new CharacterTestClient(config.port())
+            ) {
+                var rooms = prepare(app, owner, a, guest, b);
+                var matches = RuntimeRoomTestAccess.matches(rooms);
+                var token = reserve(rooms, owner, guest, true);
+                var snapshot = matches.current(token).orElseThrow();
+                int slot = snapshot.turn().activeSlot();
+                var actor = snapshot.participants().stream().filter(p -> p.slotIndex() == slot)
+                    .findFirst().orElseThrow();
+                var shooter = slot == 0 ? owner : guest;
+                var observer = slot == 0 ? guest : owner;
+                var packet = MatchScenarioTestPackets.shot(
+                    slot,
+                    snapshot.actors().get(actor.sessionId()).facing(),
+                    10000,
+                    false
+                );
+                byte[] root = new ScenarioCodec().encode(packet);
+                byte[] ack = new BinaryWriter().unsignedInt(PcGamePlayEndScenario.TYPE_ID)
+                    .unsignedByte(slot).unsignedByte(0).toByteArray();
+                shooter.sendTogether(root, ack);
+                assertArrayEquals(root, observer.read());
+                observer.sendTogether(ack, ack);
+                int winner = slot == 0 ? 1 : 2;
+                ended(owner, winner);
+                ended(guest, winner);
+                cash(owner);
+                cash(guest);
+                assertEquals(before, durableFingerprint());
+                guest.send(RoomScenario.ready(1));
+                wire.ready(owner.read());
+                wire.ready(guest.read());
+                var next = reserve(rooms, owner, guest, true);
+                assertFalse(next.equals(token));
+                owner.send(MatchFixtures.root("give-up-empty"));
+                ended(owner, 2);
+                ended(guest, 2);
+                assertEquals(before, durableFingerprint());
+            }
+        }
+    }
+
     private RoomRegistry prepare(
         Application app,
         CharacterTestClient owner,
@@ -217,8 +273,8 @@ class MatchTerminationIntegrationTest {
         return token;
     }
 
-    private void ended(CharacterTestClient client) throws Exception {
-        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), client.read());
+    private void ended(CharacterTestClient client, int winner) throws Exception {
+        assertArrayEquals(MatchFixtures.endGame(winner), client.read());
         assertFalse(wire.ready(client.read()).ready());
     }
 

@@ -10,36 +10,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BooleanSupplier;
-import taan.online.match.model.MatchCompletion;
-import taan.online.match.service.model.ConfirmScenarioCommand;
-import taan.online.match.service.model.MatchTurnToken;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningEvent;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
+import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
+import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
-import taan.online.match.service.model.MatchExecutionMode;
-import taan.online.match.service.model.ApplyScenarioCommand;
-import taan.online.match.service.model.PreparedScenario;
-import taan.online.match.service.model.CommittedScenario;
-import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchDeadlineExpiredCommand;
 import taan.online.match.service.model.MatchDeliveryCompletedCommand;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchStateCommand;
+import taan.online.match.service.model.MatchTurnToken;
+import taan.online.match.service.model.PreparedScenario;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.room.service.RoomMatchCallbacks;
@@ -52,10 +52,11 @@ final class MatchRuntime {
     private static final EventLogger LOG = EventLogger.forClass(MatchRuntime.class);
 
     private final Match match;
-    private final MatchScenarioExecution scenarios;
+    final MatchScenarioExecution scenarios;
     final MatchTurnExecution turns;
     final MatchMovementExecution movement;
     final MatchItemExecution items;
+    final MatchOutcomeExecution outcomes;
     private final MatchMailbox mailbox;
     private final MatchAdmissionAccess access;
     private final MatchBootstrapSettings settings;
@@ -70,7 +71,6 @@ final class MatchRuntime {
     private boolean startPublished;
     private RoomMatchCallbacks callbacks;
     private List<MatchSubscription> recipients = List.of();
-    private RoomMatchTerminationResult termination = RoomMatchTerminationResult.ignored();
     private volatile CompletionStage<Void> startDelivery = CompletableFuture.completedFuture(null);
 
     MatchRuntime(
@@ -93,6 +93,7 @@ final class MatchRuntime {
         snapshot = MatchSnapshot.from(match);
         scenarios = new MatchScenarioExecution(this, access);
         turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
+        outcomes = new MatchOutcomeExecution(this, match, admission, clock);
         items = new MatchItemExecution(this, match, admission, clock);
         movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
     }
@@ -106,7 +107,8 @@ final class MatchRuntime {
     }
 
     boolean scenarioCurrent(ApplyScenarioCommand command) {
-        return settings.executionMode() != MatchExecutionMode.PREVIEW && admits(command.context());
+        return settings.executionMode() != MatchExecutionMode.PREVIEW && admits(command.context())
+            && !snapshot.resolution().exits().containsKey(command.context().sessionId());
     }
 
     boolean commitScenario(ApplyScenarioCommand command, PreparedScenario prepared, MatchSnapshot publication) {
@@ -249,7 +251,7 @@ final class MatchRuntime {
                     }
                 }
 
-                return end(end);
+                return outcomes.end(end);
             }
 
             RoomMatchEndReason ending = null;
@@ -334,17 +336,13 @@ final class MatchRuntime {
         };
     }
 
-    private boolean end(TerminateMatchCommand command) {
-        if (callbacks == null) {
-            return false;
-        }
-
-        termination = callbacks.terminateMatch(token(), command.reason(), command.context().sessionId());
-        return termination.termination() != null;
+    RoomMatchTerminationResult termination() {
+        return outcomes.current();
     }
 
-    RoomMatchTerminationResult termination() {
-        return termination;
+    RoomMatchTerminationResult notifyTermination(RoomMatchEndReason reason, UUID requester) {
+        return callbacks == null ? RoomMatchTerminationResult.ignored()
+            : callbacks.terminateMatch(token(), reason, requester);
     }
 
     private boolean loaded(ConfirmMatchLoadingCommand command) {
@@ -493,8 +491,6 @@ final class MatchRuntime {
     }
 
     void terminate(RoomMatchEndReason reason) {
-        if (callbacks != null) {
-            callbacks.terminateMatch(token(), reason, null);
-        }
+        outcomes.cancel(reason, null);
     }
 }

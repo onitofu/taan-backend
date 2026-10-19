@@ -39,7 +39,7 @@ final class RoomMatchOperations {
     private static final EventLogger LOG = EventLogger.forClass(RoomMatchOperations.class);
 
     private final Object monitor;
-    private final Map<RoomMatchToken, CompletableFuture<Void>> pending = new HashMap<>();
+    private final Map<RoomMatchToken, RoomMatchReturnBarrier> pending = new HashMap<>();
     private final ChannelRegistry channels;
     private final RoomMapCatalog maps;
     private final Map<RoomId, Room> rooms;
@@ -234,18 +234,68 @@ final class RoomMatchOperations {
     }
 
     boolean leave(Room room, UUID id) {
-        var ended = finish(room, RoomMatchEndReason.ROOM_LEAVE, id, null);
-        return ended.termination() != null && ended.termination().mode() != RoomMatchTerminationMode.ROLLBACK;
+        if (room.matchId() == null) {
+            return false;
+        }
+
+        return !requestDeparture(room, id, RoomMatchEndReason.ROOM_LEAVE).rolledBack();
     }
 
     void departed(Room room, UUID id, String reason) {
-        finish(
-            room,
-            reason.equals("SERVER_STOPPING") ? RoomMatchEndReason.SERVER_STOPPING
-                : RoomMatchEndReason.DISCONNECTED,
-            id,
-            null
-        );
+        if (reason.equals("SERVER_STOPPING")) {
+            finish(room, RoomMatchEndReason.SERVER_STOPPING, id, null);
+        } else {
+            requestDeparture(room, id, RoomMatchEndReason.DISCONNECTED);
+        }
+    }
+
+    private RoomMatchReturnBarrier requestDeparture(Room room, UUID id, RoomMatchEndReason reason) {
+        if (room.matchId() == null) {
+            return null;
+        }
+
+        var token = token(room);
+        var barrier = pending.computeIfAbsent(token, ignored -> new RoomMatchReturnBarrier());
+        var member = memberships.get(id).membership();
+
+        if (!barrier.request(member)) {
+            return barrier;
+        }
+
+        try {
+            lifecycle.requestDeparture(token, member, reason).whenComplete(
+                (accepted, failure) -> departureCompleted(room, token, id, reason, accepted, failure)
+            );
+        } catch (RuntimeException failure) {
+            departureCompleted(room, token, id, reason, false, failure);
+        }
+
+        return barrier;
+    }
+
+    private void departureCompleted(
+        Room room,
+        RoomMatchToken token,
+        UUID id,
+        RoomMatchEndReason reason,
+        Boolean accepted,
+        Throwable failure
+    ) {
+        synchronized (monitor) {
+            if (current(token) == room && (failure != null || !Boolean.TRUE.equals(accepted))) {
+                if (failure != null) {
+                    LOG.failure(
+                        RoomLogEvent.OPERATION_FAILED,
+                        failure,
+                        matchId(token.matchId()),
+                        roomId(room.id().value()),
+                        roomGeneration(room.generation())
+                    );
+                }
+
+                finish(room, failure == null ? reason : RoomMatchEndReason.PREPARATION_FAILED, id, null);
+            }
+        }
     }
 
     boolean deferDeparture(Room room, Runnable departure) {
@@ -255,7 +305,7 @@ final class RoomMatchOperations {
             return false;
         }
 
-        ending.thenRun(
+        ending.afterQueued(
             () -> {
                 synchronized (monitor) {
                     departure.run();
@@ -277,8 +327,9 @@ final class RoomMatchOperations {
         }
 
         var token = token(room);
+        var barrier = pending.computeIfAbsent(token, ignored -> new RoomMatchReturnBarrier());
 
-        if (pending.containsKey(token)) {
+        if (!barrier.beginReturn()) {
             return RoomMatchTerminationResult.ignored();
         }
 
@@ -289,6 +340,8 @@ final class RoomMatchOperations {
             lifecycle.cancel(token, "MATCH_CONTEXT_LOST");
             room.rollbackMatch(token.matchId());
             changed.accept(room);
+            pending.remove(token);
+            barrier.complete();
             LOG.failure(
                 RoomLogEvent.OPERATION_FAILED,
                 new IllegalStateException("Match runtime missing"),
@@ -302,8 +355,7 @@ final class RoomMatchOperations {
             return RoomMatchTerminationResult.ignored();
         }
 
-        var queued = new CompletableFuture<Void>();
-        pending.put(token, queued);
+        barrier.mode(terminal.mode());
         Runnable returned = () -> {
             synchronized (monitor) {
                 if (current(token) == room) {
@@ -326,7 +378,7 @@ final class RoomMatchOperations {
                 }
 
                 pending.remove(token);
-                queued.complete(null);
+                barrier.complete();
             }
         };
 

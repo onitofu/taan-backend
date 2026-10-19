@@ -117,6 +117,7 @@ class MatchArchitectureTest {
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.(model\\.Match|service\\.MatchRegistry|service\\.MatchRuntime"
                     + "|service\\.MatchTurnExecution|service\\.MatchItemExecution|service\\.MatchMovementExecution"
+                    + "|service\\.MatchOutcomeExecution"
                     + "|service\\.model\\.MatchSnapshot)"
         );
 
@@ -131,7 +132,8 @@ class MatchArchitectureTest {
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.service\\."
                 + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
-                + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution|MatchItemExecution)"
+                + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution|MatchItemExecution"
+                + "|MatchOutcomeExecution)"
         );
 
     @ArchTest
@@ -139,6 +141,12 @@ class MatchArchitectureTest {
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.room\\.service\\."
                 + "(RoomRegistry|RoomMatchOperations|RoomDepartureOperations|RoomMatchCoordinator)"
+        );
+
+    @ArchTest
+    static final ArchRule RETURN_BARRIER_OWNER = classes().that().haveSimpleName("RoomMatchReturnBarrier")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.room\\.service\\.(RoomMatchOperations|RoomMatchReturnBarrier)"
         );
 
     @ArchTest

@@ -80,7 +80,8 @@ final class MatchMovementExecution {
     }
 
     private boolean accept(MatchCommandContext context, long revision, long phaseRevision, MatchMovementNotice notice) {
-        if (!owner.live() || !owner.admits(context) || revision != match.turn().revision()) {
+        if (!owner.live() || !owner.admits(context) || match.resolution().exits().containsKey(context.sessionId())
+            || revision != match.turn().revision()) {
             return ignored(context);
         }
 
@@ -205,8 +206,10 @@ final class MatchMovementExecution {
             }
 
             if (clock.getAsLong() - match.settleAt() >= 0) {
+                var before = owner.snapshot();
                 match.settleMovement(clock.getAsLong());
                 owner.refresh();
+                MatchOutcomeExecution.decided(before, owner.snapshot());
             }
         }
 
