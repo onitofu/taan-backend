@@ -51,6 +51,9 @@ import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.controller.ApplyScenarioPacketHandler;
+import taan.online.match.service.ApplyScenarioAction;
+import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
@@ -179,7 +182,9 @@ public final class Application implements AutoCloseable {
                 TimeUnit.SECONDS.toNanos(config.matchLoadingTimeoutSeconds()),
                 TimeUnit.SECONDS.toNanos(config.matchPreviewTimeoutSeconds()),
                 config.matchReportsPerSecond(),
-                MatchExecutionMode.PREVIEW
+                MatchExecutionMode.CANNON_1V1,
+                TimeUnit.SECONDS.toNanos(config.matchActionTimeoutSeconds()),
+                TimeUnit.SECONDS.toNanos(config.matchCompletionGraceSeconds())
             ),
             matchScheduler,
             System::nanoTime,
@@ -202,7 +207,9 @@ public final class Application implements AutoCloseable {
                 new ConsumeMatchResultAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
-                new ReportMatchEnemiesAction(matches)
+                new ReportMatchEnemiesAction(matches),
+                new ApplyScenarioPacketHandler(new ApplyScenarioAction(matches)),
+                new ConfirmScenarioAction(matches)
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(

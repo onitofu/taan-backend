@@ -97,6 +97,23 @@ class ApplicationConfigTest {
     }
 
     @Test
+    void acceptsConfiguredActionAndCompletionTimeoutsAndDefaultsForExistingEnvironments() {
+        var environment = TestFixtures.environment();
+        environment.remove("BACKEND_MATCH_ACTION_TIMEOUT_SECONDS");
+        environment.remove("BACKEND_MATCH_COMPLETION_GRACE_SECONDS");
+        var defaults = ApplicationConfig.fromEnvironment(environment);
+        assertEquals(20, defaults.matchActionTimeoutSeconds());
+        assertEquals(10, defaults.matchCompletionGraceSeconds());
+        environment.put("BACKEND_MATCH_ACTION_TIMEOUT_SECONDS", "7");
+        environment.put("BACKEND_MATCH_COMPLETION_GRACE_SECONDS", "3");
+        var configured = ApplicationConfig.fromEnvironment(environment);
+        assertEquals(7, configured.matchActionTimeoutSeconds());
+        assertEquals(3, configured.matchCompletionGraceSeconds());
+        environment.put("BACKEND_MATCH_COMPLETION_GRACE_SECONDS", "0");
+        assertThrows(InvalidConfigurationException.class, () -> ApplicationConfig.fromEnvironment(environment));
+    }
+
+    @Test
     void rejectsInsufficientArgonMemoryPerLane() {
         var environment = TestFixtures.environment();
         environment.put("ARGON2_PARALLELISM", "2500");

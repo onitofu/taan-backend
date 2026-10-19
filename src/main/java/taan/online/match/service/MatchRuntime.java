@@ -3,17 +3,17 @@ package taan.online.match.service;
 import static taan.online.logging.LogField.commandType;
 import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.matchId;
-import static taan.online.logging.LogField.channelId;
-import static taan.online.logging.LogField.mapId;
-import static taan.online.logging.LogField.roomId;
-import static taan.online.logging.LogField.slotIndex;
-import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.matchRevision;
 import static taan.online.logging.LogField.reason;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.BooleanSupplier;
+import taan.online.match.model.MatchCompletion;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.MatchTurnToken;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -53,6 +53,7 @@ final class MatchRuntime {
 
     private final Match match;
     private final MatchScenarioExecution scenarios;
+    private final MatchTurnExecution turns;
     private final MatchMailbox mailbox;
     private final MatchAdmissionAccess access;
     private final MatchBootstrapSettings settings;
@@ -89,6 +90,7 @@ final class MatchRuntime {
         mailbox = new MatchMailbox(executor, capacity);
         snapshot = MatchSnapshot.from(match);
         scenarios = new MatchScenarioExecution(this, access);
+        turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
     }
 
     CompletableFuture<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {
@@ -100,13 +102,18 @@ final class MatchRuntime {
     }
 
     boolean scenarioCurrent(ApplyScenarioCommand command) {
-        return settings.executionMode() == MatchExecutionMode.SCENARIO_PREPARATION && admits(command.context());
+        return settings.executionMode() != MatchExecutionMode.PREVIEW && admits(command.context());
     }
 
     boolean commitScenario(ApplyScenarioCommand command, PreparedScenario prepared, MatchSnapshot publication) {
         synchronized (admission) {
             if (!scenarioCurrent(command) || match.expired(clock.getAsLong())
-                || !match.commitScenario(prepared.baseWorldRevision(), command.turnRevision(), prepared.world())) {
+                || !match.commitScenario(
+                    prepared.baseWorldRevision(),
+                    command.turnRevision(),
+                    prepared.world(),
+                    publication.completion()
+                )) {
                 return false;
             }
 
@@ -117,7 +124,11 @@ final class MatchRuntime {
     }
 
     CompletionStage<Void> publishScenario(CommittedScenario scenario, ScenarioApplicationResult result) {
-        new MatchBootstrapDelivery(snapshot, recipients, this, scheduler, progress(), warnings).dispatch(null);
+        if (settings.executionMode() == MatchExecutionMode.CANNON_1V1) {
+            turns.arm();
+        } else {
+            new MatchBootstrapDelivery(snapshot, recipients, this, scheduler, progress(), warnings).dispatch(null);
+        }
         return scenarios.relay().deliver(result, snapshot, recipients);
     }
 
@@ -126,6 +137,55 @@ final class MatchRuntime {
             () -> scenarios.deliveryFailed(scenario, failure),
             () -> scenarios.deliveryFailed(scenario, failure)
         );
+    }
+
+    boolean live() {
+        return settings.executionMode() == MatchExecutionMode.CANNON_1V1;
+    }
+
+    CompletableFuture<Boolean> confirmScenario(ConfirmScenarioCommand command) {
+        return turnWork(() -> settings.executionMode() == MatchExecutionMode.CANNON_1V1 && turns.acknowledge(command));
+    }
+
+    CompletableFuture<Boolean> turnWork(BooleanSupplier command) {
+        return turnWork(command, () -> terminate(RoomMatchEndReason.PREPARATION_FAILED));
+    }
+
+    CompletableFuture<Boolean> turnWork(BooleanSupplier command, Runnable rejected) {
+        return mailbox.submit(
+            () -> {
+                try {
+                    return command.getAsBoolean();
+                } catch (RuntimeException failure) {
+                    LOG.failure(MatchLogEvent.COMMAND_FAILED, failure, matchId(snapshot.id().value()));
+                    terminate(RoomMatchEndReason.PREPARATION_FAILED);
+                    return false;
+                }
+            },
+            rejected
+        );
+    }
+
+    void turnDeadlineExpired(MatchTurnToken token, Optional<String> fingerprint) {
+        turnWork(() -> turns.expired(token, fingerprint));
+    }
+
+    Optional<MatchCompletion> completion(PreparedScenario prepared) {
+        return settings.executionMode() == MatchExecutionMode.CANNON_1V1
+            ? Optional.of(turns.prepare(prepared)) : Optional.empty();
+    }
+
+    List<MatchSubscription> recipients() {
+        return recipients;
+    }
+
+    void refresh() {
+        snapshot = MatchSnapshot.from(match);
+        publishedRevision = snapshot.phaseRevision();
+    }
+
+    void resetScenario() {
+        scenarios.reset();
     }
 
     boolean running() {
@@ -197,7 +257,9 @@ final class MatchRuntime {
                     return false;
                 }
 
-                if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())) {
+                if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())
+                    && !(settings.executionMode() == MatchExecutionMode.CANNON_1V1
+                        && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.COMPLETION))) {
                     ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
                         ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
                     warnings.warn(WarningEvent.LIMIT_EXCEEDED, ending.name());
@@ -225,7 +287,7 @@ final class MatchRuntime {
                     scheduler,
                     progress(),
                     warnings
-                ).dispatch(requester(command));
+                ).dispatch(MatchBootstrapDelivery.requester(command, snapshot));
             }
 
             LOG.log(
@@ -259,7 +321,7 @@ final class MatchRuntime {
         return switch (command) {
             case StartMatchCommand ignored -> match.commit(clock.getAsLong(), settings.loadingTimeoutNanos());
             case ConfirmMatchLoadingCommand c -> loaded(c);
-            case ConfirmMatchPositionCommand c -> position(c);
+            case ConfirmMatchPositionCommand c -> turns.position(c);
             case ReportMatchEnemiesCommand c -> report(c);
             case MatchDeliveryCompletedCommand c -> delivered(c);
             case MatchDeadlineExpiredCommand ignored -> false;
@@ -297,34 +359,8 @@ final class MatchRuntime {
             return false;
         }
 
-        LOG.log(
-            MatchLogEvent.FIRST_TURN_ISSUED,
-            matchId(match.id().value()),
-            roomId(match.roomId().value()),
-            channelId(match.channelId()),
-            mapId(match.definitions().map().mapId()),
-            slotIndex(match.turn().activeSlot()),
-            turnRevision(match.turn().revision())
-        );
+        turns.firstTurnIssued();
         return true;
-    }
-
-    private boolean position(ConfirmMatchPositionCommand command) {
-        boolean valid = match.confirmsPosition(
-            command.context().sessionId(),
-            command.slot(),
-            command.x(),
-            command.y(),
-            command.facing()
-        );
-
-        if (valid) {
-            LOG.log(MatchLogEvent.POSITION_CONFIRMED, matchId(snapshot.id().value()), reason("UNCHANGED"));
-        } else {
-            warnings.warn(WarningEvent.FRAME_REJECTED, "INVALID_POSITION_CONFIRMATION");
-        }
-
-        return valid;
     }
 
     private boolean report(ReportMatchEnemiesCommand command) {
@@ -358,7 +394,11 @@ final class MatchRuntime {
         if (!beginSynchronization()) {
             boolean started = settings.executionMode() == MatchExecutionMode.PREVIEW
                 ? match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())
-                : match.actionStarted(clock.getAsLong(), settings.previewTimeoutNanos());
+                : match.actionStarted(
+                    clock.getAsLong(),
+                    settings.executionMode() == MatchExecutionMode.CANNON_1V1
+                    ? settings.actionTimeoutNanos() : settings.previewTimeoutNanos()
+                );
 
             if (started) {
                 LOG.log(MatchLogEvent.STARTED, matchId(snapshot.id().value()), reason(settings.executionMode().name()));
@@ -381,7 +421,12 @@ final class MatchRuntime {
     }
 
     void deadlineExpired(RoomMatchProgressToken progress) {
-        submit(new MatchDeadlineExpiredCommand(progress));
+        if (settings.executionMode() == MatchExecutionMode.CANNON_1V1
+            && (snapshot.phase() == MatchPhase.ACTION || snapshot.phase() == MatchPhase.COMPLETION)) {
+            turns.enqueue(progress);
+        } else {
+            submit(new MatchDeadlineExpiredCommand(progress));
+        }
     }
 
     boolean beginPublication(MatchSnapshot publication) {
@@ -396,14 +441,6 @@ final class MatchRuntime {
 
             return true;
         }
-    }
-
-    private UUID requester(MatchCommand command) {
-        return switch (command) {
-            case StartMatchCommand ignored -> snapshot.ownerSessionId();
-            case ConfirmMatchLoadingCommand c -> c.context().sessionId();
-            default -> null;
-        };
     }
 
     CompletionStage<Void> delivery() {

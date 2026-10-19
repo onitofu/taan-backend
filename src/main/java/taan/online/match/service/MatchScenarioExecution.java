@@ -40,6 +40,10 @@ final class MatchScenarioExecution {
         relay = new ScenarioRelay(access, owner::running);
     }
 
+    void reset() {
+        previous = null;
+    }
+
     ScenarioRelay relay() {
         return relay;
     }
@@ -112,7 +116,7 @@ final class MatchScenarioExecution {
         }
 
         var prepared = prepare.execute(before, admission.accepted().orElseThrow());
-        var publication = before.completed(prepared.world());
+        var publication = before.completed(prepared.world(), owner.completion(prepared));
         var committed = new CommittedScenario(
             prepared.scenario(),
             publication,

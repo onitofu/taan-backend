@@ -1,6 +1,11 @@
 package taan.online.match.controller;
 
 import java.util.UUID;
+import taan.online.match.service.ApplyScenarioAction;
+import taan.online.match.service.ConfirmScenarioAction;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.protocol.packet.PcGamePlayScenario;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.protocol.codec.EndScenarioCodec;
@@ -35,6 +40,8 @@ public final class MatchPacketHandler {
     private final ConfirmMatchLoadingAction loading;
     private final ConfirmMatchPositionAction position;
     private final ReportMatchEnemiesAction reports;
+    private final ApplyScenarioPacketHandler scenarios;
+    private final ConfirmScenarioAction acknowledgements;
 
     public MatchPacketHandler(
         MatchRegistry matches,
@@ -44,6 +51,30 @@ public final class MatchPacketHandler {
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports
     ) {
+        this(
+            matches,
+            terminate,
+            consume,
+            loading,
+            position,
+            reports,
+            new ApplyScenarioPacketHandler(new ApplyScenarioAction(matches)),
+            new ConfirmScenarioAction(matches)
+        );
+    }
+
+    public MatchPacketHandler(
+        MatchRegistry matches,
+        TerminateMatchAction terminate,
+        ConsumeMatchResultAction consume,
+        ConfirmMatchLoadingAction loading,
+        ConfirmMatchPositionAction position,
+        ReportMatchEnemiesAction reports,
+        ApplyScenarioPacketHandler scenarios,
+        ConfirmScenarioAction acknowledgements
+    ) {
+        this.scenarios = scenarios;
+        this.acknowledgements = acknowledgements;
         this.matches = matches;
         this.terminate = terminate;
         this.consume = consume;
@@ -61,8 +92,13 @@ public final class MatchPacketHandler {
     }
 
     public MatchRequestContext capture(UUID id) {
-        var context = matches.context(id);
-        return new MatchRequestContext(context == null ? null : context.roomContext());
+        var binding = matches.capture(id);
+        return new MatchRequestContext(
+            binding.roomContext(),
+            binding.turnRevision(),
+            binding.worldRevision(),
+            binding.fingerprint()
+        );
     }
 
     public CompletionStage<Void> handle(UUID id, int type, byte[] root, MatchRequestContext request) {
@@ -96,8 +132,32 @@ public final class MatchPacketHandler {
         }
 
         if (type == PcGamePlayEndScenario.TYPE_ID) {
-            new EndScenarioCodec().decode(root);
-            return CompletableFuture.completedFuture(null);
+            var message = new EndScenarioCodec().decode(root);
+
+            if (context == null || !context.membership().sessionId().equals(id)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            return acknowledgements.execute(new ConfirmScenarioCommand(
+                MatchCommandContext.from(context),
+                request.turnRevision(),
+                request.worldRevision(),
+                request.fingerprint(),
+                message.slotIndex()
+            )).thenApply(ignored -> null);
+        }
+
+        if (type == PcGamePlayScenario.TYPE_ID && matches.scenarioEnabled(context)) {
+            if (!context.membership().sessionId().equals(id)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            return scenarios.handle(
+                MatchCommandContext.from(context),
+                request.turnRevision(),
+                request.worldRevision(),
+                root
+            ).thenApply(ignored -> null);
         }
 
         if (UnsupportedGameplayCodec.accepts(type)) {

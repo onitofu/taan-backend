@@ -16,6 +16,9 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchDeadline;
+import taan.online.match.service.model.MatchCommand;
+import taan.online.match.service.model.StartMatchCommand;
+import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.service.model.RoomMatchProgressToken;
 
@@ -43,6 +46,14 @@ final class MatchBootstrapDelivery {
         this.scheduler = scheduler;
         this.token = token;
         this.warnings = warnings;
+    }
+
+    static UUID requester(MatchCommand command, MatchSnapshot snapshot) {
+        return switch (command) {
+            case StartMatchCommand ignored -> snapshot.ownerSessionId();
+            case ConfirmMatchLoadingCommand c -> c.context().sessionId();
+            default -> null;
+        };
     }
 
     CompletionStage<Void> dispatch(UUID requester) {

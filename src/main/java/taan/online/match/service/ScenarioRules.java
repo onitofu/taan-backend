@@ -24,7 +24,7 @@ final class ScenarioRules {
         require(actor != null && actor.hp() > 0, "ACTOR_NOT_ALIVE");
         require(
             claims.shooterSlot() == shooter.slotIndex() && claims.scenarioSlot() == shooter.slotIndex()
-                && match.turn().activeSlot() == shooter.slotIndex() && claims.facing() == actor.facing(),
+                && claims.facing() == actor.facing(),
             "INVALID_SHOOTER"
         );
         require(

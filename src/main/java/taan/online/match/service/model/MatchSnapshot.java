@@ -2,6 +2,8 @@ package taan.online.match.service.model;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import taan.online.match.model.MatchCompletion;
 import java.util.Set;
 import java.util.UUID;
 import taan.online.match.model.Match;
@@ -33,8 +35,48 @@ public record MatchSnapshot(
     MatchWorldState world,
     MatchTurn turn,
     long phaseRevision,
-    long deadlineNanos
+    long deadlineNanos,
+    Optional<MatchCompletion> completion
 ) {
+    public MatchSnapshot(
+        MatchId id,
+        RoomId roomId,
+        UUID roomGeneration,
+        int channelId,
+        UUID ownerSessionId,
+        RoomMode mode,
+        RoomRule rule,
+        MatchDefinitions definitions,
+        List<MatchParticipant> participants,
+        CaptainSelectionResult captains,
+        MatchPhase phase,
+        Set<UUID> loadedSessions,
+        MatchWorldState world,
+        MatchTurn turn,
+        long phaseRevision,
+        long deadlineNanos
+    ) {
+        this(
+            id,
+            roomId,
+            roomGeneration,
+            channelId,
+            ownerSessionId,
+            mode,
+            rule,
+            definitions,
+            participants,
+            captains,
+            phase,
+            loadedSessions,
+            world,
+            turn,
+            phaseRevision,
+            deadlineNanos,
+            Optional.empty()
+        );
+    }
+
     public MatchSnapshot {
         participants = List.copyOf(participants);
         loadedSessions = Set.copyOf(loadedSessions);
@@ -45,6 +87,10 @@ public record MatchSnapshot(
     }
 
     public MatchSnapshot completed(MatchWorldState applied) {
+        return completed(applied, Optional.empty());
+    }
+
+    public MatchSnapshot completed(MatchWorldState applied, Optional<MatchCompletion> pending) {
         return new MatchSnapshot(
             id,
             roomId,
@@ -61,7 +107,8 @@ public record MatchSnapshot(
             applied,
             turn,
             phaseRevision + 1,
-            deadlineNanos
+            pending.map(MatchCompletion::deadlineNanos).orElse(deadlineNanos),
+            pending
         );
     }
 
@@ -90,7 +137,8 @@ public record MatchSnapshot(
             match.world(),
             match.turn(),
             match.phaseRevision(),
-            match.deadlineNanos()
+            match.deadlineNanos(),
+            match.completion()
         );
     }
 }

@@ -7,6 +7,25 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
+import java.util.Optional;
+import java.util.Random;
+import java.time.Duration;
+import org.slf4j.LoggerFactory;
+import taan.online.MatchRoomFixture;
+import taan.online.TestMatchScheduler;
+import taan.online.logging.WarningLogLimiter;
+import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.ConfirmScenarioAction;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.MatchCommandContext;
+import taan.online.room.service.model.RoomMatchContext;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PcGamePlayScenario;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
@@ -77,6 +96,61 @@ class MatchPacketHandlerTest {
             assertTrue(logs.text().contains("match.result.selection.ignored"));
             assertTrue(logs.text().contains("NO_AWARDS"));
             assertFalse(logs.text().contains("Hero"));
+        }
+    }
+
+    @Test
+    void refusesAnonymousAndMismatchedBindingsAndCommandsForAnAlreadyRemovedMatch() throws Exception {
+        try (var room = new MatchRoomFixture(2, RoomMode.ITEM)) {
+            var scheduler = new TestMatchScheduler();
+            var matches = new MatchRegistry(
+                MatchFixtures.catalog(),
+                new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1),
+                scheduler,
+                () -> scheduler.now,
+                new Random(1),
+                new WarningLogLimiter(
+                    LoggerFactory.getLogger(MatchRegistry.class),
+                    10,
+                    Duration.ofSeconds(1),
+                    () -> 0L
+                ),
+                Runnable::run,
+                8,
+                (context, participant) -> true
+            );
+            var draft = room.draft();
+            matches.reserve(draft);
+            var context = new RoomMatchContext(draft.participants().getFirst().membership(), draft.token());
+            var binding = new MatchRequestContext(context, 1, 0, Optional.empty());
+            var handler = new MatchPacketHandler(
+                matches,
+                new TerminateMatchAction(matches),
+                new ConsumeMatchResultAction(matches),
+                new ConfirmMatchLoadingAction(matches),
+                new ConfirmMatchPositionAction(matches),
+                new ReportMatchEnemiesAction(matches)
+            );
+            byte[] ack = {0x6d, 0x08, 0x0b, 0x5e, 0, 0};
+            handler.handle(room.owner, PcGamePlayEndScenario.TYPE_ID, ack, null).toCompletableFuture().join();
+            handler.handle(UUID.randomUUID(), PcGamePlayEndScenario.TYPE_ID, ack, binding).toCompletableFuture().join();
+            handler.handle(UUID.randomUUID(), PcGamePlayScenario.TYPE_ID, new byte[0], binding)
+                .toCompletableFuture().join();
+            assertTrue(matches.current(draft.token()).isPresent());
+            assertFalse(matches.scenarioEnabled(null));
+            matches.cancel(draft.token(), "TEST_FINISHED");
+            assertFalse(matches.scenarioEnabled(context));
+            assertFalse(new ConfirmScenarioAction(matches).execute(new ConfirmScenarioCommand(
+                MatchCommandContext.from(context),
+                1,
+                0,
+                Optional.empty(),
+                0
+            )).toCompletableFuture().join());
+        }
+
+        try (var f = new MatchTerminalFixture(2, RoomMode.ITEM, MatchPhase.PREVIEW)) {
+            assertFalse(f.room.scenario.matches.scenarioEnabled(f.handler.capture(f.room.owner).roomContext()));
         }
     }
 

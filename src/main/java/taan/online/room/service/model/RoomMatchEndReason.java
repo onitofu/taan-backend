@@ -1,6 +1,7 @@
 package taan.online.room.service.model;
 
 public enum RoomMatchEndReason {
+    ACTION_TIMEOUT, COMPLETION_TIMEOUT, PARTICIPANT_ELIMINATED, TURN_DELIVERY_FAILED,
     INVALID_SCENARIO,
     SCENARIO_DELIVERY_FAILED,
     GIVE_UP,
