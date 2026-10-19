@@ -6,10 +6,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
+import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.room.model.RoomBootstrapDefinition;
 import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomTitleFilter;
@@ -40,27 +41,17 @@ public final class RoomDefinitionLoader {
         return result;
     }
 
-    public RoomMapCatalog maps(InputStream input) {
-        try (var reader = new BufferedReader(
-            new InputStreamReader(Objects.requireNonNull(input), StandardCharsets.UTF_8.newDecoder())
-        )) {
-            if (!"map_id".equals(reader.readLine())) {
-                throw new IllegalArgumentException("Invalid room map catalog header");
-            }
-
-            var ids = new HashSet<Integer>();
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                if (!ids.add(Integer.parseInt(line))) {
-                    throw new IllegalArgumentException("Duplicate room map");
-                }
-            }
-
-            return new RoomMapCatalog(ids);
-        } catch (IOException failure) {
-            throw new IllegalStateException("Cannot load room map catalog", failure);
-        }
+    public RoomMapCatalog maps(MatchDefinitionCatalog catalog) {
+        return new RoomMapCatalog(
+            catalog.maps().keySet(),
+            Set.of(0, 1, 4, 6).stream().collect(
+                Collectors.toMap(
+                    kind -> kind,
+                    kind -> catalog.maps().values().stream().filter(map -> map.channelKinds().contains(kind))
+                        .map(map -> map.mapId()).collect(Collectors.toSet())
+                )
+            )
+        );
     }
 
     public RoomTitleFilter titleFilter(InputStream input) {

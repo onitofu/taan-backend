@@ -83,6 +83,41 @@ class ChannelPersistenceIntegrationTest {
     }
 
     @Test
+    void upgradesExistingChannelsWithKindZeroAndReloadsIndependentCommittedSettings() throws Exception {
+        database.execute("CREATE SCHEMA channel_kind_upgrade");
+        var source = new PGSimpleDataSource();
+        source.setURL(database.source().getURL());
+        source.setUser(database.source().getUser());
+        source.setPassword(database.source().getPassword());
+        source.setCurrentSchema("channel_kind_upgrade");
+        Flyway.configure().dataSource(source).defaultSchema("channel_kind_upgrade").target("7").load().migrate();
+
+        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("UPDATE channel_groups SET type = 4");
+        }
+
+        new DatabaseMigrator().migrate(source);
+        var before = new JdbcChannelRepository(source, 5).load();
+        assertEquals(4, before.getFirst().type());
+        assertTrue(before.getFirst().channels().stream().allMatch(channel -> channel.kind() == 0));
+
+        for (int kind : new int[]{0, 1, 4, 6}) {
+            try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+                statement.execute("UPDATE channels SET kind = " + kind + " WHERE id = 1");
+            }
+
+            var reloaded = new JdbcChannelRepository(source, 5).load();
+            assertEquals(kind, reloaded.getFirst().channels().getFirst().kind());
+            assertEquals(0, reloaded.getFirst().channels().get(1).kind());
+            assertEquals(4, reloaded.getFirst().type());
+        }
+
+        new DatabaseMigrator().migrate(source);
+        assertEquals(6, new JdbcChannelRepository(source, 5).load().getFirst().channels().getFirst().kind());
+        assertEquals(0, before.getFirst().channels().getFirst().kind());
+    }
+
+    @Test
     void loadsOrderedGroupsAndEmptyGroupsAndReturnsIndependentSnapshots() throws Exception {
         database.execute(
             "INSERT INTO channel_groups (name, type, sort_order) "
@@ -125,6 +160,12 @@ class ChannelPersistenceIntegrationTest {
 
         for (String sql : List.of(
             "UPDATE channels SET id = 0",
+            "UPDATE channels SET kind = NULL",
+            "UPDATE channels SET kind = -1",
+            "UPDATE channels SET kind = 2",
+            "UPDATE channels SET kind = 3",
+            "UPDATE channels SET kind = 5",
+            "UPDATE channels SET kind = 7",
             "UPDATE channels SET id = 65535",
             "UPDATE channels SET group_id = -1",
             "UPDATE channels SET capacity = 0",

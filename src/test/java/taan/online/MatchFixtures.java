@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import taan.online.bootstrap.MatchDefinitionLoader;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
@@ -83,8 +85,30 @@ public final class MatchFixtures {
         MatchCommandExecutor executor,
         int capacity
     ) {
+        return registry(
+            new MatchDefinitionCatalog(
+                definitions.catalogVersion(),
+                Map.of(definitions.map().mapId(), definitions.map()),
+                definitions.weapons()
+            ),
+            scheduler,
+            random,
+            access,
+            executor,
+            capacity
+        );
+    }
+
+    public static MatchRegistry registry(
+        MatchDefinitionCatalog catalog,
+        TestMatchScheduler scheduler,
+        RandomGenerator random,
+        MatchAdmissionAccess access,
+        MatchCommandExecutor executor,
+        int capacity
+    ) {
         return new MatchRegistry(
-            definitions,
+            catalog,
             new MatchBootstrapSettings(30_000_000_000L, 20_000_000_000L, 8),
             scheduler,
             () -> scheduler.now,
@@ -138,9 +162,14 @@ public final class MatchFixtures {
     }
 
     public static MatchDefinitions definitions() {
+        return catalog().select(1);
+    }
+
+    public static MatchDefinitionCatalog catalog() {
         return new MatchDefinitionLoader().load(
-            MatchFixtures.class.getResourceAsStream("/match/jungle.properties"),
-            MatchFixtures.class.getResourceAsStream("/match/jungle-spawns.csv"),
+            MatchFixtures.class.getResourceAsStream("/match/catalog.properties"),
+            MatchFixtures.class.getResourceAsStream("/match/maps.csv"),
+            MatchFixtures.class.getResourceAsStream("/match/map-spawns.csv"),
             MatchFixtures.class.getResourceAsStream("/match/weapons.csv")
         );
     }

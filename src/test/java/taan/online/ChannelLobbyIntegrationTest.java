@@ -45,7 +45,7 @@ class ChannelLobbyIntegrationTest {
         database.execute("DELETE FROM channels WHERE id NOT IN (1, 2)");
         database.execute(
             "UPDATE channels SET name = CASE id WHEN 1 THEN 'Moon' ELSE 'Terra' END, enabled = true, "
-                + "min_level = 1, max_level = 109, capacity = 100"
+                + "min_level = 1, max_level = 109, capacity = 100, kind = 0"
         );
     }
 
@@ -213,10 +213,12 @@ class ChannelLobbyIntegrationTest {
                 select(client, owner.login().value(), id);
                 client.send(SelectionFixtures.channels());
                 catalog = client.read();
-                database.execute("UPDATE channels SET name = 'Renamed', capacity = 1 WHERE id = 1");
+                database.execute("UPDATE channels SET name = 'Renamed', capacity = 1, kind = 6 WHERE id = 1");
                 client.send(SelectionFixtures.channels());
 
                 assertArrayEquals(catalog, client.read());
+                client.send(ChannelFixtures.move(1));
+                assertEquals(0, client.read()[36]);
 
                 client.disconnect();
             }
@@ -232,6 +234,8 @@ class ChannelLobbyIntegrationTest {
 
                 assertTrue(wire.contains(HexFormat.of().formatHex("Renamed".getBytes(StandardCharsets.UTF_16LE))));
                 assertFalse(wire.contains(HexFormat.of().formatHex("Moon".getBytes(StandardCharsets.UTF_16LE))));
+                client.send(ChannelFixtures.move(1));
+                assertEquals(6, client.read()[42]);
 
                 client.disconnect();
             }

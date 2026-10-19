@@ -39,7 +39,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
             draft.settings().mode(),
             draft.settings().rule(),
             definitions,
-            new MatchPreparation(definitions).participants(draft),
+            new MatchPreparation(MatchFixtures.catalog()).participants(draft),
             draft.captains(),
             0
         );

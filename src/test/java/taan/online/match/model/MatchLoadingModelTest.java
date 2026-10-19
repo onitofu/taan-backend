@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Set;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchRoomFixture;
@@ -15,6 +18,18 @@ import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomSlotState;
 
 class MatchLoadingModelTest {
+    @Test
+    void retainsTheIssuedTurnAndCopiesItsOrder() {
+        var order = new ArrayList<>(List.of(2, 0));
+        var turn = new MatchTurn(2, 0, 0, 0, 100, order, 1, OptionalLong.of(-5));
+        order.clear();
+
+        assertEquals(List.of(2, 0), turn.order());
+        assertEquals(-5, turn.issuedAtNanos().orElseThrow());
+        assertThrows(UnsupportedOperationException.class, () -> turn.order().clear());
+        assertThrows(NullPointerException.class, () -> new MatchTurn(2, 0, 0, 0, 100, List.of(2, 0), 1, null));
+    }
+
     @Test
     void validatesTheFirstActorAndWaitsForBothLoadingAndDeliveryEvidence() {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
@@ -37,11 +52,11 @@ class MatchLoadingModelTest {
             assertEquals("ACCEPTED", match.loadingDone(owner.sessionId(), 0, 97, 685));
             assertEquals("CONFLICTING_POSITION", match.loadingDone(owner.sessionId(), 0, 97, 686));
             assertEquals("ACCEPTED", match.loadingDone(guest.sessionId(), 2, 1110, 685));
-            assertFalse(match.beginSynchronization());
+            assertFalse(match.beginSynchronization(7));
             assertTrue(match.deliveryCompleted(owner.sessionId()));
-            assertFalse(match.beginSynchronization());
+            assertFalse(match.beginSynchronization(7));
             assertTrue(match.deliveryCompleted(guest.sessionId()));
-            assertTrue(match.beginSynchronization());
+            assertTrue(match.beginSynchronization(7));
             assertFalse(match.confirmsPosition(UUID.randomUUID(), 0, 97, 685, 0));
             assertFalse(match.confirmsPosition(owner.sessionId(), 0, 97, 686, 0));
             assertTrue(match.confirmsPosition(owner.sessionId(), 0, 97, 685, 0));
@@ -95,7 +110,7 @@ class MatchLoadingModelTest {
             spawns.set(8, new MapSpawnDefinition(8, 500, 500, 500, 500, 1, 0, false));
             var definitions = new MatchDefinitions(
                 source.definitions().catalogVersion(),
-                new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), spawns),
+                new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), spawns, Set.of(0, 1, 6)),
                 source.definitions().weapons()
             );
             var match = new Match(

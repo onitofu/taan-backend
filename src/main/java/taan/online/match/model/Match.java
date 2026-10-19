@@ -1,10 +1,12 @@
 package taan.online.match.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import taan.online.room.model.CaptainSelectionResult;
@@ -24,7 +26,7 @@ public final class Match {
     private final MatchDefinitions definitions;
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
-    private final int firstTurnSlot;
+    private MatchTurn turn;
     private final Map<UUID, MatchActorState> actors = new HashMap<>();
     private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
@@ -55,8 +57,7 @@ public final class Match {
         this.definitions = Objects.requireNonNull(definitions);
         this.participants = List.copyOf(participants);
         this.captains = captains;
-        this.firstTurnSlot = firstTurnSlot;
-        validate();
+        turn = initialTurn(firstTurnSlot);
         participants.forEach(
             value -> actors.put(
                 value.sessionId(),
@@ -71,7 +72,7 @@ public final class Match {
         );
     }
 
-    private void validate() {
+    private MatchTurn initialTurn(int firstTurnSlot) {
         if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
             || mode.usesItems() != (rule == RoomRule.BONUS)) {
             throw new IllegalArgumentException("Invalid match setup");
@@ -106,6 +107,12 @@ public final class Match {
             && (!slots.contains(captains.blueLeaderSlot()) || !slots.contains(captains.redLeaderSlot()))) {
             throw new IllegalArgumentException("Invalid match captains");
         }
+
+        var order = slots.stream().sorted().toList();
+        int first = order.indexOf(firstTurnSlot);
+        var rotated = new ArrayList<>(order.subList(first, order.size()));
+        rotated.addAll(order.subList(0, first));
+        return new MatchTurn(firstTurnSlot, 0, 0, 0, 100, rotated, 1, OptionalLong.empty());
     }
 
     public MatchId id() {
@@ -152,14 +159,6 @@ public final class Match {
         return phase;
     }
 
-    public int firstTurnSlot() {
-        return firstTurnSlot;
-    }
-
-    public int initialWindRaw() {
-        return 0;
-    }
-
     public Set<UUID> loadedSessions() {
         return Set.copyOf(loaded);
     }
@@ -169,7 +168,7 @@ public final class Match {
     }
 
     public MatchTurn turn() {
-        return new MatchTurn(firstTurnSlot, initialWindRaw(), 0, 0, 100);
+        return turn;
     }
 
     public long phaseRevision() {
@@ -235,12 +234,22 @@ public final class Match {
         return delivered.add(session);
     }
 
-    public boolean beginSynchronization() {
+    public boolean beginSynchronization(long now) {
         if (phase != MatchPhase.LOADING || loaded.size() != participants.size()
             || delivered.size() != participants.size()) {
             return false;
         }
 
+        turn = new MatchTurn(
+            turn.activeSlot(),
+            turn.windRaw(),
+            turn.energyGrant(),
+            turn.boxAttemptBudget(),
+            turn.pickerBase(),
+            turn.order(),
+            turn.revision(),
+            OptionalLong.of(now)
+        );
         phase = MatchPhase.SYNCHRONIZING;
         phaseRevision++;
         delivered.clear();

@@ -7,7 +7,8 @@ public record ChannelInfo(
     int fill,
     int minLevel,
     int maxLevel,
-    boolean disabled
+    boolean disabled,
+    int kind
 ) {
     public static final int TYPE_ID = 0x18ef0445;
 }

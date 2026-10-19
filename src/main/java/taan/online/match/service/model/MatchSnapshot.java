@@ -28,8 +28,6 @@ public record MatchSnapshot(
     List<MatchParticipant> participants,
     CaptainSelectionResult captains,
     MatchPhase phase,
-    int firstTurnSlot,
-    int initialWindRaw,
     Set<UUID> loadedSessions,
     Map<UUID, MatchActorState> actors,
     MatchTurn turn,
@@ -40,6 +38,14 @@ public record MatchSnapshot(
         participants = List.copyOf(participants);
         loadedSessions = Set.copyOf(loadedSessions);
         actors = Map.copyOf(actors);
+    }
+
+    public int firstTurnSlot() {
+        return turn.activeSlot();
+    }
+
+    public int initialWindRaw() {
+        return turn.windRaw();
     }
 
     public static MatchSnapshot from(Match match) {
@@ -55,8 +61,6 @@ public record MatchSnapshot(
             match.participants(),
             match.captains(),
             match.phase(),
-            match.firstTurnSlot(),
-            match.initialWindRaw(),
             match.loadedSessions(),
             match.actors(),
             match.turn(),

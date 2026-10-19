@@ -156,18 +156,19 @@ public final class Application implements AutoCloseable {
 
         var channelAccess = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(channelAccess, config.port());
+        var matchDefinitions = new MatchDefinitionLoader().load(
+            Application.class.getResourceAsStream("/match/catalog.properties"),
+            Application.class.getResourceAsStream("/match/maps.csv"),
+            Application.class.getResourceAsStream("/match/map-spawns.csv"),
+            Application.class.getResourceAsStream("/match/weapons.csv")
+        );
         var roomDefinitions = new RoomDefinitionLoader();
-        var maps = roomDefinitions.maps(Application.class.getResourceAsStream("/room/maps.csv"));
+        var maps = roomDefinitions.maps(matchDefinitions);
         var roomDefaults = roomDefinitions.defaults(
             Application.class.getResourceAsStream("/room/bootstrap.properties"),
             maps
         );
         selectionScheduler = new ScheduledRoomSelectionScheduler(config.maxConnections());
-        var matchDefinitions = new MatchDefinitionLoader().load(
-            Application.class.getResourceAsStream("/match/jungle.properties"),
-            Application.class.getResourceAsStream("/match/jungle-spawns.csv"),
-            Application.class.getResourceAsStream("/match/weapons.csv")
-        );
         matchExecutor = new BoundedMatchExecutor(config.matchWorkerThreads(), config.maxConnections());
         matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
         var matches = new MatchRegistry(
@@ -222,7 +223,8 @@ public final class Application implements AutoCloseable {
                     rooms,
                     roomCharacters,
                     roomDefinitions.titleFilter(Application.class.getResourceAsStream("/character/name-filters.txt")),
-                    roomDefaults
+                    roomDefaults,
+                    maps
                 ),
                 new EnterRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),
                 new QuickJoinRoomAction(channelAccess, channels, rooms, roomCharacters, roomDefaults),

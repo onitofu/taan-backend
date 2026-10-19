@@ -21,7 +21,7 @@ public final class JdbcChannelRepository implements ChannelRepository {
     public List<ChannelGroupDefinition> load() {
         String sql = """
             SELECT g.id AS group_id, g.name AS group_name, g.type, c.id, c.name,
-                   c.enabled, c.min_level, c.max_level, c.capacity
+                   c.enabled, c.min_level, c.max_level, c.capacity, c.kind
             FROM channel_groups g LEFT JOIN channels c ON c.group_id = g.id
             ORDER BY g.sort_order, g.id, c.sort_order, c.id
             """;
@@ -57,7 +57,8 @@ public final class JdbcChannelRepository implements ChannelRepository {
                                 rows.getBoolean("enabled"),
                                 rows.getInt("min_level"),
                                 rows.getInt("max_level"),
-                                rows.getInt("capacity")
+                                rows.getInt("capacity"),
+                                rows.getInt("kind")
                             )
                         );
                     }

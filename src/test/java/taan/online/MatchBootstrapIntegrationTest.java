@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.List;
+import taan.online.match.protocol.codec.LoadingDoneCodec;
+import taan.online.match.protocol.packet.LoadingPosition;
+import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
@@ -44,6 +48,7 @@ class MatchBootstrapIntegrationTest {
     @BeforeEach
     void reset() throws Exception {
         database.reset();
+        database.execute("UPDATE channels SET kind = 0");
         database.execute("ALTER SEQUENCE characters_id_seq RESTART WITH 1001");
     }
 
@@ -168,7 +173,75 @@ class MatchBootstrapIntegrationTest {
         assertEquals(before, durableFingerprint());
     }
 
+    @Test
+    void loadsAllOrdinaryMapsOverTwoTcpConnectionsAndReturnsToTheSameRoom() throws Exception {
+        database.execute("UPDATE channels SET kind = 6 WHERE id = 1");
+        var a = player("alpha");
+        var b = player("bravo");
+        var catalog = MatchFixtures.catalog();
+        String before = durableFingerprint();
+        var config = database.configuration();
+
+        try (var app = new Application(config)) {
+            app.start();
+
+            try (
+                var owner = new CharacterTestClient(config.port());
+                var guest = new CharacterTestClient(config.port())
+            ) {
+                prepare(app, owner, a, guest, b);
+
+                for (int mapId = 1; mapId <= 21; mapId++) {
+                    owner.send(RoomScenario.map(mapId));
+                    assertEquals(mapId, wire.settings(owner.read()).mapId());
+                    assertEquals(mapId, wire.settings(guest.read()).mapId());
+                    owner.send(RoomFixtures.root("start-empty"));
+                    var start = started(owner, mapId);
+                    assertEquals(start, started(guest, mapId));
+                    var map = catalog.maps().get(mapId);
+
+                    for (var actor : start.players()) {
+                        var spawn = map.spawns().stream().filter(
+                            value -> value.rawX() == actor.x() && value.rawY() == actor.y()
+                        ).findFirst().orElseThrow();
+                        byte[] acknowledgement = new LoadingDoneCodec().encode(
+                            new PcGamePlayLoadingDone(
+                                List.of(new LoadingPosition(actor.slotIndex(), spawn.settledX(), spawn.settledY()))
+                            )
+                        );
+                        (actor.slotIndex() == 0 ? owner : guest).send(acknowledgement);
+                    }
+
+                    assertEquals(2, new SetPosCodec().decode(owner.read()).slotIndex());
+                    assertEquals(0, new SetPosCodec().decode(guest.read()).slotIndex());
+                    assertEquals(
+                        new TurnStartCodec().decode(owner.read()),
+                        new TurnStartCodec().decode(guest.read())
+                    );
+                    owner.send(MatchFixtures.root("give-up-empty"));
+                    ended(owner);
+                    ended(guest);
+
+                    if (mapId < 21) {
+                        guest.send(RoomScenario.ready(1));
+                        wire.ready(owner.read());
+                        wire.ready(guest.read());
+                    }
+                }
+
+                cash(owner);
+                cash(guest);
+            }
+        }
+
+        assertEquals(before, durableFingerprint());
+    }
+
     private PcGameSessionStartGame started(CharacterTestClient client) throws Exception {
+        return started(client, 1);
+    }
+
+    private PcGameSessionStartGame started(CharacterTestClient client, int mapId) throws Exception {
         for (int index = 0; index < 2; index++) {
             var slot = wire.slot(client.read()).slot();
             assertEquals(index == 0 ? 0 : 2, slot.slotIndex());
@@ -180,7 +253,7 @@ class MatchBootstrapIntegrationTest {
         byte[] root = client.read();
         assertEquals(91, root.length);
         var start = new StartGameCodec().decode(root);
-        assertEquals(1, start.mapId());
+        assertEquals(mapId, start.mapId());
         assertTrue(
             start.players().stream().allMatch(member -> member.initialEnergyGrant() == 0 && member.weaponId() == 0)
         );

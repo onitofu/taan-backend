@@ -4,6 +4,7 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    FIRST_TURN_ISSUED("match.first_turn.issued", Level.DEBUG, "First match turn issued"),
     COMMAND_PROCESSED("match.command.processed", Level.TRACE, "Match command processed"),
     COMMAND_REJECTED("match.command.rejected", Level.DEBUG, "Match command rejected"),
     COMMAND_FAILED("match.command.failed", Level.ERROR, "Match command failed"),

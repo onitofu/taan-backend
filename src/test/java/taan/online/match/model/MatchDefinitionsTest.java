@@ -3,6 +3,7 @@ package taan.online.match.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -49,15 +50,28 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchMapDefinition(values[0], "jungle", values[1], values[2], spawns)
+                () -> new MatchMapDefinition(values[0], "jungle", values[1], values[2], spawns, Set.of(0, 1, 6))
             );
         }
 
-        assertThrows(IllegalArgumentException.class, () -> new MatchMapDefinition(1, " ", 1300, 950, spawns));
-        assertThrows(IllegalArgumentException.class, () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of()));
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(spawns.getFirst(), spawns.getFirst()))
+            () -> new MatchMapDefinition(1, " ", 1300, 950, spawns, Set.of(0, 1, 6))
+        );
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(), Set.of(0, 1, 6))
+        );
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new MatchMapDefinition(
+                1,
+                "jungle",
+                1300,
+                950,
+                List.of(spawns.getFirst(), spawns.getFirst()),
+                Set.of(0, 1, 6)
+            )
         );
 
         for (var spawn : List.of(
@@ -68,7 +82,7 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(spawn))
+                () -> new MatchMapDefinition(1, "jungle", 1300, 950, List.of(spawn), Set.of(0, 1, 6))
             );
         }
     }
@@ -94,24 +108,20 @@ class MatchDefinitionsTest {
     }
 
     @Test
-    void requiresACompleteVersionedJungleExportAndCopiesReferenceCollections() {
+    void validatesVersionsAndOrderingWithoutAssumingOneMapOrSpawnCount() {
         var spawns = new ArrayList<>(spawns());
         var weapons = new ArrayList<>(weapons());
-        var map = new MatchMapDefinition(1, "jungle", 1300, 950, spawns);
+        var map = new MatchMapDefinition(1, "jungle", 1300, 950, spawns, Set.of(0, 1, 6));
         var definitions = new MatchDefinitions("a".repeat(64), map, weapons);
 
         assertThrows(IllegalArgumentException.class, () -> new MatchDefinitions("bad", map, weapons));
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new MatchDefinitions("a".repeat(64), new MatchMapDefinition(2, "other", 1300, 950, spawns), weapons)
-        );
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new MatchDefinitions(
+        assertEquals(
+            2,
+            new MatchDefinitions(
                 "a".repeat(64),
-                new MatchMapDefinition(1, "jungle", 1300, 950, spawns.subList(0, 13)),
+                new MatchMapDefinition(2, "other", 1300, 950, spawns.subList(0, 13), Set.of(6)),
                 weapons
-            )
+            ).map().mapId()
         );
         assertThrows(
             IllegalArgumentException.class,
@@ -126,7 +136,7 @@ class MatchDefinitionsTest {
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
                 "a".repeat(64),
-                new MatchMapDefinition(1, "jungle", 1300, 950, reordered),
+                new MatchMapDefinition(1, "jungle", 1300, 950, reordered, Set.of(0, 1, 6)),
                 weapons
             )
         );

@@ -137,7 +137,7 @@ class RoomRegistryTest {
             assertEquals(
                 "CHANNEL_CHANGED",
                 scenario.rooms.create(
-                    new ChannelMembershipSnapshot(1, ChannelPresencePhase.MEMBER, actor),
+                    new ChannelMembershipSnapshot(1, ChannelPresencePhase.MEMBER, actor, 0),
                     settings,
                     null,
                     owner,
@@ -147,7 +147,7 @@ class RoomRegistryTest {
             assertEquals(
                 "CHANNEL_CHANGED",
                 scenario.rooms.create(
-                    new ChannelMembershipSnapshot(2, ChannelPresencePhase.LOBBY, actor),
+                    new ChannelMembershipSnapshot(2, ChannelPresencePhase.LOBBY, actor, 0),
                     settings,
                     null,
                     owner,

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
@@ -54,7 +55,8 @@ class RoomMatchFailureTest {
                     value.flag(),
                     false
                 )
-            ).toList()
+            ).toList(),
+            Set.of(0, 1, 6)
         );
         var runtime = MatchFixtures.registry(
             new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons())

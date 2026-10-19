@@ -208,6 +208,7 @@ final class RoomControlOperations {
         Room room,
         UUID id,
         RoomMapCatalog maps,
+        int kind,
         int mapId,
         Integer gameType,
         Integer rule,
@@ -225,7 +226,9 @@ final class RoomControlOperations {
             subscriptions,
             subscription.membership(),
             RoomSnapshot.from(room),
-            result
+            result,
+            kind,
+            mapId
         );
     }
 

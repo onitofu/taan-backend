@@ -3,6 +3,11 @@ package taan.online.match.service;
 import static taan.online.logging.LogField.commandType;
 import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.matchId;
+import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.mapId;
+import static taan.online.logging.LogField.roomId;
+import static taan.online.logging.LogField.slotIndex;
+import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.matchRevision;
 import static taan.online.logging.LogField.reason;
 
@@ -235,7 +240,24 @@ final class MatchRuntime {
         }
 
         LOG.log(MatchLogEvent.LOADING_ACK, matchId(snapshot.id().value()), reason(result));
-        match.beginSynchronization();
+        beginSynchronization();
+        return true;
+    }
+
+    private boolean beginSynchronization() {
+        if (!match.beginSynchronization(clock.getAsLong())) {
+            return false;
+        }
+
+        LOG.log(
+            MatchLogEvent.FIRST_TURN_ISSUED,
+            matchId(match.id().value()),
+            roomId(match.roomId().value()),
+            channelId(match.channelId()),
+            mapId(match.definitions().map().mapId()),
+            slotIndex(match.turn().activeSlot()),
+            turnRevision(match.turn().revision())
+        );
         return true;
     }
 
@@ -285,7 +307,7 @@ final class MatchRuntime {
             return false;
         }
 
-        if (!match.beginSynchronization() && match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())) {
+        if (!beginSynchronization() && match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())) {
             LOG.log(MatchLogEvent.STARTED, matchId(snapshot.id().value()), reason("PREVIEW"));
         }
 

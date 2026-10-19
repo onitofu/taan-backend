@@ -30,7 +30,7 @@ class MatchTerminalPhaseTest {
 
             assertFalse(match.previewStarted(0, 20_000_000_000L));
             assertTrue(match.commit(0, 30_000_000_000L));
-            assertFalse(match.beginSynchronization());
+            assertFalse(match.beginSynchronization(7));
 
             for (var member : snapshot.participants()) {
                 match.deliveryCompleted(member.sessionId());
@@ -42,7 +42,7 @@ class MatchTerminalPhaseTest {
                 );
             }
 
-            assertTrue(match.beginSynchronization());
+            assertTrue(match.beginSynchronization(7));
             snapshot.participants().forEach(member -> match.deliveryCompleted(member.sessionId()));
             assertTrue(match.previewStarted(0, 20_000_000_000L));
             assertFalse(match.previewStarted(0, 20_000_000_000L));

@@ -13,6 +13,7 @@ import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomBootstrapDefinition;
 import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomRule;
@@ -32,6 +33,7 @@ public final class CreateRoomAction {
     private final RoomCharacterLoader characters;
     private final RoomTitleFilter titles;
     private final RoomBootstrapDefinition defaults;
+    private final RoomMapCatalog maps;
 
     public CreateRoomAction(
         SelectedCharacterAccess sessions,
@@ -39,7 +41,8 @@ public final class CreateRoomAction {
         RoomRegistry rooms,
         RoomCharacterLoader characters,
         RoomTitleFilter titles,
-        RoomBootstrapDefinition defaults
+        RoomBootstrapDefinition defaults,
+        RoomMapCatalog maps
     ) {
         this.sessions = sessions;
         this.channels = channels;
@@ -47,6 +50,7 @@ public final class CreateRoomAction {
         this.characters = characters;
         this.titles = titles;
         this.defaults = defaults;
+        this.maps = maps;
     }
 
     public CreateRoomResult execute(UUID id, CreateRoomCommand command, RoomPresenceOutput output) {
@@ -113,7 +117,7 @@ public final class CreateRoomAction {
                 default -> RoomMode.CAPTAIN_NO_ITEM;
             },
             command.rule() == 2 ? RoomRule.BONUS : RoomRule.BASIC,
-            defaults.mapId(),
+            maps.initialMap(context.orElseThrow().kind(), defaults.mapId()),
             8
         );
         var owner = new RoomParticipant(id, character.orElseThrow(), defaults.weaponId());

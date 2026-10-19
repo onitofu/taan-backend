@@ -8,7 +8,9 @@ import static taan.online.ChannelFixtures.fixture;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import taan.online.channel.controller.MoveToChannelPacketHandler;
 import taan.online.channel.protocol.codec.MoveToRequestCodec;
+import taan.online.channel.service.MoveToChannelAction;
 import taan.online.channel.protocol.codec.MoveToResponseCodec;
 import taan.online.channel.protocol.packet.ChannelInfo;
 import taan.online.channel.protocol.packet.PrChannelMoveTo;
@@ -37,7 +39,7 @@ class ChannelWireTest {
 
         for (int result : new int[]{0, 100, 101, 102, 103, 255}) {
             var info = result == 0 || result == 101 || result == 102
-                ? new ChannelInfo("Local", 7, 2181, 0, 1, 109, false) : null;
+                ? new ChannelInfo("Local", 7, 2181, 0, 1, 109, false, 0) : null;
             String name = result == 0 ? "move-to-success-0" : "move-to-failure-" + result;
 
             assertArrayEquals(
@@ -47,7 +49,7 @@ class ChannelWireTest {
         }
 
         var disabled = new MoveToResponseCodec().encode(
-            new PrChannelMoveTo(103, 7, 2181, new ChannelInfo("Local", 7, 2181, 100, 1, 109, true))
+            new PrChannelMoveTo(103, 7, 2181, new ChannelInfo("Local", 7, 2181, 100, 1, 109, true, 0))
         );
 
         assertEquals(1, disabled[disabled.length - 1]);
@@ -55,6 +57,34 @@ class ChannelWireTest {
             fixture("PcNotifyPlayableTime-one-hour.packet"),
             new PlayableTimeCodec().encode(new PcNotifyPlayableTime(3600))
         );
+    }
+
+    @Test
+    void writesTheConfiguredKindAtTheIndependentWireOffsetAndKeepsGroupTypeSeparate() throws Exception {
+        for (int kind : new int[]{0, 1, 4, 6}) {
+            byte[] expected = fixture("move-to-success-0");
+            expected[38] = (byte) kind;
+
+            assertArrayEquals(
+                expected,
+                new MoveToResponseCodec().encode(
+                    new PrChannelMoveTo(0, 7, 2181, new ChannelInfo("Local", 7, 2181, 0, 1, 109, false, kind))
+                )
+            );
+
+            try (var scenario = new RoomScenario(kind)) {
+                var player = scenario.player(1, 1);
+                var handler = new MoveToChannelPacketHandler(
+                    new MoveToChannelAction(scenario.channels),
+                    scenario.access,
+                    2181
+                );
+                var result = handler.handle(player, ChannelFixtures.move(1));
+
+                assertEquals(kind, result.response().info().kind());
+                assertEquals(0, scenario.channels.catalog().directory().groups().getFirst().type());
+            }
+        }
     }
 
     @Test

@@ -188,8 +188,8 @@ class ChannelRegistryTest {
                     "Solar",
                     0,
                     List.of(
-                        new ChannelDefinition(1, "Moon", true, 1, 109, 100),
-                        new ChannelDefinition(2, "Terra", true, 1, 109, 100)
+                        new ChannelDefinition(1, "Moon", true, 1, 109, 100, 0),
+                        new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0)
                     )
                 )
             )
@@ -355,9 +355,9 @@ class ChannelRegistryTest {
                     "Solar",
                     0,
                     List.of(
-                        new ChannelDefinition(1, "Moon", true, 1, 10, 1),
-                        new ChannelDefinition(2, "Terra", true, 20, 30, 1),
-                        new ChannelDefinition(3, "Closed", false, 1, 109, 1)
+                        new ChannelDefinition(1, "Moon", true, 1, 10, 1, 0),
+                        new ChannelDefinition(2, "Terra", true, 20, 30, 1, 0),
+                        new ChannelDefinition(3, "Closed", false, 1, 109, 1, 0)
                     )
                 )
             )

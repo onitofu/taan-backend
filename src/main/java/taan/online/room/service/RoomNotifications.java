@@ -2,6 +2,7 @@ package taan.online.room.service;
 
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.channelKind;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.outcome;
@@ -226,7 +227,9 @@ final class RoomNotifications {
         List<RoomSubscription> subscriptions,
         RoomMembership sender,
         RoomSnapshot snapshot,
-        ChangeRoomSettingsResult result
+        ChangeRoomSettingsResult result,
+        int kind,
+        int requestedMapId
     ) {
         boolean rejected = result.outcome() == ChangeRoomSettingsOutcome.REJECTED;
         var recipients = subscriptions.stream().filter(value -> value.membership().roomId().equals(sender.roomId()))
@@ -246,7 +249,8 @@ final class RoomNotifications {
             characterId(actor.character().id().value()),
             channelId(sender.channelId()),
             roomId(sender.roomId().value()),
-            mapId(settings.mapId()),
+            mapId(requestedMapId),
+            channelKind(kind),
             roomMode(settings.mode().name()),
             roomRule(settings.rule().name()),
             outcome(result.outcome().name()),
