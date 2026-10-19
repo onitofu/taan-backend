@@ -31,6 +31,14 @@ public final class LogField {
         return new LogField("damageEnergyMaximum", value);
     }
 
+    public static LogField winningTeam(String value) {
+        return new LogField("winningTeam", value);
+    }
+
+    public static LogField outcomeCause(String value) {
+        return new LogField("outcomeCause", value);
+    }
+
     public static LogField round(long value) {
         return new LogField("round", value);
     }

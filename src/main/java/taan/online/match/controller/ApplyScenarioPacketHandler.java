@@ -6,6 +6,7 @@ import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.ScenarioApplicationResult;
+import taan.online.protocol.MalformedPacketException;
 
 public final class ApplyScenarioPacketHandler {
     private final ApplyScenarioAction action;
@@ -33,14 +34,18 @@ public final class ApplyScenarioPacketHandler {
         byte[] root
     ) {
         byte[] original = root.clone();
-        var packet = codec.decode(original);
-        return action.execute(new ApplyScenarioCommand(
-            context,
-            turnRevision,
-            worldRevision,
-            mapper.map(packet),
-            original,
-            phaseRevision
-        ));
+        try {
+            var packet = codec.decode(original);
+            return action.execute(new ApplyScenarioCommand(
+                context,
+                turnRevision,
+                worldRevision,
+                mapper.map(packet),
+                original,
+                phaseRevision
+            ));
+        } catch (MalformedPacketException failure) {
+            return action.rejectMalformed(context, turnRevision, worldRevision, phaseRevision);
+        }
     }
 }

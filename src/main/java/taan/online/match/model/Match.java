@@ -28,6 +28,7 @@ public final class Match {
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
     private MatchWorldState world;
+    private MatchResolutionState resolution = MatchResolutionState.initial();
     private final Map<UUID, MatchAttackSelection> attacks = new HashMap<>();
     private final Map<UUID, MatchMovementState> movements = new HashMap<>();
     private Optional<MatchTurnClosure> closure = Optional.empty();
@@ -148,6 +149,15 @@ public final class Match {
         return true;
     }
 
+    public MatchResolutionState resolution() {
+        return resolution;
+    }
+
+    public void withdraw(UUID session, MatchExitKind kind) {
+        resolution = resolution.exit(session, kind, participants, world, turn.activeSlot());
+        completion = completion.map(value -> value.acknowledged(session));
+    }
+
     public Map<UUID, MatchAttackSelection> attacks() {
         return Map.copyOf(attacks);
     }
@@ -255,6 +265,7 @@ public final class Match {
 
         attacks.remove(activeSession());
         world = prepared;
+        resolution = resolution.evaluate(participants, world, turn.activeSlot());
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
         phase = MatchPhase.COMPLETION;
@@ -452,20 +463,8 @@ public final class Match {
             return;
         }
 
-        var actor = world.actors().get(session);
-        int end = movement.fall().orElseThrow().endY();
-        var support = MatchTerrainSupport.supportY(world.terrain(), actor.x(), end, definitions.map().height());
-        boolean dead = end > definitions.map().height() || support.isEmpty();
-        world = world.placed(
-            session,
-            new MatchActorState(
-                actor.x(),
-                support.orElse(end),
-                actor.facing(),
-                dead ? 0 : actor.hp(),
-                actor.energy()
-            )
-        );
+        world = world.settled(session, movement.fall().orElseThrow().endY(), definitions.map().height());
+        resolution = resolution.settled(participants, world, turn.activeSlot());
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }
 
@@ -484,6 +483,7 @@ public final class Match {
         }
 
         attacks.clear();
+        resolution = MatchResolutionState.initial();
         phase = MatchPhase.CANCELLED;
         return true;
     }

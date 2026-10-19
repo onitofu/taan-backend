@@ -47,6 +47,22 @@ public record MatchWorldState(
         return initial(actors, terrain);
     }
 
+    public MatchWorldState settled(UUID session, int end, int mapHeight) {
+        var actor = actors.get(session);
+        var support = MatchTerrainSupport.supportY(terrain, actor.x(), end, mapHeight);
+        boolean dead = end > mapHeight || support.isEmpty();
+        return placed(
+            session,
+            new MatchActorState(
+                actor.x(),
+                support.orElse(end),
+                actor.facing(),
+                dead ? 0 : actor.hp(),
+                actor.energy()
+            )
+        );
+    }
+
     public MatchWorldState energy(UUID session, int value) {
         var actor = actors.get(session);
         return actor.energy() == value ? this

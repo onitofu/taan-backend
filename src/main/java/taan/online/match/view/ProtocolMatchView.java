@@ -1,40 +1,40 @@
 package taan.online.match.view;
 
 import java.util.ArrayList;
-import taan.online.match.service.model.PendingMatchSpend;
-import taan.online.match.protocol.codec.UseItemCodec;
-import taan.online.match.protocol.codec.SpendItemCodec;
-import taan.online.match.protocol.packet.SpentItem;
-import taan.online.match.protocol.packet.PcGamePlayUseItem;
-import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.match.model.MatchOutcome;
-import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
-import taan.online.match.protocol.packet.PcGamePlayMove;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
-import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.SpendItemCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
-import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
-import taan.online.match.protocol.packet.PcGamePlayTurnEnd;
-import taan.online.match.service.model.MatchTurnTransition;
+import taan.online.match.protocol.codec.TurnStartCodec;
+import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayTurnEnd;
 import taan.online.match.protocol.packet.PcGamePlayTurnStart;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.match.protocol.packet.SpentItem;
 import taan.online.match.service.MatchOutput;
-import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.MatchTurnTransition;
+import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.option.packet.OptionList;
 import taan.online.room.model.RoomSlotState;
@@ -220,12 +220,14 @@ public final class ProtocolMatchView implements MatchOutput {
 
     @Override
     public CompletionStage<Void> end(MatchOutcome outcome) {
-        if (!outcome.winningTeams().isEmpty() || outcome.awardsGranted()) {
+        if (outcome.awardsGranted()) {
             throw new IllegalArgumentException("Unsupported match outcome");
         }
 
+        int winner = outcome.winningTeams().isEmpty() ? 0
+            : outcome.winningTeams().contains(RoomTeam.BLUE) ? 1 : 2;
         var result = new GameResult(
-            0,
+            winner,
             IntStream.range(0, 8).mapToObj(
                 index -> new GameResultSlot(index, 0, 0, 0, 0, 0, 0, 0, List.of(0, 0, 0), 0, 0, 0)
             ).toList(),

@@ -1,7 +1,7 @@
 package taan.online;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -11,20 +11,20 @@ import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
-import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.SpendItemCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
-import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
-import taan.online.match.protocol.codec.SpendItemCodec;
-import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.LoadingPosition;
-import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
-import taan.online.match.protocol.packet.PcGamePlayUseItem;
-import taan.online.match.protocol.packet.PcGamePlaySpendItem;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.service.MatchRegistry;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomTeam;
@@ -93,7 +93,7 @@ class MatchEnergyIntegrationTest {
 
                     owner.send(MatchFixtures.root("give-up-empty"));
                     for (var client : List.of(owner, guest)) {
-                        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), client.read());
+                        assertArrayEquals(MatchFixtures.endGame(2), client.read());
                         rooms.ready(client.read());
                         client.send(SelectionFixtures.cash(0, 0));
                         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());

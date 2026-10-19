@@ -6,16 +6,17 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.bootstrap.ChannelMatchAccess;
 import taan.online.bootstrap.RoomDefinitionLoader;
 import taan.online.channel.model.ChannelDefinition;
 import taan.online.channel.model.ChannelGroupDefinition;
-import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
+import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -49,6 +50,7 @@ import taan.online.room.service.LeaveRoomAction;
 import taan.online.room.service.QuickJoinRoomAction;
 import taan.online.room.service.RequestRoomStartAction;
 import taan.online.room.service.RoomCharacterLoader;
+import taan.online.room.service.RoomMatchLifecycle;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.SetCaptainCandidateAction;
 import taan.online.room.service.SetRoomReadyAction;
@@ -97,7 +99,21 @@ public final class RoomScenario implements AutoCloseable {
         this(executor, capacity, kind, MatchExecutionMode.PREVIEW);
     }
 
+    public RoomScenario(MatchExecutionMode mode, Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle) {
+        this(Runnable::run, 64, null, mode, lifecycle);
+    }
+
     private RoomScenario(MatchCommandExecutor executor, int capacity, Integer kind, MatchExecutionMode mode) {
+        this(executor, capacity, kind, mode, value -> value);
+    }
+
+    private RoomScenario(
+        MatchCommandExecutor executor,
+        int capacity,
+        Integer kind,
+        MatchExecutionMode mode,
+        Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle
+    ) {
         sessions = new SessionRegistry();
         access = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(access, 2181);
@@ -138,7 +154,7 @@ public final class RoomScenario implements AutoCloseable {
             timers,
             timers::nanoTime,
             new Random(1),
-            matches
+            lifecycle.apply(matches)
         );
         characters = new TestCharacterRepository();
         create = new CreateRoomAction(

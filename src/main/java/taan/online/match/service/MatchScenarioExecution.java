@@ -16,14 +16,16 @@ import static taan.online.logging.LogField.worldRevision;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import taan.online.match.service.model.PendingMatchSpend;
+import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
-import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.ScenarioAdmissionContext;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.ScenarioApplicationResult;
@@ -49,6 +51,39 @@ final class MatchScenarioExecution {
 
     ScenarioRelay relay() {
         return relay;
+    }
+
+    static CompletionStage<ScenarioApplicationResult> rejectMalformed(
+        MatchRuntime runtime,
+        MatchCommandContext context,
+        long turn,
+        long world,
+        long phase
+    ) {
+        return runtime == null ? CompletableFuture.completedFuture(ScenarioApplicationResult.ignored("STALE_MATCH"))
+            : runtime.turnWork(() -> runtime.scenarios.malformed(context, turn, world, phase)).thenApply(accepted ->
+                new ScenarioApplicationResult(
+                    accepted ? ScenarioApplicationOutcome.REJECTED : ScenarioApplicationOutcome.IGNORED,
+                    "MALFORMED_SCENARIO",
+                    Optional.empty()
+                ));
+    }
+
+    boolean malformed(MatchCommandContext sender, long turn, long world, long phase) {
+        var current = owner.snapshot();
+
+        if (!owner.live() || !owner.admits(sender) || current.phase() != MatchPhase.ACTION
+            && current.phase() != MatchPhase.COMPLETION
+            || current.turn().revision() != turn || current.world().revision() != world
+            || current.phaseRevision() != phase || current.resolution().exits().containsKey(sender.sessionId())
+            || current.participants().stream().noneMatch(p -> p.sessionId().equals(sender.sessionId())
+                && p.slotIndex() == current.turn().activeSlot())) {
+            return false;
+        }
+
+        LOG.log(MatchLogEvent.SCENARIO_REJECTED, reason("MALFORMED_SCENARIO"), matchId(sender.matchId().value()));
+        owner.terminate(RoomMatchEndReason.INVALID_SCENARIO);
+        return true;
     }
 
     ScenarioApplicationResult execute(ApplyScenarioCommand command) {
@@ -145,6 +180,7 @@ final class MatchScenarioExecution {
             return ScenarioApplicationResult.ignored("STALE_COMMIT");
         }
 
+        MatchOutcomeExecution.decided(before, publication);
         previous = committed;
         MatchEnergyLog.scenario(before, committed);
         var sender = command.context();

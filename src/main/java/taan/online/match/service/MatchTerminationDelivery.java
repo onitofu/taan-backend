@@ -13,27 +13,48 @@ import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMembership;
 
 final class MatchTerminationDelivery {
     private static final EventLogger LOG = EventLogger.forClass(MatchTerminationDelivery.class);
 
     private final RoomMatchTermination terminal;
+    private final MatchOutcome outcome;
     private final List<MatchSubscription> recipients;
     private final MatchSubscription departing;
 
     MatchTerminationDelivery(
         RoomMatchTermination terminal,
         List<MatchSubscription> recipients,
-        MatchSubscription departing
+        MatchSubscription departing,
+        MatchOutcome outcome
     ) {
         this.terminal = terminal;
+        this.outcome = outcome;
         this.recipients = List.copyOf(recipients);
         this.departing = departing;
+    }
+
+    static List<RoomMembership> memberships(MatchSnapshot snapshot, RoomMatchTerminationMode mode, UUID departing) {
+        return snapshot.participants().stream()
+            .filter(value -> mode != RoomMatchTerminationMode.RETURN_TO_ROOM || !value.sessionId().equals(departing)
+                && snapshot.resolution().exits().get(value.sessionId()) != MatchExitKind.DEPARTED)
+            .map(
+                value -> new RoomMembership(
+                    value.sessionId(),
+                    snapshot.roomId(),
+                    snapshot.roomGeneration(),
+                    snapshot.channelId(),
+                    value.admissionId()
+                )
+            ).toList();
     }
 
     static RoomMatchTerminationMode mode(MatchPhase phase, RoomMatchEndReason reason, boolean unpublishedStart) {
@@ -79,7 +100,7 @@ final class MatchTerminationDelivery {
 
     private CompletionStage<Void> deliver(MatchSubscription recipient) {
         try {
-            return recipient.output().end(MatchOutcome.previewAborted()).handle(
+            return recipient.output().end(outcome).handle(
                 LogContext.propagate(
                     (ignored, failure) -> {
                         if (failure != null) {

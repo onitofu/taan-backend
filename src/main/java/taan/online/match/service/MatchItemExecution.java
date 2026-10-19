@@ -1,17 +1,17 @@
 package taan.online.match.service;
 
-import static taan.online.logging.LogField.matchId;
-import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.admissionId;
 import static taan.online.logging.LogField.channelId;
-import static taan.online.logging.LogField.turnRevision;
-import static taan.online.logging.LogField.reason;
-import static taan.online.logging.LogField.slotIndex;
-import static taan.online.logging.LogField.energyBefore;
 import static taan.online.logging.LogField.energyAfter;
+import static taan.online.logging.LogField.energyBefore;
+import static taan.online.logging.LogField.matchId;
+import static taan.online.logging.LogField.reason;
+import static taan.online.logging.LogField.sessionId;
+import static taan.online.logging.LogField.slotIndex;
+import static taan.online.logging.LogField.turnRevision;
 
-import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -21,13 +21,13 @@ import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchAttackSelection;
-import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ActivateSpecialCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
-import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.PendingMatchSpend;
+import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchEndReason;
 
@@ -156,7 +156,8 @@ final class MatchItemExecution {
     }
 
     private boolean current(MatchCommandContext context, long turn, long phase, int slot) {
-        return owner.live() && owner.admits(context) && match.phase() == MatchPhase.ACTION
+        return owner.live() && owner.admits(context) && !match.resolution().exits().containsKey(context.sessionId())
+            && match.phase() == MatchPhase.ACTION
             && match.turn().revision() == turn && match.phaseRevision() == phase && !match.expired(clock.getAsLong())
             && member(context).slotIndex() == slot && slot == match.turn().activeSlot()
             && !match.actors().get(context.sessionId()).dead();
