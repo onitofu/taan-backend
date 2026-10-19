@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.DataInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -50,10 +51,14 @@ public final class CharacterTestClient implements AutoCloseable {
         socket.getOutputStream().flush();
     }
 
-    public void sendTogether(byte[] first, byte[] second) throws IOException {
-        socket.getOutputStream().write(
-            ByteBuffer.allocate(first.length + second.length + 8).put(frame(first)).put(frame(second)).array()
-        );
+    public void sendTogether(byte[]... roots) throws IOException {
+        var bytes = new ByteArrayOutputStream();
+
+        for (var root : roots) {
+            bytes.write(frame(root));
+        }
+
+        socket.getOutputStream().write(bytes.toByteArray());
         socket.getOutputStream().flush();
     }
 

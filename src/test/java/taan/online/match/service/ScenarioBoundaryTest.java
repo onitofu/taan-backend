@@ -142,7 +142,7 @@ class ScenarioBoundaryTest {
         for (var phase : MatchPhase.values()) {
             var expected = switch (phase) {
                 case RESERVED -> RoomMatchTerminationMode.ROLLBACK;
-                case PREVIEW, ACTION, COMPLETION -> RoomMatchTerminationMode.RETURN_TO_ROOM;
+                case PREVIEW, ACTION, SETTLING, COMPLETION -> RoomMatchTerminationMode.RETURN_TO_ROOM;
                 default -> RoomMatchTerminationMode.DISCONNECT;
             };
             assertEquals(expected, MatchTerminationDelivery.mode(phase, RoomMatchEndReason.INVALID_SCENARIO, false));

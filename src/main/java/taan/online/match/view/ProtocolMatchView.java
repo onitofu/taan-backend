@@ -7,6 +7,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.protocol.codec.MoveCodec;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
@@ -129,10 +134,45 @@ public final class ProtocolMatchView implements MatchOutput {
 
     @Override
     public CompletionStage<Void> nextTurn(MatchTurnTransition transition) {
-        return output.send(List.of(
-            new TurnEndCodec().encode(new PcGamePlayTurnEnd(transition.previousSlot(), 0)),
-            turnStart(transition.snapshot())
-        ));
+        var roots = new ArrayList<byte[]>();
+
+        if (transition.turnEndRequired()) {
+            roots.add(new TurnEndCodec().encode(new PcGamePlayTurnEnd(transition.previousSlot(), 0)));
+        }
+
+        roots.add(turnStart(transition.snapshot()));
+        return output.send(roots);
+    }
+
+    @Override
+    public CompletionStage<Void> movement(MatchMovementNotice notice) {
+        byte[] root = switch (notice.kind()) {
+            case MOVE -> new MoveCodec().encode(new PcGamePlayMove(
+                notice.slot(),
+                notice.x(),
+                notice.y(),
+                notice.facing()
+            ));
+            case SET_POS -> new SetPosCodec().encode(new PcGamePlaySetPos(
+                notice.slot(),
+                notice.x(),
+                notice.y(),
+                notice.facing()
+            ));
+            case PASS_TURN -> new PassTurnCodec().encode(new PcGamePlayPassTurn(
+                notice.slot(),
+                notice.x(),
+                notice.y(),
+                notice.facing(),
+                notice.scalar20()
+            ));
+        };
+        return output.send(List.of(root));
+    }
+
+    @Override
+    public CompletionStage<Void> stopTurn(int slot) {
+        return output.send(List.of(new TurnEndCodec().encode(new PcGamePlayTurnEnd(slot, 0))));
     }
 
     private byte[] turnStart(MatchSnapshot snapshot) {

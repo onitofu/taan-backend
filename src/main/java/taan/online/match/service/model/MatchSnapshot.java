@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import taan.online.match.model.MatchCompletion;
+import taan.online.match.model.MatchMovementState;
+import taan.online.match.model.MatchTurnClosure;
 import java.util.Set;
 import java.util.UUID;
 import taan.online.match.model.Match;
@@ -36,7 +38,9 @@ public record MatchSnapshot(
     MatchTurn turn,
     long phaseRevision,
     long deadlineNanos,
-    Optional<MatchCompletion> completion
+    Optional<MatchCompletion> completion,
+    Map<UUID, MatchMovementState> movements,
+    Optional<MatchTurnClosure> closure
 ) {
     public MatchSnapshot(
         MatchId id,
@@ -73,6 +77,8 @@ public record MatchSnapshot(
             turn,
             phaseRevision,
             deadlineNanos,
+            Optional.empty(),
+            Map.of(),
             Optional.empty()
         );
     }
@@ -80,6 +86,7 @@ public record MatchSnapshot(
     public MatchSnapshot {
         participants = List.copyOf(participants);
         loadedSessions = Set.copyOf(loadedSessions);
+        movements = Map.copyOf(movements);
     }
 
     public Map<UUID, MatchActorState> actors() {
@@ -108,7 +115,9 @@ public record MatchSnapshot(
             turn,
             phaseRevision + 1,
             pending.map(MatchCompletion::deadlineNanos).orElse(deadlineNanos),
-            pending
+            pending,
+            movements,
+            closure
         );
     }
 
@@ -138,7 +147,9 @@ public record MatchSnapshot(
             match.turn(),
             match.phaseRevision(),
             match.deadlineNanos(),
-            match.completion()
+            match.completion(),
+            match.movements(),
+            match.closure()
         );
     }
 }

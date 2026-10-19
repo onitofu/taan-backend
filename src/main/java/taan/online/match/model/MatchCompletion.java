@@ -12,8 +12,32 @@ public record MatchCompletion(
     long worldRevision,
     Set<UUID> awaitingSessions,
     long settleNotBeforeNanos,
-    long deadlineNanos
+    long deadlineNanos,
+    long actionPhaseRevision
 ) {
+    public MatchCompletion(
+        UUID shooterSessionId,
+        UUID shooterAdmissionId,
+        String fingerprint,
+        long turnRevision,
+        long worldRevision,
+        Set<UUID> awaitingSessions,
+        long settleNotBeforeNanos,
+        long deadlineNanos
+    ) {
+        this(
+            shooterSessionId,
+            shooterAdmissionId,
+            fingerprint,
+            turnRevision,
+            worldRevision,
+            awaitingSessions,
+            settleNotBeforeNanos,
+            deadlineNanos,
+            -1
+        );
+    }
+
     public MatchCompletion {
         awaitingSessions = Set.copyOf(awaitingSessions);
     }
@@ -29,7 +53,8 @@ public record MatchCompletion(
             worldRevision,
             remaining,
             settleNotBeforeNanos,
-            deadlineNanos
+            deadlineNanos,
+            actionPhaseRevision
         );
     }
 }

@@ -27,6 +27,19 @@ public record MatchCommandContext(
         );
     }
 
+    public static MatchCommandContext from(MatchSnapshot snapshot, UUID session) {
+        var member = snapshot.participants().stream().filter(p -> p.sessionId().equals(session))
+            .findFirst().orElseThrow();
+        return new MatchCommandContext(
+            snapshot.id(),
+            snapshot.roomId(),
+            snapshot.roomGeneration(),
+            snapshot.channelId(),
+            session,
+            member.admissionId()
+        );
+    }
+
     public RoomMatchToken token() {
         return new RoomMatchToken(roomId, roomGeneration, matchId.value());
     }

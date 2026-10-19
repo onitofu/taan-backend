@@ -53,7 +53,8 @@ final class MatchRuntime {
 
     private final Match match;
     private final MatchScenarioExecution scenarios;
-    private final MatchTurnExecution turns;
+    final MatchTurnExecution turns;
+    final MatchMovementExecution movement;
     private final MatchMailbox mailbox;
     private final MatchAdmissionAccess access;
     private final MatchBootstrapSettings settings;
@@ -91,6 +92,7 @@ final class MatchRuntime {
         snapshot = MatchSnapshot.from(match);
         scenarios = new MatchScenarioExecution(this, access);
         turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
+        movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
     }
 
     CompletableFuture<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {
@@ -259,7 +261,8 @@ final class MatchRuntime {
 
                 if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())
                     && !(settings.executionMode() == MatchExecutionMode.CANNON_1V1
-                        && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.COMPLETION))) {
+                        && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
+                            || match.phase() == MatchPhase.COMPLETION))) {
                     ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
                         ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
                     warnings.warn(WarningEvent.LIMIT_EXCEEDED, ending.name());
@@ -287,7 +290,7 @@ final class MatchRuntime {
                     scheduler,
                     progress(),
                     warnings
-                ).dispatch(MatchBootstrapDelivery.requester(command, snapshot));
+                ).dispatch(MatchBootstrapDelivery.requester(command, snapshot, true));
             }
 
             LOG.log(
@@ -422,7 +425,8 @@ final class MatchRuntime {
 
     void deadlineExpired(RoomMatchProgressToken progress) {
         if (settings.executionMode() == MatchExecutionMode.CANNON_1V1
-            && (snapshot.phase() == MatchPhase.ACTION || snapshot.phase() == MatchPhase.COMPLETION)) {
+            && (snapshot.phase() == MatchPhase.ACTION || snapshot.phase() == MatchPhase.SETTLING
+                || snapshot.phase() == MatchPhase.COMPLETION)) {
             turns.enqueue(progress);
         } else {
             submit(new MatchDeadlineExpiredCommand(progress));
@@ -478,12 +482,7 @@ final class MatchRuntime {
 
     private void rejected(MatchCommand command) {
         warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_COMMAND_QUEUE_FULL");
-        UUID sender = switch (command) {
-            case ConfirmMatchLoadingCommand c -> c.context().sessionId();
-            case ConfirmMatchPositionCommand c -> c.context().sessionId();
-            case ReportMatchEnemiesCommand c -> c.context().sessionId();
-            default -> null;
-        };
+        UUID sender = MatchBootstrapDelivery.requester(command, snapshot, false);
         recipients.stream().filter(p -> p.sessionId().equals(sender))
             .forEach(p -> p.output().close("MATCH_COMMAND_QUEUE_FULL"));
         terminate(RoomMatchEndReason.PREPARATION_FAILED);

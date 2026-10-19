@@ -19,6 +19,7 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.ScenarioWorldException;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.ScenarioAdmissionContext;
@@ -75,7 +76,9 @@ final class MatchScenarioExecution {
         var before = owner.snapshot();
         long revision = before.world().revision();
 
-        if (!owner.scenarioCurrent(command) || command.worldRevision() != revision
+        boolean sameAction = before.phase() == MatchPhase.ACTION && command.phaseRevision() == before.phaseRevision();
+
+        if (!owner.scenarioCurrent(command) || command.worldRevision() != revision && !sameAction
             && (previous == null || command.worldRevision() != previous.snapshot().world().revision() - 1)) {
             LOG.log(
                 MatchLogEvent.SCENARIO_IGNORED,

@@ -4,12 +4,19 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    MOVEMENT_ACCEPTED("match.movement.accepted", Level.DEBUG, "Movement anchor accepted"),
+    MOVEMENT_REJECTED("match.movement.rejected", Level.DEBUG, "Movement anchor rejected"),
+    MOVEMENT_IGNORED("match.movement.ignored", Level.DEBUG, "Stale or inactive movement ignored"),
+    MOVEMENT_SETTLED("match.movement.settled", Level.DEBUG, "Movement settlement completed"),
+    TURN_PASSED("match.turn.passed", Level.DEBUG, "Match turn passed"),
+    TURN_STOPPING("match.turn.stopping", Level.DEBUG, "Match action watchdog stopped the turn"),
+    MOVEMENT_DELIVERY_FAILED("match.movement.delivery.failed", Level.ERROR, "Movement delivery failed"),
     SCENARIO_ACKNOWLEDGED("match.scenario.acknowledged", Level.DEBUG, "Scenario acknowledgement accepted"),
     SCENARIO_ACK_IGNORED("match.scenario.ack.ignored", Level.DEBUG, "Stale or duplicate acknowledgement ignored"),
     SCENARIO_COMPLETED("match.scenario.completed", Level.DEBUG, "Scenario completion barrier passed"),
     TURN_ISSUED("match.turn.issued", Level.DEBUG, "Next match turn issued"),
     COMPLETION_TIMEOUT("match.scenario.completion.timeout", Level.WARN, "Scenario acknowledgement deadline expired"),
-    TURN_TIMEOUT("match.turn.timeout", Level.WARN, "Match action deadline expired"),
+    TURN_TIMEOUT("match.turn.timeout", Level.DEBUG, "Match action deadline forced a pass"),
     TURN_DELIVERY_FAILED("match.turn.delivery.failed", Level.ERROR, "Match turn delivery failed"),
     SCENARIO_APPLIED("match.scenario.applied", Level.DEBUG, "Scenario applied to match world"),
     SCENARIO_APPLY_FAILED("match.scenario.apply.failed", Level.ERROR, "Scenario application failed"),

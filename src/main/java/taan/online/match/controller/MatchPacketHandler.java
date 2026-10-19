@@ -14,6 +14,15 @@ import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.ReportEnemiesCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.MoveCodec;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.service.MoveMatchActorAction;
+import taan.online.match.service.PassMatchTurnAction;
+import taan.online.match.service.model.MoveMatchActorCommand;
+import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.protocol.codec.UnsupportedGameplayCodec;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
@@ -35,6 +44,8 @@ import taan.online.room.service.model.RoomMatchEndReason;
 
 public final class MatchPacketHandler {
     private final MatchRegistry matches;
+    private final MoveMatchActorAction movement;
+    private final PassMatchTurnAction passing;
     private final TerminateMatchAction terminate;
     private final ConsumeMatchResultAction consume;
     private final ConfirmMatchLoadingAction loading;
@@ -73,6 +84,34 @@ public final class MatchPacketHandler {
         ApplyScenarioPacketHandler scenarios,
         ConfirmScenarioAction acknowledgements
     ) {
+        this(
+            matches,
+            terminate,
+            consume,
+            loading,
+            position,
+            reports,
+            scenarios,
+            acknowledgements,
+            new MoveMatchActorAction(matches),
+            new PassMatchTurnAction(matches)
+        );
+    }
+
+    public MatchPacketHandler(
+        MatchRegistry matches,
+        TerminateMatchAction terminate,
+        ConsumeMatchResultAction consume,
+        ConfirmMatchLoadingAction loading,
+        ConfirmMatchPositionAction position,
+        ReportMatchEnemiesAction reports,
+        ApplyScenarioPacketHandler scenarios,
+        ConfirmScenarioAction acknowledgements,
+        MoveMatchActorAction movement,
+        PassMatchTurnAction passing
+    ) {
+        this.movement = movement;
+        this.passing = passing;
         this.scenarios = scenarios;
         this.acknowledgements = acknowledgements;
         this.matches = matches;
@@ -97,7 +136,8 @@ public final class MatchPacketHandler {
             binding.roomContext(),
             binding.turnRevision(),
             binding.worldRevision(),
-            binding.fingerprint()
+            binding.fingerprint(),
+            binding.phaseRevision()
         );
     }
 
@@ -118,6 +158,11 @@ public final class MatchPacketHandler {
 
             var loaded = message.positions().getFirst();
             return loading.execute(id, context, loaded.slotIndex(), loaded.x(), loaded.y());
+        }
+
+        if ((type == PcGamePlayMove.TYPE_ID || type == PcGamePlayPassTurn.TYPE_ID
+            || type == PcGamePlaySetPos.TYPE_ID) && matches.scenarioEnabled(context)) {
+            return motion(id, type, root, request);
         }
 
         if (type == PcGamePlaySetPos.TYPE_ID) {
@@ -143,7 +188,8 @@ public final class MatchPacketHandler {
                 request.turnRevision(),
                 request.worldRevision(),
                 request.fingerprint(),
-                message.slotIndex()
+                message.slotIndex(),
+                request.phaseRevision()
             )).thenApply(ignored -> null);
         }
 
@@ -156,6 +202,7 @@ public final class MatchPacketHandler {
                 MatchCommandContext.from(context),
                 request.turnRevision(),
                 request.worldRevision(),
+                request.phaseRevision(),
                 root
             ).thenApply(ignored -> null);
         }
@@ -179,4 +226,55 @@ public final class MatchPacketHandler {
         consume.execute(id, context);
         return CompletableFuture.completedFuture(null);
     }
+
+    private CompletionStage<Void> motion(UUID id, int type, byte[] root, MatchRequestContext request) {
+        var context = request.roomContext();
+
+        if (!context.membership().sessionId().equals(id)) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        var sender = MatchCommandContext.from(context);
+
+        if (type == PcGamePlayPassTurn.TYPE_ID) {
+            var packet = new PassTurnCodec().decode(root);
+            return passing.execute(new PassMatchTurnCommand(
+                sender,
+                request.turnRevision(),
+                request.phaseRevision(),
+                packet.slotIndex(),
+                packet.x(),
+                packet.y(),
+                packet.facing(),
+                packet.scalar20()
+            )).thenApply(ignored -> null);
+        }
+
+        if (type == PcGamePlayMove.TYPE_ID) {
+            var packet = new MoveCodec().decode(root);
+            return movement.execute(new MoveMatchActorCommand(
+                sender,
+                request.turnRevision(),
+                request.phaseRevision(),
+                packet.slotIndex(),
+                packet.x(),
+                packet.y(),
+                packet.facing(),
+                MatchMovementKind.MOVE
+            )).thenApply(ignored -> null);
+        }
+
+        var packet = new SetPosCodec().decode(root);
+        return movement.execute(new MoveMatchActorCommand(
+            sender,
+            request.turnRevision(),
+            request.phaseRevision(),
+            packet.slotIndex(),
+            packet.x(),
+            packet.y(),
+            packet.facing(),
+            MatchMovementKind.SET_POS
+        )).thenApply(ignored -> null);
+    }
+
 }

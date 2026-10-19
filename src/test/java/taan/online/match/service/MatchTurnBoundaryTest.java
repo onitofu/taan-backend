@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import taan.online.match.model.MatchPhase;
 import taan.online.LogCapture;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -207,7 +208,8 @@ class MatchTurnBoundaryTest {
             f.timers.now = f.runtime.snapshot().deadlineNanos();
             f.timers.commands.getFirst().run();
             f.run();
-            assertEquals(RoomMatchEndReason.ACTION_TIMEOUT, f.callbacks.reason);
+            assertEquals(MatchPhase.SETTLING, f.runtime.snapshot().phase());
+            assertEquals(null, f.callbacks.reason);
         }
     }
 
@@ -229,10 +231,8 @@ class MatchTurnBoundaryTest {
                 assertTrue(f.runtime.running());
                 f.timers.commands.getFirst().run();
                 f.run();
-                assertEquals(
-                    completion ? RoomMatchEndReason.COMPLETION_TIMEOUT : RoomMatchEndReason.ACTION_TIMEOUT,
-                    f.callbacks.reason
-                );
+                assertEquals(completion ? RoomMatchEndReason.COMPLETION_TIMEOUT : null, f.callbacks.reason);
+                assertEquals(completion ? MatchPhase.COMPLETION : MatchPhase.SETTLING, f.runtime.snapshot().phase());
             }
         }
     }

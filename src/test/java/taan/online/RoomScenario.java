@@ -18,6 +18,7 @@ import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
@@ -88,7 +89,15 @@ public final class RoomScenario implements AutoCloseable {
         this(Runnable::run, 64, kind);
     }
 
+    public RoomScenario(MatchExecutionMode mode) {
+        this(Runnable::run, 64, null, mode);
+    }
+
     private RoomScenario(MatchCommandExecutor executor, int capacity, Integer kind) {
+        this(executor, capacity, kind, MatchExecutionMode.PREVIEW);
+    }
+
+    private RoomScenario(MatchCommandExecutor executor, int capacity, Integer kind, MatchExecutionMode mode) {
         sessions = new SessionRegistry();
         access = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(access, 2181);
@@ -119,7 +128,8 @@ public final class RoomScenario implements AutoCloseable {
             new Random(1),
             new ChannelMatchAccess(channels),
             executor,
-            capacity
+            capacity,
+            mode
         );
         rooms = new RoomRegistry(
             channels,

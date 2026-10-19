@@ -1,6 +1,7 @@
 package taan.online.match.model;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +35,12 @@ public record MatchWorldState(
     public MatchWorldState placed(UUID session, MatchActorState actor) {
         var updated = new HashMap<>(actors);
         updated.put(session, actor);
-        return new MatchWorldState(Math.incrementExact(revision), updated, terrain, falls, processedDeaths, receipt);
+        var deaths = new HashSet<>(processedDeaths);
+
+        if (actor.dead()) {
+            deaths.add(session);
+        }
+
+        return new MatchWorldState(Math.incrementExact(revision), updated, terrain, falls, deaths, receipt);
     }
 }

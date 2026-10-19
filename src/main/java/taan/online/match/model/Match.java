@@ -1,6 +1,5 @@
 package taan.online.match.model;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +29,8 @@ public final class Match {
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
     private MatchWorldState world;
+    private final Map<UUID, MatchMovementState> movements = new HashMap<>();
+    private Optional<MatchTurnClosure> closure = Optional.empty();
     private Optional<MatchCompletion> completion = Optional.empty();
     private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
@@ -60,7 +61,16 @@ public final class Match {
         this.definitions = Objects.requireNonNull(definitions);
         this.participants = List.copyOf(participants);
         this.captains = captains;
-        turn = initialTurn(firstTurnSlot);
+        turn = MatchTurnPolicy.roster(
+            channelId,
+            participants,
+            mode,
+            rule,
+            ownerSessionId,
+            captains,
+            definitions,
+            firstTurnSlot
+        );
         var initialActors = new HashMap<UUID, MatchActorState>();
         participants.forEach(
             value -> initialActors.put(
@@ -121,9 +131,13 @@ public final class Match {
     }
 
     public boolean nextTurn(long now, long timeoutNanos) {
-        if (phase != MatchPhase.COMPLETION || completion.isEmpty()
+        if (phase != MatchPhase.SETTLING && (phase != MatchPhase.COMPLETION || completion.isEmpty()
             || !completion.orElseThrow().awaitingSessions().isEmpty()
-            || now - completion.orElseThrow().settleNotBeforeNanos() < 0) {
+            || now - completion.orElseThrow().settleNotBeforeNanos() < 0)) {
+            return false;
+        }
+
+        if (phase == MatchPhase.SETTLING && now - settleAt() < 0) {
             return false;
         }
 
@@ -135,50 +149,9 @@ public final class Match {
         phase = MatchPhase.ACTION;
         phaseRevision++;
         deadlineNanos = now + timeoutNanos;
+        closure = Optional.empty();
+        startMovement(now);
         return true;
-    }
-
-    private MatchTurn initialTurn(int firstTurnSlot) {
-        if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
-            || mode.usesItems() != (rule == RoomRule.BONUS)) {
-            throw new IllegalArgumentException("Invalid match setup");
-        }
-
-        var sessions = new HashSet<UUID>();
-        var admissions = new HashSet<UUID>();
-        var accounts = new HashSet<Long>();
-        var characters = new HashSet<Long>();
-        var slots = new HashSet<Integer>();
-        var spawns = new HashSet<Integer>();
-        var teams = new HashSet<RoomTeam>();
-
-        for (var participant : participants) {
-            if (!sessions.add(participant.sessionId()) || !admissions.add(participant.admissionId())
-                || !accounts.add(participant.character().accountId().value())
-                || !characters.add(participant.character().id().value()) || !slots.add(participant.slotIndex())
-                || !spawns.add(participant.spawn().index())
-                || !definitions.map().spawns().contains(participant.spawn())) {
-                throw new IllegalArgumentException("Invalid match roster");
-            }
-
-            teams.add(participant.team());
-        }
-
-        if (!slots.contains(firstTurnSlot) || !sessions.contains(ownerSessionId) || teams.size() != 2
-            || mode.requiresCaptainSelection() != (captains != null)) {
-            throw new IllegalArgumentException("Invalid match ownership or teams");
-        }
-
-        if (captains != null
-            && (!slots.contains(captains.blueLeaderSlot()) || !slots.contains(captains.redLeaderSlot()))) {
-            throw new IllegalArgumentException("Invalid match captains");
-        }
-
-        var order = slots.stream().sorted().toList();
-        int first = order.indexOf(firstTurnSlot);
-        var rotated = new ArrayList<>(order.subList(first, order.size()));
-        rotated.addAll(order.subList(0, first));
-        return new MatchTurn(firstTurnSlot, 0, 0, 0, 100, rotated, 1, OptionalLong.empty());
     }
 
     public MatchId id() {
@@ -259,6 +232,15 @@ public final class Match {
             return false;
         }
 
+        var moving = movements.get(activeSession());
+        var actor = world.actors().get(activeSession());
+        var applied = prepared.actors().get(activeSession());
+
+        if (prepared.falls().containsKey(activeSession()) || actor.y() != applied.y()
+            || applied.dead()) {
+            movements.put(activeSession(), new MatchMovementState(moving.allowance(), Optional.empty()));
+        }
+
         world = prepared;
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
@@ -275,6 +257,7 @@ public final class Match {
         phase = MatchPhase.ACTION;
         phaseRevision++;
         deadlineNanos = now + timeoutNanos;
+        startMovement(now);
         delivered.clear();
         return true;
     }
@@ -392,6 +375,97 @@ public final class Match {
         var placement = world.actors().get(session);
         return actor != null && actor.slotIndex() == slot && placement.facing() == facing
             && placement.x() == x && placement.y() == y;
+    }
+
+    public Map<UUID, MatchMovementState> movements() {
+        return Map.copyOf(movements);
+    }
+
+    public Optional<MatchTurnClosure> closure() {
+        return closure;
+    }
+
+    private UUID activeSession() {
+        return participants.stream().filter(p -> p.slotIndex() == turn.activeSlot())
+            .findFirst().orElseThrow().sessionId();
+    }
+
+    private void startMovement(long now) {
+        int budget = definitions.weapons().getFirst().resourceMove();
+        movements.put(
+            activeSession(),
+            new MatchMovementState(
+                new MovementAllowance(turn.revision(), now, now, budget, 0, 20),
+                Optional.empty()
+            )
+        );
+    }
+
+    public void move(UUID session, int x, int y, int facing, long now) {
+        var actor = world.actors().get(session);
+        var next = MatchMovementRules.admit(
+            movements.get(session),
+            actor,
+            x,
+            y,
+            facing,
+            definitions.map(),
+            world.terrain(),
+            now
+        );
+
+        if (closure.isPresent() && next.fall().isPresent()
+            && next.fall().orElseThrow().endsAtNanos() - closure.orElseThrow().landingDeadlineNanos() > 0) {
+            throw new ScenarioWorldException("MOVEMENT_LANDING_DEADLINE_EXCEEDED");
+        }
+
+        if (actor.x() != x || actor.y() != y || actor.facing() != facing) {
+            world = world.placed(session, new MatchActorState(x, y, facing, actor.hp(), actor.energy()));
+        }
+
+        movements.put(session, next);
+    }
+
+    public void closeTurn(MatchTurnClosureReason reason, long now) {
+        long drain = reason == MatchTurnClosureReason.ACTION_TIMEOUT ? now + 500000000L : now;
+        long landing = reason == MatchTurnClosureReason.ACTION_TIMEOUT
+            ? drain + (3L * (definitions.map().height() + 200) + 3) * 1000000L
+            : movements.get(activeSession()).fall().map(MatchWalkingFall::endsAtNanos).orElse(now);
+        closure = Optional.of(new MatchTurnClosure(reason, turn.revision(), phaseRevision, drain, landing));
+        phase = MatchPhase.SETTLING;
+        phaseRevision++;
+        deadlineNanos = settleAt();
+    }
+
+    public long settleAt() {
+        long fall = movements.get(activeSession()).fall().map(MatchWalkingFall::endsAtNanos)
+            .orElse(closure.orElseThrow().stopDrainUntilNanos());
+        return Math.max(closure.orElseThrow().stopDrainUntilNanos(), fall);
+    }
+
+    public void settleMovement(long now) {
+        var session = activeSession();
+        var movement = movements.get(session);
+
+        if (movement.fall().isEmpty() || now - movement.fall().orElseThrow().endsAtNanos() < 0) {
+            return;
+        }
+
+        var actor = world.actors().get(session);
+        int end = movement.fall().orElseThrow().endY();
+        var support = MatchTerrainSupport.supportY(world.terrain(), actor.x(), end, definitions.map().height());
+        boolean dead = end > definitions.map().height() || support.isEmpty();
+        world = world.placed(
+            session,
+            new MatchActorState(
+                actor.x(),
+                support.orElse(end),
+                actor.facing(),
+                dead ? 0 : actor.hp(),
+                actor.energy()
+            )
+        );
+        movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }
 
     public boolean beginTermination() {

@@ -2,6 +2,7 @@ package taan.online.match.model;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.OptionalInt;
 
 final class MatchTerrainSupport {
     private static final int RADIUS = 13;
@@ -10,14 +11,18 @@ final class MatchTerrainSupport {
     }
 
     static int settledY(List<TerrainLayerDefinition> terrain, int x, int y, int mapHeight) {
+        return supportY(terrain, x, y, mapHeight).orElse(y);
+    }
+
+    static OptionalInt supportY(List<TerrainLayerDefinition> terrain, int x, int y, int mapHeight) {
         if (y > mapHeight) {
-            return y;
+            return OptionalInt.empty();
         }
 
         int central = below(terrain, x, y, mapHeight);
 
         if (central < 0) {
-            return y;
+            return OptionalInt.empty();
         }
 
         int[] heights = new int[RADIUS * 2 + 1];
@@ -31,7 +36,7 @@ final class MatchTerrainSupport {
             );
         }
 
-        return fit(heights);
+        return OptionalInt.of(fit(heights));
     }
 
     private static int below(List<TerrainLayerDefinition> terrain, int x, int y, int height) {
