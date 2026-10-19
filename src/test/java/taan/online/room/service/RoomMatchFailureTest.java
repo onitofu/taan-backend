@@ -59,7 +59,7 @@ class RoomMatchFailureTest {
             Set.of(0, 1, 6)
         );
         var runtime = MatchFixtures.registry(
-            new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons())
+            new MatchDefinitions(definitions.catalogVersion(), map, definitions.weapons(), MatchFixtures.cannonShot())
         );
 
         try (

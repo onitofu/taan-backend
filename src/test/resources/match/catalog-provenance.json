@@ -1,6 +1,11 @@
 {
   "fixtures": [
     {
+      "cannon-shots.csv": "cbdb906fc53c1a98d16db82eb2204f6343e4632bca8affe5489e3b03ce71dd49",
+      "original_file": "cannon-shots.csv",
+      "origin": "DERIVED"
+    },
+    {
       "catalog.properties": "3df5c7352e25a5ea41a3ec4464b020cd6120ac4c581b653be882327ceb937844",
       "original_file": "catalog.properties",
       "origin": "DERIVED"

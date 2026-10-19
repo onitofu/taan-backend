@@ -3,10 +3,16 @@ package taan.online.match.model;
 import java.util.List;
 import java.util.Objects;
 
-public record MatchDefinitions(String catalogVersion, MatchMapDefinition map, List<WeaponDefinition> weapons) {
+public record MatchDefinitions(
+    String catalogVersion,
+    MatchMapDefinition map,
+    List<WeaponDefinition> weapons,
+    CannonShotDefinition cannonShot
+) {
     public MatchDefinitions {
         Objects.requireNonNull(catalogVersion);
         Objects.requireNonNull(map);
+        Objects.requireNonNull(cannonShot);
         weapons = List.copyOf(weapons);
 
         if (!catalogVersion.matches("[0-9a-f]{64}") || weapons.size() != 12) {

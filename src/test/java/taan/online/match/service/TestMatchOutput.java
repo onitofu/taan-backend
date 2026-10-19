@@ -7,8 +7,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.AcceptedScenario;
 
 public final class TestMatchOutput implements MatchOutput {
+    public final List<AcceptedScenario> scenarios = new ArrayList<>();
     public final List<MatchSnapshot> starts = new ArrayList<>();
     public final List<MatchSnapshot> turns = new ArrayList<>();
     public CompletableFuture<Void> startDelivery = CompletableFuture.completedFuture(null);
@@ -40,6 +42,12 @@ public final class TestMatchOutput implements MatchOutput {
         }
 
         return turnDelivery;
+    }
+
+    @Override
+    public CompletionStage<Void> scenario(AcceptedScenario scenario) {
+        scenarios.add(scenario);
+        return delivery;
     }
 
     @Override

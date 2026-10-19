@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchFixtures;
 
 class MatchDefinitionsTest {
     @Test
@@ -112,20 +113,24 @@ class MatchDefinitionsTest {
         var spawns = new ArrayList<>(spawns());
         var weapons = new ArrayList<>(weapons());
         var map = new MatchMapDefinition(1, "jungle", 1300, 950, spawns, Set.of(0, 1, 6));
-        var definitions = new MatchDefinitions("a".repeat(64), map, weapons);
+        var definitions = new MatchDefinitions("a".repeat(64), map, weapons, MatchFixtures.cannonShot());
 
-        assertThrows(IllegalArgumentException.class, () -> new MatchDefinitions("bad", map, weapons));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShot())
+        );
         assertEquals(
             2,
             new MatchDefinitions(
                 "a".repeat(64),
                 new MatchMapDefinition(2, "other", 1300, 950, spawns.subList(0, 13), Set.of(6)),
-                weapons
+                weapons,
+                MatchFixtures.cannonShot()
             ).map().mapId()
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("a".repeat(64), map, weapons.subList(0, 11))
+            () -> new MatchDefinitions("a".repeat(64), map, weapons.subList(0, 11), MatchFixtures.cannonShot())
         );
 
         var reordered = new ArrayList<>(spawns);
@@ -137,7 +142,8 @@ class MatchDefinitionsTest {
             () -> new MatchDefinitions(
                 "a".repeat(64),
                 new MatchMapDefinition(1, "jungle", 1300, 950, reordered, Set.of(0, 1, 6)),
-                weapons
+                weapons,
+                MatchFixtures.cannonShot()
             )
         );
 
@@ -145,7 +151,10 @@ class MatchDefinitionsTest {
         var weapon = swapped.set(0, swapped.get(1));
         swapped.set(1, weapon);
 
-        assertThrows(IllegalArgumentException.class, () -> new MatchDefinitions("a".repeat(64), map, swapped));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new MatchDefinitions("a".repeat(64), map, swapped, MatchFixtures.cannonShot())
+        );
         spawns.clear();
         weapons.clear();
 

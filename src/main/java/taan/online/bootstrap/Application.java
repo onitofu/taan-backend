@@ -160,7 +160,8 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/match/catalog.properties"),
             Application.class.getResourceAsStream("/match/maps.csv"),
             Application.class.getResourceAsStream("/match/map-spawns.csv"),
-            Application.class.getResourceAsStream("/match/weapons.csv")
+            Application.class.getResourceAsStream("/match/weapons.csv"),
+            Application.class.getResourceAsStream("/match/cannon-shots.csv")
         );
         var roomDefinitions = new RoomDefinitionLoader();
         var maps = roomDefinitions.maps(matchDefinitions);

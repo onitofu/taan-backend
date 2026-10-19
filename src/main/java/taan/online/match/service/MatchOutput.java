@@ -4,11 +4,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.AcceptedScenario;
 
 public interface MatchOutput {
     CompletionStage<Void> start(MatchSnapshot snapshot);
 
     CompletionStage<Void> firstTurn(MatchSnapshot snapshot, UUID recipient);
+
+    CompletionStage<Void> scenario(AcceptedScenario scenario);
 
     CompletionStage<Void> end(MatchOutcome outcome);
 
