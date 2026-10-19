@@ -57,6 +57,23 @@ public record MatchResolutionState(Optional<MatchOutcome> pendingOutcome, Map<UU
         return new MatchResolutionState(Optional.of(new MatchOutcome(Set.of(winner), false, cause)), exits);
     }
 
+    public MatchResolutionState exclude(
+        Set<UUID> sessions,
+        List<MatchParticipant> roster,
+        MatchWorldState world,
+        int decisiveSlot
+    ) {
+        if (!roster.stream().map(MatchParticipant::sessionId).collect(Collectors.toSet()).containsAll(sessions)) {
+            throw new IllegalArgumentException("Unknown match participant");
+        }
+
+        var updated = new HashMap<>(exits);
+        sessions.forEach(session -> updated.put(session, MatchExitKind.DEPARTED));
+        var next = new MatchResolutionState(pendingOutcome, updated);
+        boolean nobody = roster.stream().allMatch(p -> updated.get(p.sessionId()) == MatchExitKind.DEPARTED);
+        return nobody ? next : next.evaluate(roster, world, decisiveSlot, MatchOutcomeCause.DEPARTURE);
+    }
+
     public MatchResolutionState exit(
         UUID session,
         MatchExitKind kind,

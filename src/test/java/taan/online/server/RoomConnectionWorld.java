@@ -20,6 +20,7 @@ import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
@@ -31,17 +32,34 @@ final class RoomConnectionWorld implements AutoCloseable {
     final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
     final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
     final TestMatchScheduler matchTimers = new TestMatchScheduler();
-    final MatchRegistry matches = MatchFixtures.registry(matchTimers);
-    final RoomRegistry rooms = new RoomRegistry(
-        channels,
-        new RoomIdPool(),
-        RoomScenario.maps(),
-        timers,
-        timers::nanoTime,
-        new Random(1),
-        matches
-    );
+    final MatchRegistry matches;
+    final RoomRegistry rooms;
     private final List<ConnectionContextTestHarness> clients = new ArrayList<>();
+
+    RoomConnectionWorld() {
+        this(MatchExecutionMode.PREVIEW);
+    }
+
+    RoomConnectionWorld(MatchExecutionMode mode) {
+        matches = MatchFixtures.registry(
+            MatchFixtures.catalog(),
+            matchTimers,
+            new Random(1),
+            (context, participant) -> true,
+            Runnable::run,
+            64,
+            mode
+        );
+        rooms = new RoomRegistry(
+            channels,
+            new RoomIdPool(),
+            RoomScenario.maps(),
+            timers,
+            timers::nanoTime,
+            new Random(1),
+            matches
+        );
+    }
 
     ConnectionContextTestHarness client(long accountId) {
         return client(accountId, null);

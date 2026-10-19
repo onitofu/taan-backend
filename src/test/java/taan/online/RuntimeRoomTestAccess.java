@@ -2,6 +2,7 @@ package taan.online;
 
 import java.util.Map;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.model.MatchSnapshot;
 import taan.online.bootstrap.Application;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
@@ -35,5 +36,10 @@ public final class RuntimeRoomTestAccess {
             var rooms = (Map<RoomId, Room>) field.get(registry);
             return RoomSnapshot.from(rooms.get(new RoomId(id)));
         }
+    }
+
+    public static MatchSnapshot matchSnapshot(Application app, int id) throws ReflectiveOperationException {
+        var rooms = rooms(app);
+        return matches(rooms).current(rooms.matchContext(room(rooms, id).ownerSessionId()).token()).orElseThrow();
     }
 }

@@ -96,8 +96,12 @@ class MatchBootstrapIntegrationTest {
                 assertEquals(0, first.energyGrant());
                 assertEquals(start.initialWindRaw(), first.windRawTenths());
                 assertEquals(0, first.boxAttemptBudget());
-                owner.sendTogether(new byte[]{0x6d, 0x08, 0x0b, 0x5e, 0, 0}, new SetPosCodec().encode(guestPose));
-                cash(owner);
+                var active = first.activeSlot() == 0 ? owner : guest;
+                var observer = first.activeSlot() == 0 ? guest : owner;
+                var position = first.activeSlot() == 0 ? guestPose : ownerPose;
+                active.sendTogether(new byte[]{0x6d, 0x08, 0x0b, 0x5e, 0, 0}, new SetPosCodec().encode(position));
+                assertEquals(position, new SetPosCodec().decode(observer.read()));
+                cash(active);
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
@@ -266,7 +270,7 @@ class MatchBootstrapIntegrationTest {
             try (var host = new CharacterTestClient(config.port()); var peer = new CharacterTestClient(config.port())) {
                 prepare(app, host, a, peer, b);
                 host.send(RoomFixtures.root("start-empty"));
-                var start = started(host);
+                started(host);
                 started(peer);
                 host.send(MatchFixtures.root("native-policy-v4-loading-1"));
                 peer.send(MatchFixtures.root("native-policy-v4-loading-0"));
@@ -279,16 +283,15 @@ class MatchBootstrapIntegrationTest {
                     int slot = turn.activeSlot();
                     var active = slot == 0 ? host : peer;
                     var observer = slot == 0 ? peer : host;
-                    var player = start.players().stream().filter(value -> value.slotIndex() == slot)
+                    var snapshot = RuntimeRoomTestAccess.matchSnapshot(app, 1);
+                    var member = snapshot.participants().stream().filter(value -> value.slotIndex() == slot)
                         .findFirst().orElseThrow();
-                    var spawn = MatchFixtures.definitions().map().spawns().stream()
-                        .filter(value -> value.rawX() == player.x() && value.rawY() == player.y())
-                        .findFirst().orElseThrow();
-                    int y = spawn.settledY() - (count == 0 ? 20 : 0);
-                    var pass = new PcGamePlayPassTurn(slot, spawn.settledX(), y, player.facing(), 0);
+                    var actor = snapshot.actors().get(member.sessionId());
+                    int y = actor.y() - (count == 0 ? 20 : 0);
+                    var pass = new PcGamePlayPassTurn(slot, actor.x(), y, actor.facing(), 0);
                     active.sendFragmented(new PassTurnCodec().encode(pass));
                     assertEquals(pass, new PassTurnCodec().decode(observer.read()));
-                    assertEquals(spawn.settledY(), new SetPosCodec().decode(observer.read()).y());
+                    assertEquals(actor.y(), new SetPosCodec().decode(observer.read()).y());
                     assertEquals(slot, new TurnEndCodec().decode(active.read()).slotIndex());
                     assertEquals(slot, new TurnEndCodec().decode(observer.read()).slotIndex());
                     turn = new TurnStartCodec().decode(host.read());
@@ -345,17 +348,11 @@ class MatchBootstrapIntegrationTest {
                         shooter.sendTogether(ack, ack);
                     } else {
                         if (index == 0) {
-                            var pose = start.players().stream().filter(player -> player.slotIndex() == active)
+                            var snapshot = RuntimeRoomTestAccess.matchSnapshot(app, 1);
+                            var member = snapshot.participants().stream().filter(value -> value.slotIndex() == active)
                                 .findFirst().orElseThrow();
-                            var spawn = MatchFixtures.definitions().map().spawns().stream()
-                                .filter(value -> value.rawX() == pose.x() && value.rawY() == pose.y())
-                                .findFirst().orElseThrow();
-                            var move = new PcGamePlayMove(
-                                active,
-                                spawn.settledX() + 1,
-                                spawn.settledY(),
-                                pose.facing()
-                            );
+                            var actor = snapshot.actors().get(member.sessionId());
+                            var move = new PcGamePlayMove(active, actor.x() + 1, actor.y(), actor.facing());
                             shooter.sendTogether(new MoveCodec().encode(move), root, ack);
                             assertEquals(move, new MoveCodec().decode(observer.read()));
                         } else {

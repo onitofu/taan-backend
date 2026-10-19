@@ -81,15 +81,17 @@ class MatchOutcomeDepartureTest {
     }
 
     @Test
-    void timesOutTheRemainingAckAsCancellationEvenAfterTheWinnerWasDecided() throws Exception {
+    void preservesTheCommittedWinnerWhenTheRemainingAckTimesOut() throws Exception {
         try (var f = new MatchOutcomeFixture()) {
             f.shot(10000, false, false);
+            var outcome = f.snapshot().resolution().pendingOutcome().orElseThrow();
             var pending = f.surrender(f.room.owner).toCompletableFuture();
             f.room.scenario.matchTimers.advanceSeconds(30);
             assertTrue(pending.isDone());
             assertTrue(f.matches.current(f.token).isEmpty());
-            assertTrue(f.owner.outcomes.getFirst().winningTeams().isEmpty());
-            assertEquals(MatchOutcomeCause.TECHNICAL_CANCELLATION, f.owner.outcomes.getFirst().cause());
+            assertEquals(outcome, f.owner.outcomes.getFirst());
+            assertEquals(List.of("SCENARIO_COMPLETION_TIMEOUT"), f.guest.closed);
+            assertEquals(0, f.guest.ends);
         }
     }
 

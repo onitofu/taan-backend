@@ -28,6 +28,7 @@ import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchEndReason;
 
@@ -45,6 +46,35 @@ final class MatchItemExecution {
         this.match = match;
         this.admission = admission;
         this.clock = clock;
+    }
+
+    static CompletionStage<Boolean> reportBonus(MatchRuntime runtime, ReportMatchBonusCommand command) {
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.reportBonus(command));
+    }
+
+    private boolean reportBonus(ReportMatchBonusCommand command) {
+        var context = command.context();
+
+        if (!owner.live() || !owner.admits(context) || match.resolution().exits().containsKey(context.sessionId())
+            || match.phase() != MatchPhase.ACTION && match.phase() != MatchPhase.SETTLING
+                && match.phase() != MatchPhase.COMPLETION) {
+            return false;
+        }
+
+        var participant = member(context);
+        boolean valid = participant.slotIndex() == command.slotIndex() && command.slotIndex() == command.commandSlot()
+            && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
+            && command.entityId() == -1L;
+        LOG.log(
+            MatchLogEvent.BONUS_IGNORED,
+            matchId(match.id().value()),
+            sessionId(context.sessionId()),
+            admissionId(context.admissionId()),
+            slotIndex(command.slotIndex()),
+            reason(valid ? "BONUS_DISABLED" : "INVALID_BONUS_CONTEXT")
+        );
+        return valid;
     }
 
     boolean activate(ActivateSpecialCommand command) {
