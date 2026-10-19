@@ -39,11 +39,7 @@ class MatchInventoryGuardTest {
                     source.palette3Id()
                 );
                 repository.stored = new InventoryState(
-                    List.of(
-                        new CharacterInventory(bag.id(), bag.kind(), List.of(item)),
-                        equipment,
-                        containers.get(2)
-                    )
+                    List.of(new CharacterInventory(bag.id(), bag.kind(), List.of(item)), equipment, containers.get(2))
                 );
                 var action = new MoveInventoryItemAction(
                     new SessionInventoryAccess(f.scenario.sessions),
@@ -54,7 +50,7 @@ class MatchInventoryGuardTest {
                 var token = f.scenario.rooms.reserveMatch(f.owner).token();
 
                 if (commit) {
-                    f.scenario.rooms.commitMatch(token);
+                    f.scenario.rooms.commitMatch(token).toCompletableFuture().join();
                 }
 
                 var frozen = f.scenario.matches.current(token).orElseThrow();

@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
 import taan.online.MatchFixtures;
-import taan.online.match.service.MatchRegistry;
 import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
@@ -37,6 +36,7 @@ import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.logging.WarningLogLimiter;
+import taan.online.match.service.MatchRegistry;
 import taan.online.network.FrameEncoder;
 import taan.online.room.service.RoomInventoryMoveContextAccess;
 import taan.online.room.service.RoomRegistry;
@@ -213,7 +213,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             lobbyOverride == null ? SelectionFixtures.lobby(sessions, channels, rooms) : lobbyOverride,
             InventoryFixtures.dispatcher(sessions, inventories, new RoomInventoryMoveContextAccess(rooms)),
             RoomScenario.dispatcher(sessions, channels, characters, rooms),
-            matchOverride == null ? MatchFixtures.dispatcher(rooms, matches) : matchOverride,
+            matchOverride == null ? MatchFixtures.dispatcher(matches) : matchOverride,
             64,
             1048576,
             16384

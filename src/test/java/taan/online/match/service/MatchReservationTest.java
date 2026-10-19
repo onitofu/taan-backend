@@ -81,13 +81,13 @@ class MatchReservationTest {
                     assertTrue(f.scenario.timers.tasks.isEmpty());
                     assertTrue(logs.text().contains("match.reserved"));
                     assertFalse(logs.text().contains("Hero"));
-                    assertEquals(COMMITTED, f.scenario.rooms.commitMatch(token).outcome());
-                    assertEquals(UNCHANGED, f.scenario.rooms.commitMatch(token).outcome());
+                    assertEquals(COMMITTED, f.scenario.rooms.commitMatch(token).toCompletableFuture().join().outcome());
+                    assertEquals(UNCHANGED, f.scenario.rooms.commitMatch(token).toCompletableFuture().join().outcome());
                     assertEquals(MatchPhase.LOADING, f.scenario.matches.current(token).orElseThrow().phase());
                     assertEquals(MatchPhase.RESERVED, match.phase());
                     assertEquals(ROLLED_BACK, f.scenario.rooms.rollbackMatch(token, "TEST_CANCELLED").outcome());
                     assertEquals(STALE, f.scenario.rooms.rollbackMatch(token, "REPLAY").outcome());
-                    assertEquals(STALE, f.scenario.rooms.commitMatch(token).outcome());
+                    assertEquals(STALE, f.scenario.rooms.commitMatch(token).toCompletableFuture().join().outcome());
                     assertTrue(f.scenario.matches.current(token).isEmpty());
                     assertEquals(RoomState.WAITING, f.scenario.rooms.current(f.owner).orElseThrow().state());
                     assertTrue(
@@ -117,7 +117,7 @@ class MatchReservationTest {
 
             assertEquals(room.id(), next.id());
             assertNotEquals(room.generation(), next.generation());
-            assertEquals(STALE, f.scenario.rooms.commitMatch(token).outcome());
+            assertEquals(STALE, f.scenario.rooms.commitMatch(token).toCompletableFuture().join().outcome());
             f.scenario.rooms.release(oldMembership, "LATE");
 
             assertEquals(next, f.scenario.rooms.current(f.owner).orElseThrow());
@@ -134,12 +134,12 @@ class MatchReservationTest {
                     new RoomMatchToken(token.roomId(), UUID.randomUUID(), token.matchId()),
                     new RoomMatchToken(token.roomId(), token.generation(), UUID.randomUUID())
                 }) {
-                    assertEquals(STALE, f.scenario.rooms.commitMatch(wrong).outcome());
+                    assertEquals(STALE, f.scenario.rooms.commitMatch(wrong).toCompletableFuture().join().outcome());
                     assertEquals(STALE, f.scenario.rooms.rollbackMatch(wrong, "FORGED").outcome());
                 }
 
                 if (commit) {
-                    f.scenario.rooms.commitMatch(token);
+                    f.scenario.rooms.commitMatch(token).toCompletableFuture().join();
                 }
 
                 f.scenario.rooms.close();

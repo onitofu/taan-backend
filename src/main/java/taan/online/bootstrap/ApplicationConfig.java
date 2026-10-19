@@ -33,7 +33,9 @@ public record ApplicationConfig(
     int playableTimeSeconds,
     int matchLoadingTimeoutSeconds,
     int matchPreviewTimeoutSeconds,
-    int matchReportsPerSecond
+    int matchReportsPerSecond,
+    int matchWorkerThreads,
+    int matchQueueCapacity
 ) {
     public static ApplicationConfig fromEnvironment(Map<String, String> environment) {
         String level = required(environment, "LOG_LEVEL");
@@ -72,7 +74,9 @@ public record ApplicationConfig(
             positive(environment, "BACKEND_PLAYABLE_TIME_BOOTSTRAP_SECONDS"),
             positive(environment, "BACKEND_MATCH_LOADING_TIMEOUT_SECONDS"),
             positive(environment, "BACKEND_MATCH_PREVIEW_TIMEOUT_SECONDS"),
-            positive(environment, "BACKEND_MATCH_REPORTS_PER_SECOND")
+            positive(environment, "BACKEND_MATCH_REPORTS_PER_SECOND"),
+            positive(environment, "BACKEND_MATCH_WORKER_THREADS"),
+            positive(environment, "BACKEND_MATCH_QUEUE_CAPACITY")
         );
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {

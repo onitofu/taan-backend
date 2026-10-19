@@ -99,7 +99,7 @@ class MatchRoomGuardTest {
                 var token = rooms.reserveMatch(f.owner).token();
 
                 if (commit) {
-                    rooms.commitMatch(token);
+                    rooms.commitMatch(token).toCompletableFuture().join();
                 }
 
                 assertEquals("NOT_OWNER", rooms.reserveMatch(f.players.get(1)).reason());
@@ -143,7 +143,7 @@ class MatchRoomGuardTest {
             var token = f.scenario.rooms.reserveMatch(f.owner).token();
             f.scenario.sessions.close(new SessionId(f.players.get(1)));
 
-            assertEquals("SESSION_CLOSED", f.scenario.rooms.commitMatch(token).reason());
+            assertEquals("SESSION_CLOSED", f.scenario.rooms.commitMatch(token).toCompletableFuture().join().reason());
             assertTrue(f.scenario.matches.current(token).isEmpty());
         }
 

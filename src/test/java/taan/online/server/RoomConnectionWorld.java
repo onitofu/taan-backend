@@ -8,18 +8,18 @@ import java.util.List;
 import java.util.Random;
 import taan.online.ChannelFixtures;
 import taan.online.CharacterFixtures;
+import taan.online.MatchFixtures;
 import taan.online.RoomEntryFixtures;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
-import taan.online.MatchFixtures;
-import taan.online.TestMatchScheduler;
-import taan.online.match.service.MatchRegistry;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
+import taan.online.TestMatchScheduler;
 import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.service.ChannelRegistry;
+import taan.online.match.service.MatchRegistry;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
@@ -90,6 +90,11 @@ final class RoomConnectionWorld implements AutoCloseable {
 
     void tick() {
         clients.forEach(client -> client.channel().runPendingTasks());
+    }
+
+    void drainOutputs() {
+        tick();
+        clients.forEach(RoomConnectionWorld::drain);
     }
 
     static byte[] read(ConnectionContextTestHarness client) {

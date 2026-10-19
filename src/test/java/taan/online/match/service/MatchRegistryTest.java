@@ -59,7 +59,7 @@ class MatchRegistryTest {
                 new RoomMatchToken(token.roomId(), token.generation(), UUID.randomUUID())
             )) {
                 assertTrue(registry.current(stale).isEmpty());
-                assertEquals(STALE, registry.commit(stale).outcome());
+                assertEquals(STALE, registry.commit(stale).toCompletableFuture().join().outcome());
                 assertEquals(STALE, registry.cancel(stale, "STALE").outcome());
             }
 

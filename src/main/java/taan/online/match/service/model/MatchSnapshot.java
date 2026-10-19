@@ -2,13 +2,15 @@ package taan.online.match.service.model;
 
 import java.util.List;
 import java.util.Map;
-import taan.online.match.model.MapSpawnDefinition;
+import java.util.Set;
 import java.util.UUID;
 import taan.online.match.model.Match;
+import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchTurn;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
@@ -28,13 +30,16 @@ public record MatchSnapshot(
     MatchPhase phase,
     int firstTurnSlot,
     int initialWindRaw,
-    Map<UUID, MapSpawnDefinition> placements,
+    Set<UUID> loadedSessions,
+    Map<UUID, MatchActorState> actors,
+    MatchTurn turn,
     long phaseRevision,
     long deadlineNanos
 ) {
     public MatchSnapshot {
         participants = List.copyOf(participants);
-        placements = Map.copyOf(placements);
+        loadedSessions = Set.copyOf(loadedSessions);
+        actors = Map.copyOf(actors);
     }
 
     public static MatchSnapshot from(Match match) {
@@ -52,7 +57,9 @@ public record MatchSnapshot(
             match.phase(),
             match.firstTurnSlot(),
             match.initialWindRaw(),
-            match.placements(),
+            match.loadedSessions(),
+            match.actors(),
+            match.turn(),
             match.phaseRevision(),
             match.deadlineNanos()
         );

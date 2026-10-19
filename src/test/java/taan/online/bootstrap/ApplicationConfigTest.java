@@ -13,6 +13,8 @@ class ApplicationConfigTest {
         var config = ApplicationConfig.fromEnvironment(TestFixtures.environment());
 
         assertEquals(2181, config.port());
+        assertEquals(2, config.matchWorkerThreads());
+        assertEquals(64, config.matchQueueCapacity());
         assertEquals(5432, config.databasePort());
         assertEquals(16384, config.maxFrameBytes());
         assertEquals(8, config.maxPendingRequests());
@@ -54,6 +56,26 @@ class ApplicationConfigTest {
         environment.put("LOG_LEVEL", "invalid");
 
         assertThrows(IllegalArgumentException.class, () -> ApplicationConfig.fromEnvironment(environment));
+    }
+
+    @Test
+    void requiresPositiveMatchExecutionLimits() {
+        for (String setting : new String[]{"BACKEND_MATCH_WORKER_THREADS", "BACKEND_MATCH_QUEUE_CAPACITY"}) {
+            var environment = TestFixtures.environment();
+            environment.remove(setting);
+
+            assertThrows(InvalidConfigurationException.class, () -> ApplicationConfig.fromEnvironment(environment));
+
+            for (String value : new String[]{"0", "-1", "invalid"}) {
+                environment.put(setting, value);
+                var failure = assertThrows(
+                    InvalidConfigurationException.class,
+                    () -> ApplicationConfig.fromEnvironment(environment)
+                );
+
+                assertEquals(setting, failure.setting());
+            }
+        }
     }
 
     @Test

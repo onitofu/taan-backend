@@ -1,10 +1,12 @@
 package taan.online.room.service;
 
 import java.util.UUID;
-import taan.online.room.service.model.RoomMatchProgressToken;
+import taan.online.room.service.model.RoomMatchEndReason;
+import taan.online.room.service.model.RoomMatchTerminationResult;
+import taan.online.room.service.model.RoomMatchToken;
 
 public interface RoomMatchCallbacks {
-    boolean deliveryCompleted(RoomMatchProgressToken token, UUID recipient, boolean success);
+    boolean startCurrent(RoomMatchToken token);
 
-    void deadlineExpired(RoomMatchProgressToken token);
+    RoomMatchTerminationResult terminateMatch(RoomMatchToken token, RoomMatchEndReason reason, UUID requester);
 }

@@ -9,10 +9,10 @@ import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomIdPool;
-import taan.online.room.service.model.RoomMembership;
-import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.LeaveRoomResult;
+import taan.online.room.service.model.RoomLeaveReceipt;
+import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomSnapshot;
 
 final class RoomDepartureOperations {
@@ -100,6 +100,11 @@ final class RoomDepartureOperations {
 
         var room = rooms.get(expected.roomId());
         matches.departed(room, expected.sessionId(), closeReason);
+
+        if (matches.deferDeparture(room, () -> remove(expected, closeReason))) {
+            return;
+        }
+
         starts.cancel(room, closeReason);
         var previous = RoomSnapshot.from(room);
         var removed = room.leave(expected.sessionId()).orElseThrow();

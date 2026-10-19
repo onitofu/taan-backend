@@ -3,34 +3,32 @@ package taan.online.match.controller;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import taan.online.match.protocol.codec.EndScenarioCodec;
 import taan.online.match.protocol.codec.GiveUpCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
-import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.ReportEnemiesCodec;
-import taan.online.match.protocol.codec.EndScenarioCodec;
+import taan.online.match.protocol.codec.ResultSelectionCodec;
+import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.UnsupportedGameplayCodec;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PcGamePlayGiveUp;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
-import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.match.service.ConfirmMatchLoadingAction;
-import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ReportMatchEnemiesAction;
-import taan.online.room.service.model.RoomMatchEndReason;
-import taan.online.match.protocol.codec.ResultSelectionCodec;
-import taan.online.match.protocol.packet.PcGamePlayGiveUp;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.view.ProtocolMatchView;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.PacketOutput;
-import taan.online.room.service.RoomMatchAccess;
+import taan.online.room.service.model.RoomMatchEndReason;
 
 public final class MatchPacketHandler {
-    private final RoomMatchAccess rooms;
     private final MatchRegistry matches;
     private final TerminateMatchAction terminate;
     private final ConsumeMatchResultAction consume;
@@ -39,7 +37,6 @@ public final class MatchPacketHandler {
     private final ReportMatchEnemiesAction reports;
 
     public MatchPacketHandler(
-        RoomMatchAccess rooms,
         MatchRegistry matches,
         TerminateMatchAction terminate,
         ConsumeMatchResultAction consume,
@@ -47,7 +44,6 @@ public final class MatchPacketHandler {
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports
     ) {
-        this.rooms = rooms;
         this.matches = matches;
         this.terminate = terminate;
         this.consume = consume;
@@ -65,7 +61,8 @@ public final class MatchPacketHandler {
     }
 
     public MatchRequestContext capture(UUID id) {
-        return new MatchRequestContext(rooms.matchContext(id));
+        var context = matches.context(id);
+        return new MatchRequestContext(context == null ? null : context.roomContext());
     }
 
     public CompletionStage<Void> handle(UUID id, int type, byte[] root, MatchRequestContext request) {
@@ -73,7 +70,7 @@ public final class MatchPacketHandler {
 
         if (type == PcGamePlayGiveUp.TYPE_ID) {
             new GiveUpCodec().decode(root);
-            return terminate.execute(id, context).delivery();
+            return terminate.execute(id, context).thenCompose(result -> result.delivery());
         }
 
         if (type == PcGamePlayLoadingDone.TYPE_ID) {
@@ -89,14 +86,13 @@ public final class MatchPacketHandler {
 
         if (type == PcGamePlaySetPos.TYPE_ID) {
             var message = new SetPosCodec().decode(root);
-            position.execute(id, context, message.slotIndex(), message.x(), message.y(), message.facing());
-            return CompletableFuture.completedFuture(null);
+            return position.execute(id, context, message.slotIndex(), message.x(), message.y(), message.facing())
+                .thenApply(ignored -> null);
         }
 
         if (type == PqGameSessionReportEnemies.TYPE_ID) {
             new ReportEnemiesCodec().decode(root);
-            reports.execute(id, context);
-            return CompletableFuture.completedFuture(null);
+            return reports.execute(id, context).thenApply(ignored -> null);
         }
 
         if (type == PcGamePlayEndScenario.TYPE_ID) {
@@ -106,7 +102,8 @@ public final class MatchPacketHandler {
 
         if (UnsupportedGameplayCodec.accepts(type)) {
             new UnsupportedGameplayCodec().decode(type, root);
-            return terminate.execute(id, context, RoomMatchEndReason.UNSUPPORTED_GAMEPLAY).delivery();
+            return terminate.execute(id, context, RoomMatchEndReason.UNSUPPORTED_GAMEPLAY)
+                .thenCompose(result -> result.delivery());
         }
 
         var codec = new ResultSelectionCodec();

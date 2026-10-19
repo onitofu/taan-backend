@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 import taan.online.channel.service.ChannelRegistry;
@@ -40,12 +41,12 @@ import taan.online.room.service.model.LeaveRoomResult;
 import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomListing;
-import taan.online.room.service.model.RoomMembership;
-import taan.online.room.service.model.RoomMatchReservationResult;
-import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
+import taan.online.room.service.model.RoomMatchReservationResult;
 import taan.online.room.service.model.RoomMatchTerminationResult;
+import taan.online.room.service.model.RoomMatchToken;
+import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomSnapshot;
@@ -114,7 +115,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             this::changed,
             new AdvanceCaptainSelectionAction(this)
         );
-        matches = new RoomMatchOperations(channels, rooms, memberships, starts, lifecycle, this::changed);
+        matches = new RoomMatchOperations(this, channels, rooms, memberships, starts, lifecycle, this::changed);
         matchCoordinator = new RoomMatchCoordinator(this, matches, starts, () -> phase, this::controlRejection);
         departures = new RoomDepartureOperations(
             channels,
@@ -128,7 +129,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         );
     }
 
-    public RoomMatchAccess matchAccess() {
+    public RoomMatchCallbacks matchCallbacks() {
         return matchCoordinator;
     }
 
@@ -136,7 +137,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         return matches.reserve(id, controlRejection(id));
     }
 
-    public synchronized RoomMatchReservationResult commitMatch(RoomMatchToken token) {
+    public synchronized CompletionStage<RoomMatchReservationResult> commitMatch(RoomMatchToken token) {
         return matches.commit(token);
     }
 

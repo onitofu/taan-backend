@@ -9,39 +9,47 @@ import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.roomMode;
 import static taan.online.logging.LogField.sessionId;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.function.LongSupplier;
-import java.util.random.RandomGenerator;
-import taan.online.logging.WarningLogLimiter;
-import taan.online.logging.WarningEvent;
-import taan.online.match.service.model.MatchBootstrapSettings;
-import taan.online.room.service.RoomMatchCallbacks;
-import taan.online.room.service.model.RoomMatchProgressToken;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
+import java.util.random.RandomGenerator;
 import taan.online.logging.EventLogger;
+import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.ConfirmMatchLoadingCommand;
+import taan.online.match.service.model.ConfirmMatchPositionCommand;
+import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchCommand;
+import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchResultReceipt;
+import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.StartMatchCommand;
+import taan.online.match.service.model.TerminateMatchCommand;
+import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.RoomMatchLifecycle;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchDraft;
 import taan.online.room.service.model.RoomMatchEndReason;
-import taan.online.room.service.model.RoomMatchTermination;
-import taan.online.room.service.model.RoomMatchTerminationMode;
-import taan.online.room.service.model.RoomMembership;
+import taan.online.room.service.model.RoomMatchProgressToken;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchReservationResult;
+import taan.online.room.service.model.RoomMatchTermination;
+import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchToken;
+import taan.online.room.service.model.RoomMembership;
 
 public final class MatchRegistry implements RoomMatchLifecycle {
     private static final EventLogger LOG = EventLogger.forClass(MatchRegistry.class);
@@ -53,10 +61,14 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     private final LongSupplier clock;
     private final RandomGenerator random;
     private final WarningLogLimiter warnings;
-    private final Map<MatchId, MatchRuntime> matches = new HashMap<>();
-    private final Map<UUID, MatchSubscription> subscriptions = new HashMap<>();
-    private final Map<UUID, MatchResultReceipt> receipts = new HashMap<>();
-    private final Map<RoomMatchToken, MatchTerminationDelivery> terminations = new HashMap<>();
+    private final MatchCommandExecutor executor;
+    private final int capacity;
+    private final MatchAdmissionAccess access;
+    private final Map<UUID, MatchRuntime> sessions = new ConcurrentHashMap<>();
+    private final Map<MatchId, MatchRuntime> matches = new ConcurrentHashMap<>();
+    private final Map<UUID, MatchSubscription> subscriptions = new ConcurrentHashMap<>();
+    private final Map<UUID, MatchResultReceipt> receipts = new ConcurrentHashMap<>();
+    private final Map<RoomMatchToken, MatchTerminationDispatch> terminations = new ConcurrentHashMap<>();
 
     public MatchRegistry(
         MatchDefinitions definitions,
@@ -64,7 +76,10 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         MatchScheduler scheduler,
         LongSupplier clock,
         RandomGenerator random,
-        WarningLogLimiter warnings
+        WarningLogLimiter warnings,
+        MatchCommandExecutor executor,
+        int capacity,
+        MatchAdmissionAccess access
     ) {
         this.definitions = Objects.requireNonNull(definitions);
         preparation = new MatchPreparation(definitions);
@@ -73,6 +88,9 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         this.clock = clock;
         this.random = random;
         this.warnings = warnings;
+        this.executor = executor;
+        this.capacity = capacity;
+        this.access = access;
     }
 
     @Override
@@ -86,7 +104,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
         String rejection = preparation.rejection(
             draft,
-            matches.values().stream().map(value -> MatchSnapshot.from(value.match)).toList()
+            matches.values().stream().map(value -> value.snapshot()).toList()
         );
 
         if (rejection != null) {
@@ -109,7 +127,9 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 draft.captains(),
                 participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex()
             );
-            matches.put(match.id(), new MatchRuntime(match));
+            var runtime = new MatchRuntime(match, settings, scheduler, clock, warnings, executor, capacity, access);
+            matches.put(match.id(), runtime);
+            participants.forEach(value -> sessions.put(value.sessionId(), runtime));
             participants.forEach(value -> receipts.remove(value.sessionId()));
         } catch (IllegalArgumentException failure) {
             log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
@@ -130,265 +150,183 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     }
 
     @Override
-    public synchronized RoomMatchReservationResult commit(RoomMatchToken token) {
-        var match = find(token);
+    public CompletionStage<RoomMatchReservationResult> commit(RoomMatchToken token) {
+        var runtime = find(token);
 
-        if (match == null) {
-            return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
+        if (runtime == null) {
+            return CompletableFuture.completedFuture(result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH"));
         }
 
-        if (!match.commit(clock.getAsLong(), settings.loadingTimeoutNanos())) {
-            return result(RoomMatchReservationOutcome.UNCHANGED, token, "ALREADY_COMMITTED");
-        }
-
-        log(MatchLogEvent.LOADING, token, "LOADING");
-        return result(RoomMatchReservationOutcome.COMMITTED, token, "LOADING");
+        return runtime.submit(new StartMatchCommand(token)).thenApply(
+            accepted -> result(
+                accepted ? RoomMatchReservationOutcome.COMMITTED : RoomMatchReservationOutcome.UNCHANGED,
+                token,
+                accepted ? "LOADING" : "ALREADY_COMMITTED"
+            )
+        );
     }
 
     @Override
-    public synchronized RoomMatchReservationResult cancel(RoomMatchToken token, String closeReason) {
-        var match = find(token);
+    public RoomMatchReservationResult cancel(RoomMatchToken token, String closeReason) {
+        var runtime = find(token);
 
-        if (match == null) {
-            terminations.remove(token);
+        if (runtime == null) {
+            var pending = terminations.remove(token);
+
+            if (pending != null) {
+                pending.runtime().finish(() -> { });
+            }
+
             receipts.values().removeIf(value -> value.token().equals(token));
             return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
         }
 
-        var previous = match.phase();
-        match.cancel();
-        matches.remove(match.id());
-        scheduler.cancel(match.id().value());
+        var snapshot = runtime.stop();
+
+        if (snapshot == null) {
+            return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
+        }
+
+        matches.remove(snapshot.id(), runtime);
+        snapshot.participants().forEach(value -> sessions.remove(value.sessionId(), runtime));
+        runtime.finish(() -> { });
         log(
-            previous == MatchPhase.RESERVED ? MatchLogEvent.RESERVATION_ROLLED_BACK : MatchLogEvent.CANCELLED,
+            snapshot.phase() == MatchPhase.RESERVED ? MatchLogEvent.RESERVATION_ROLLED_BACK : MatchLogEvent.CANCELLED,
             token,
             closeReason
         );
         return result(RoomMatchReservationOutcome.ROLLED_BACK, token, closeReason);
     }
 
-    public synchronized void subscribe(UUID sessionId, MatchOutput output) {
-        subscriptions.putIfAbsent(sessionId, new MatchSubscription(sessionId, output));
+    public void subscribe(UUID id, MatchOutput output) {
+        subscriptions.putIfAbsent(id, new MatchSubscription(id, output));
     }
 
-    public synchronized void unsubscribe(UUID sessionId) {
-        subscriptions.remove(sessionId);
-        receipts.remove(sessionId);
-    }
-
-    @Override
-    public synchronized boolean activate(RoomMatchToken token, RoomMatchCallbacks callbacks) {
-        var match = find(token);
-
-        if (match == null || match.phase() != MatchPhase.RESERVED) {
-            return false;
+    public void unsubscribe(UUID id) {
+        if (id == null) {
+            return;
         }
 
-        var runtime = matches.get(match.id());
-        var recipients = match.participants().stream().map(value -> subscriptions.get(value.sessionId()))
-            .filter(Objects::nonNull).toList();
-
-        if (recipients.size() != match.participants().size()) {
-            return false;
-        }
-
-        runtime.callbacks = Objects.requireNonNull(callbacks);
-        runtime.recipients = recipients;
-        return true;
+        subscriptions.remove(id);
+        receipts.remove(id);
     }
 
     @Override
-    public synchronized RoomMatchProgressToken progress(RoomMatchToken token) {
-        var match = find(token);
-        return match == null ? null : progress(match);
+    public boolean activate(RoomMatchToken token, RoomMatchCallbacks callbacks) {
+        var runtime = find(token);
+        return runtime != null && runtime.activate(
+            Objects.requireNonNull(callbacks),
+            runtime.snapshot().participants().stream().map(p -> subscriptions.get(p.sessionId()))
+                .filter(Objects::nonNull).toList()
+        );
+    }
+
+    public RoomMatchProgressToken progress(RoomMatchToken token) {
+        var runtime = find(token);
+        return runtime == null ? null : runtime.progress();
     }
 
     @Override
-    public CompletionStage<Void> publish(RoomMatchProgressToken expected, UUID requester) {
-        MatchBootstrapDelivery delivery;
-        MatchRuntime runtime;
+    public CompletionStage<Void> publish(RoomMatchToken token) {
+        var runtime = find(token);
+        return runtime == null ? CompletableFuture.completedFuture(null) : runtime.delivery();
+    }
 
-        synchronized (this) {
-            var match = currentProgress(expected);
+    public MatchCommandContext context(UUID session) {
+        var runtime = sessions.get(session);
 
-            if (match == null || match.phase() == MatchPhase.RESERVED) {
-                return CompletableFuture.completedFuture(null);
-            }
-
-            runtime = matches.get(match.id());
-
-            if (runtime.callbacks == null || runtime.publishedRevision == expected.revision()) {
-                return CompletableFuture.completedFuture(null);
-            }
-
-            runtime.publishedRevision = expected.revision();
-            delivery = new MatchBootstrapDelivery(
-                MatchSnapshot.from(match),
-                runtime.recipients,
-                runtime.callbacks,
-                scheduler,
-                expected,
-                warnings
+        if (runtime != null) {
+            var snapshot = runtime.snapshot();
+            var participant = snapshot.participants().stream().filter(p -> p.sessionId().equals(session))
+                .findFirst().orElseThrow();
+            var context = new MatchCommandContext(
+                snapshot.id(),
+                snapshot.roomId(),
+                snapshot.roomGeneration(),
+                snapshot.channelId(),
+                session,
+                participant.admissionId()
             );
+            return runtime.admits(context) ? context : null;
         }
 
-        try {
-            return delivery.dispatch(requester);
-        } catch (RuntimeException failure) {
-            synchronized (this) {
-                runtime.publishedRevision = -1;
-            }
-
-            throw failure;
-        }
-    }
-
-    @Override
-    public synchronized RoomMatchProgressToken loadingDone(RoomMatchContext context, int slot, int x, int y) {
-        var runtime = actor(context);
-
-        if (runtime == null) {
-            return null;
-        }
-
-        String outcome = runtime.match.loadingDone(context.membership().sessionId(), slot, x, y);
-
-        if (!outcome.equals("ACCEPTED") && !outcome.equals("UNCHANGED")) {
-            warnings.warn(WarningEvent.FRAME_REJECTED, outcome);
-            return null;
-        }
-
-        log(MatchLogEvent.LOADING_ACK, context.token(), outcome);
-        return runtime.match.beginSynchronization() ? progress(runtime.match) : null;
-    }
-
-    @Override
-    public synchronized RoomMatchProgressToken deliveryCompleted(RoomMatchProgressToken token, UUID recipient) {
-        var match = currentProgress(token);
-
-        if (match == null || !match.deliveryCompleted(recipient)) {
-            return null;
-        }
-
-        if (match.beginSynchronization()) {
-            return progress(match);
-        }
-
-        if (match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())) {
-            log(MatchLogEvent.STARTED, token.match(), "PREVIEW");
-            return progress(match);
-        }
-
-        return null;
-    }
-
-    @Override
-    public synchronized boolean confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
-        var runtime = actor(context);
-        boolean valid = runtime != null
-            && runtime.match.confirmsPosition(context.membership().sessionId(), slot, x, y, facing);
-
-        if (valid) {
-            log(MatchLogEvent.POSITION_CONFIRMED, context.token(), "UNCHANGED");
-        } else {
-            warnings.warn(WarningEvent.FRAME_REJECTED, "INVALID_POSITION_CONFIRMATION");
-        }
-
-        return valid;
-    }
-
-    @Override
-    public synchronized boolean reportEnemies(RoomMatchContext context) {
-        var runtime = actor(context);
-
-        if (runtime == null || runtime.match.phase() == MatchPhase.RESERVED) {
-            return false;
-        }
-
-        long now = clock.getAsLong();
-        var budget = runtime.reportBudgets.computeIfAbsent(
-            context.membership().sessionId(),
-            ignored -> new MatchReportBudget(now)
-        );
-
-        if (!budget.accept(now, settings.reportsPerSecond())) {
-            warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_REPORT_RATE_EXCEEDED");
-            return false;
-        }
-
-        return true;
-    }
-
-    @Override
-    public synchronized RoomMatchEndReason timeoutReason(RoomMatchProgressToken token) {
-        var match = currentProgress(token);
-
-        if (match == null || !match.expired(clock.getAsLong())) {
-            return null;
-        }
-
-        var reason = match.phase() == MatchPhase.PREVIEW
-            ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
-        warnings.warn(WarningEvent.LIMIT_EXCEEDED, reason.name());
-        return reason;
-    }
-
-    private MatchRuntime actor(RoomMatchContext context) {
-        var match = find(context.token());
-
-        if (match == null || match.channelId() != context.membership().channelId()) {
-            return null;
-        }
-
-        boolean admitted = match.participants().stream().anyMatch(
-            value ->
-                value.sessionId().equals(context.membership().sessionId())
-                    && value.admissionId().equals(context.membership().admissionId())
-        );
-        return admitted ? matches.get(match.id()) : null;
-    }
-
-    private Match currentProgress(RoomMatchProgressToken token) {
-        var match = find(token.match());
-        return match != null && match.phaseRevision() == token.revision() ? match : null;
-    }
-
-    private static RoomMatchProgressToken progress(Match match) {
-        return new RoomMatchProgressToken(
-            new RoomMatchToken(match.roomId(), match.roomGeneration(), match.id().value()),
-            match.phaseRevision()
+        var receipt = receipts.get(session);
+        return receipt == null ? null : MatchCommandContext.from(
+            new RoomMatchContext(receipt.membership(), receipt.token())
         );
     }
 
+    public CompletionStage<RoomMatchTerminationResult> terminate(RoomMatchContext context, RoomMatchEndReason reason) {
+        var runtime = find(context.token());
+        return runtime == null ? CompletableFuture.completedFuture(RoomMatchTerminationResult.ignored())
+            : runtime.submit(new TerminateMatchCommand(MatchCommandContext.from(context), reason)).thenApply(
+                accepted -> accepted ? runtime.termination() : RoomMatchTerminationResult.ignored()
+            );
+    }
+
+    public CompletionStage<Boolean> submit(MatchCommand command) {
+        var runtime = find(command.token());
+        return runtime == null ? CompletableFuture.completedFuture(false) : runtime.submit(command);
+    }
+
+    public CompletionStage<RoomMatchProgressToken> loadingDone(RoomMatchContext context, int slot, int x, int y) {
+        if (context == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        var runtime = find(context.token());
+        var previous = progress(context.token());
+        return submit(new ConfirmMatchLoadingCommand(MatchCommandContext.from(context), slot, x, y)).thenApply(
+            accepted -> accepted && !Objects.equals(previous, runtime.progress())
+                ? runtime.progress() : null
+        );
+    }
+
+    public CompletionStage<RoomMatchProgressToken> deliveryCompleted(RoomMatchProgressToken token, UUID recipient) {
+        var runtime = find(token.match());
+        return runtime == null ? CompletableFuture.completedFuture(null)
+            : runtime.deliveryCompleted(token, recipient, true).thenApply(
+                accepted -> accepted && !Objects.equals(token, runtime.progress()) ? runtime.progress() : null
+            );
+    }
+
+    public CompletionStage<Boolean> confirmPosition(RoomMatchContext context, int slot, int x, int y, int facing) {
+        return context == null ? CompletableFuture.completedFuture(false)
+            : submit(new ConfirmMatchPositionCommand(MatchCommandContext.from(context), slot, x, y, facing));
+    }
+
+    public CompletionStage<Boolean> reportEnemies(RoomMatchContext context) {
+        return context == null ? CompletableFuture.completedFuture(false)
+            : submit(new ReportMatchEnemiesCommand(MatchCommandContext.from(context)));
+    }
+
     @Override
-    public synchronized RoomMatchTermination prepareTermination(
+    public RoomMatchTermination prepareTermination(
         RoomMatchToken token,
         RoomMatchEndReason closeReason,
         UUID departing
     ) {
-        var match = find(token);
+        var runtime = find(token);
+        var snapshot = runtime == null ? null : runtime.stop();
 
-        if (match == null) {
+        if (snapshot == null) {
             log(MatchLogEvent.TERMINATION_IGNORED, token, "STALE_MATCH");
             return null;
         }
 
-        var previous = match.phase();
-        var runtime = matches.get(match.id());
         var mode = MatchTerminationDelivery.mode(
-            previous,
+            snapshot.phase(),
             closeReason,
-            previous == MatchPhase.LOADING && runtime.callbacks != null && runtime.publishedRevision < 0
+            snapshot.phase() == MatchPhase.LOADING && runtime.unpublished()
         );
-        match.beginTermination();
-        var recipients = match.participants().stream()
+        var recipients = snapshot.participants().stream()
             .filter(value -> mode != RoomMatchTerminationMode.RETURN_TO_ROOM || !value.sessionId().equals(departing))
             .map(
                 value -> new RoomMembership(
                     value.sessionId(),
-                    match.roomId(),
-                    match.roomGeneration(),
-                    match.channelId(),
+                    snapshot.roomId(),
+                    snapshot.roomGeneration(),
+                    snapshot.channelId(),
                     value.admissionId()
                 )
             ).toList();
@@ -396,66 +334,80 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         var outputs = mode == RoomMatchTerminationMode.ROLLBACK ? List.<MatchSubscription>of() : recipients.stream()
             .map(value -> subscriptions.get(value.sessionId())).filter(Objects::nonNull).toList();
         var exiting = mode == RoomMatchTerminationMode.RETURN_TO_ROOM && closeReason == RoomMatchEndReason.ROOM_LEAVE
-            ? subscriptions.get(departing) : null;
-        terminations.put(token, new MatchTerminationDelivery(terminal, outputs, exiting));
+            ? departing == null ? null : subscriptions.get(departing) : null;
+        terminations.put(
+            token,
+            new MatchTerminationDispatch(runtime, new MatchTerminationDelivery(terminal, outputs, exiting))
+        );
 
         if (mode == RoomMatchTerminationMode.RETURN_TO_ROOM) {
             recipients.forEach(value -> receipts.put(value.sessionId(), new MatchResultReceipt(token, value)));
         }
 
-        matches.remove(match.id());
-        scheduler.cancel(match.id().value());
-        match.cancel();
+        matches.remove(snapshot.id(), runtime);
+        snapshot.participants().forEach(value -> sessions.remove(value.sessionId(), runtime));
         log(MatchLogEvent.CANCELLED, token, closeReason.name());
         return terminal;
     }
 
     @Override
-    public CompletionStage<Void> dispatchTermination(RoomMatchTermination terminal, UUID requester) {
-        MatchTerminationDelivery delivery;
+    public CompletionStage<Void> dispatchTermination(RoomMatchTermination terminal, UUID requester, Runnable queued) {
+        var claimed = new AtomicReference<MatchTerminationDispatch>();
+        terminations.computeIfPresent(
+            terminal.token(),
+            (token, pending) -> {
+                if (!pending.delivery().terminal().equals(terminal)) {
+                    return pending;
+                }
 
-        synchronized (this) {
-            delivery = terminations.get(terminal.token());
-
-            if (delivery == null || !delivery.terminal().equals(terminal)) {
-                return CompletableFuture.completedFuture(null);
+                claimed.set(pending);
+                return null;
             }
+        );
+        var pending = claimed.get();
 
-            terminations.remove(terminal.token());
+        if (pending == null) {
+            return CompletableFuture.completedFuture(null);
         }
 
-        return delivery.dispatch(requester);
+        var sending = new CompletableFuture<CompletionStage<Void>>();
+        return pending.runtime().finish(
+            () -> {
+                var delivery = pending.delivery().dispatch(requester);
+                queued.run();
+                sending.complete(delivery);
+            }
+        ).thenCompose(ignored -> sending.thenCompose(value -> value));
     }
 
     @Override
-    public synchronized RoomMatchToken resultToken(RoomMembership membership) {
+    public RoomMatchToken resultToken(RoomMembership membership) {
         var receipt = receipts.get(membership.sessionId());
         return receipt != null && receipt.membership().equals(membership) ? receipt.token() : null;
     }
 
-    public synchronized boolean consumeResult(RoomMatchContext context) {
+    public boolean consumeResult(RoomMatchContext context) {
         return context.token().equals(resultToken(context.membership()));
     }
 
     @Override
-    public synchronized void release(RoomMembership membership) {
-        var receipt = receipts.get(membership.sessionId());
-
-        if (receipt != null && receipt.membership().equals(membership)) {
-            receipts.remove(membership.sessionId());
-        }
+    public void release(RoomMembership membership) {
+        receipts.computeIfPresent(
+            membership.sessionId(),
+            (id, value) -> value.membership().equals(membership) ? null : value
+        );
     }
 
-    public synchronized Optional<MatchSnapshot> current(RoomMatchToken token) {
-        return Optional.ofNullable(find(token)).map(MatchSnapshot::from);
+    public Optional<MatchSnapshot> current(RoomMatchToken token) {
+        var runtime = find(token);
+        return runtime == null ? Optional.empty() : Optional.of(runtime.snapshot());
     }
 
-    private Match find(RoomMatchToken token) {
+    private MatchRuntime find(RoomMatchToken token) {
         var runtime = matches.get(new MatchId(token.matchId()));
-        var match = runtime == null ? null : runtime.match;
-        return match != null && match.roomId().equals(token.roomId())
-            && match.roomGeneration().equals(token.generation())
-            ? match : null;
+        var snapshot = runtime == null ? null : runtime.snapshot();
+        return snapshot != null && snapshot.roomId().equals(token.roomId())
+            && snapshot.roomGeneration().equals(token.generation()) ? runtime : null;
     }
 
     private static RoomMatchReservationResult result(

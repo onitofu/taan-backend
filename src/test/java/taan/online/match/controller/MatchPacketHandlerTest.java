@@ -54,26 +54,23 @@ class MatchPacketHandlerTest {
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, before);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());
-            assertFalse(
-                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(
-                    id,
+            assertFalse(new ConsumeMatchResultAction(f.room.scenario.matches).execute(id, ended.roomContext()));
+            assertNull(
+                new TerminateMatchAction(f.room.scenario.matches).execute(
+                    UUID.randomUUID(),
                     ended.roomContext()
-                )
+                ).toCompletableFuture().join().termination()
             );
             assertNull(
-                new TerminateMatchAction(rooms.matchAccess()).execute(
-                    UUID.randomUUID(),
-                    ended.roomContext()
-                ).termination()
+                new TerminateMatchAction(f.room.scenario.matches).execute(
+                    id,
+                    null
+                ).toCompletableFuture().join().termination()
             );
-            assertNull(new TerminateMatchAction(rooms.matchAccess()).execute(id, null).termination());
             assertFalse(
-                new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(
-                    UUID.randomUUID(),
-                    ended.roomContext()
-                )
+                new ConsumeMatchResultAction(f.room.scenario.matches).execute(UUID.randomUUID(), ended.roomContext())
             );
-            assertFalse(new ConsumeMatchResultAction(rooms.matchAccess(), f.room.scenario.matches).execute(id, null));
+            assertFalse(new ConsumeMatchResultAction(f.room.scenario.matches).execute(id, null));
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, null);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());

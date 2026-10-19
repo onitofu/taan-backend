@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.EOFException;
 import java.net.SocketException;
@@ -12,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +19,10 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
+import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
 import taan.online.room.service.model.RoomMatchToken;
@@ -60,7 +64,7 @@ class MatchTerminationIntegrationTest {
                 var guest = new CharacterTestClient(config.port())
             ) {
                 var rooms = prepare(app, owner, a, guest, b);
-                var token = reserve(rooms, true);
+                var token = reserve(rooms, owner, guest, true);
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
@@ -72,7 +76,7 @@ class MatchTerminationIntegrationTest {
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
-                var next = reserve(rooms, true);
+                var next = reserve(rooms, owner, guest, true);
 
                 assertFalse(token.equals(next));
                 guest.send(MatchFixtures.root("give-up-empty"));
@@ -103,7 +107,7 @@ class MatchTerminationIntegrationTest {
                 var guest = new CharacterTestClient(config.port())
             ) {
                 var rooms = prepare(app, owner, a, guest, b);
-                reserve(rooms, false);
+                reserve(rooms, owner, guest, false);
                 owner.disconnect();
                 awaitClosed(guest);
 
@@ -132,7 +136,7 @@ class MatchTerminationIntegrationTest {
                 var owner = new CharacterTestClient(config.port());
                 var guest = new CharacterTestClient(config.port())
             ) {
-                reserve(prepare(app, owner, a, guest, b), true);
+                reserve(prepare(app, owner, a, guest, b), owner, guest, true);
                 assertTimeoutPreemptively(Duration.ofSeconds(config.shutdownTimeoutSeconds()), app::close);
                 app.close();
                 awaitClosed(owner);
@@ -175,12 +179,39 @@ class MatchTerminationIntegrationTest {
         return RuntimeRoomTestAccess.rooms(app);
     }
 
-    private RoomMatchToken reserve(RoomRegistry rooms, boolean loaded) throws Exception {
-        var token = rooms.reserveMatch(RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId()).token();
-        assertTrue(rooms.commitMatch(token).token().equals(token));
+    private RoomMatchToken reserve(
+        RoomRegistry rooms,
+        CharacterTestClient owner,
+        CharacterTestClient guest,
+        boolean loaded
+    ) throws Exception {
+        var ownerSession = RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId();
+        rooms.requestStart(ownerSession).delivery().toCompletableFuture().get(5, TimeUnit.SECONDS);
+        var token = rooms.matchContext(ownerSession).token();
+
+        for (var client : new CharacterTestClient[]{owner, guest}) {
+            wire.slot(client.read());
+            wire.slot(client.read());
+            new StartGameCodec().decode(client.read());
+        }
 
         if (loaded) {
-            MatchFixtures.loaded(RuntimeRoomTestAccess.matches(rooms), token);
+            var matches = RuntimeRoomTestAccess.matches(rooms);
+            MatchFixtures.loaded(matches, token);
+
+            for (var client : new CharacterTestClient[]{owner, guest}) {
+                new SetPosCodec().decode(client.read());
+                new TurnStartCodec().decode(client.read());
+            }
+
+            assertTimeoutPreemptively(
+                Duration.ofSeconds(5),
+                () -> {
+                    while (matches.current(token).orElseThrow().phase() != MatchPhase.PREVIEW) {
+                        Thread.sleep(1);
+                    }
+                }
+            );
         }
 
         return token;

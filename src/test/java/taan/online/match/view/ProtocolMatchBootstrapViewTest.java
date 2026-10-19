@@ -8,17 +8,17 @@ import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
+import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.room.model.RoomMode;
 import taan.online.room.protocol.codec.RoomResponseCodec;
-import taan.online.match.protocol.codec.StartGameCodec;
-import taan.online.match.protocol.codec.SetPosCodec;
 
 class ProtocolMatchBootstrapViewTest {
     @Test
     void encodesTheApprovedProfileAgainstIndependentGoldenBytesAndPreservesTheFrozenRoster() throws Exception {
         try (var f = new MatchRoomFixture(2, RoomMode.ITEM)) {
             var token = f.scenario.rooms.reserveMatch(f.owner).token();
-            f.scenario.rooms.commitMatch(token);
+            f.scenario.rooms.commitMatch(token).toCompletableFuture().join();
             var snapshot = f.scenario.matches.current(token).orElseThrow();
             var output = new CollectingPacketOutput();
             var view = new ProtocolMatchView(output);

@@ -119,6 +119,14 @@ public final class LogField {
         return new LogField("matchId", value);
     }
 
+    public static LogField matchRevision(long value) {
+        return new LogField("matchRevision", value);
+    }
+
+    public static LogField commandType(String value) {
+        return new LogField("commandType", value);
+    }
+
     public static LogField roomGeneration(UUID value) {
         return new LogField("roomGeneration", value);
     }

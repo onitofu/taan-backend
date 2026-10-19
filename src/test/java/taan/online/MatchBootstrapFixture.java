@@ -49,12 +49,12 @@ public final class MatchBootstrapFixture implements AutoCloseable {
             value -> value.sessionId().equals(room.players.get(index))
         )
             .findFirst().orElseThrow();
-        return room.scenario.rooms.matchAccess().loadingDone(
+        return room.scenario.matches.loadingDone(
             context(index),
             member.slotIndex(),
             member.spawn().settledX(),
             member.spawn().settledY()
-        );
+        ).thenApply(ignored -> null);
     }
 
     @Override

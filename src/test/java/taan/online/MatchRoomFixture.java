@@ -9,12 +9,17 @@ import taan.online.room.service.model.RoomMatchParticipant;
 import taan.online.room.service.model.RoomMatchToken;
 
 public final class MatchRoomFixture implements AutoCloseable {
-    public final RoomScenario scenario = new RoomScenario();
+    public final RoomScenario scenario;
     public final List<UUID> players = new ArrayList<>();
     public final List<RecordingRoomOutput> outputs = new ArrayList<>();
     public final UUID owner;
 
     public MatchRoomFixture(int count, RoomMode mode) {
+        this(new RoomScenario(), count, mode);
+    }
+
+    public MatchRoomFixture(RoomScenario scenario, int count, RoomMode mode) {
+        this.scenario = scenario;
         for (int index = 0; index < count; index++) {
             var id = scenario.player(index + 1, 1);
             var output = new RecordingRoomOutput();

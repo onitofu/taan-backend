@@ -1,48 +1,35 @@
 package taan.online.match.view;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
-import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.model.MatchOutcome;
+import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
-import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.match.protocol.packet.GameResult;
+import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlayTurnStart;
+import taan.online.match.protocol.packet.PcGameSessionEndGame;
+import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.match.service.MatchOutput;
+import taan.online.match.service.model.MatchSnapshot;
+import taan.online.protocol.PacketOutput;
 import taan.online.protocol.option.packet.OptionList;
+import taan.online.room.model.RoomSlotState;
+import taan.online.room.model.RoomTeam;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.GameSlotInfo;
 import taan.online.room.protocol.packet.GameSlotOccupant;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
-import taan.online.room.model.RoomSlotState;
-import taan.online.room.model.RoomTeam;
-import java.util.concurrent.CompletionStage;
-import java.util.stream.IntStream;
-import taan.online.match.protocol.codec.EndGameCodec;
-import taan.online.match.protocol.packet.GameResult;
-import taan.online.match.protocol.packet.GameResultSlot;
-import taan.online.match.protocol.packet.PcGameSessionEndGame;
-import taan.online.match.service.MatchOutput;
-import taan.online.protocol.PacketOutput;
 
 public final class ProtocolMatchView implements MatchOutput {
-    private static final byte[] END_PREVIEW = new EndGameCodec().encode(
-        new PcGameSessionEndGame(
-            new GameResult(
-                0,
-                IntStream.range(0, 8).mapToObj(
-                    index -> new GameResultSlot(index, 0, 0, 0, 0, 0, 0, 0, List.of(0, 0, 0), 0, 0, 0)
-                ).toList(),
-                0,
-                0
-            ),
-            0
-        )
-    );
-
     private final PacketOutput output;
 
     public ProtocolMatchView(PacketOutput output) {
@@ -123,31 +110,50 @@ public final class ProtocolMatchView implements MatchOutput {
 
         for (var member : snapshot.participants()) {
             if (!member.sessionId().equals(recipient)) {
-                var placement = snapshot.placements().get(member.sessionId());
+                var placement = snapshot.actors().get(member.sessionId());
                 roots.add(
                     codec.encode(
-                        new PcGamePlaySetPos(
-                            member.slotIndex(),
-                            placement.settledX(),
-                            placement.settledY(),
-                            member.facing()
-                        )
+                        new PcGamePlaySetPos(member.slotIndex(), placement.x(), placement.y(), member.facing())
                     )
                 );
             }
         }
 
+        var turn = snapshot.turn();
         roots.add(
             new TurnStartCodec().encode(
-                new PcGamePlayTurnStart(snapshot.firstTurnSlot(), 0, snapshot.initialWindRaw(), 0, 0, 100, 0, 0, 0, 0)
+                new PcGamePlayTurnStart(
+                    turn.activeSlot(),
+                    0,
+                    turn.windRaw(),
+                    turn.energyGrant(),
+                    turn.boxAttemptBudget(),
+                    turn.pickerBase(),
+                    0,
+                    0,
+                    0,
+                    0
+                )
             )
         );
         return output.send(roots);
     }
 
     @Override
-    public CompletionStage<Void> endPreview() {
-        return output.send(List.of(END_PREVIEW.clone()));
+    public CompletionStage<Void> end(MatchOutcome outcome) {
+        if (!outcome.winningTeams().isEmpty() || outcome.awardsGranted()) {
+            throw new IllegalArgumentException("Unsupported match outcome");
+        }
+
+        var result = new GameResult(
+            0,
+            IntStream.range(0, 8).mapToObj(
+                index -> new GameResultSlot(index, 0, 0, 0, 0, 0, 0, 0, List.of(0, 0, 0), 0, 0, 0)
+            ).toList(),
+            0,
+            0
+        );
+        return output.send(List.of(new EndGameCodec().encode(new PcGameSessionEndGame(result, 0))));
     }
 
     @Override

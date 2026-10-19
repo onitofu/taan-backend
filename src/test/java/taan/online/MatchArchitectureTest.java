@@ -93,7 +93,7 @@ class MatchArchitectureTest {
     @ArchTest
     static final ArchRule TERMINAL_OWNER = classes().that().haveSimpleName("MatchTerminationDelivery")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.match\\.service\\.(MatchRegistry|MatchTerminationDelivery)"
+            "taan\\.online\\.match\\.service\\.(MatchRegistry|MatchTerminationDelivery|MatchTerminationDispatch)"
         );
 
     @ArchTest
@@ -107,7 +107,21 @@ class MatchArchitectureTest {
     @ArchTest
     static final ArchRule MUTABLE_MATCH = classes().that().haveFullyQualifiedName("taan.online.match.model.Match")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.match\\.(model\\.Match|service\\.MatchRegistry|service\\.model\\.MatchSnapshot)"
+            "taan\\.online\\.match\\.(model\\.Match|service\\.MatchRegistry|service\\.MatchRuntime"
+                    + "|service\\.model\\.MatchSnapshot)"
+        );
+
+    @ArchTest
+    static final ArchRule MAILBOX_OWNER = classes().that().haveSimpleName("MatchMailbox")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.match\\.service\\.(MatchRuntime|MatchMailbox)"
+        );
+
+    @ArchTest
+    static final ArchRule RUNTIME_OWNER = classes().that().haveSimpleName("MatchRuntime")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.match\\.service\\."
+                + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch)"
         );
 
     @ArchTest

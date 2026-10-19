@@ -9,20 +9,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import taan.online.LogCapture;
 import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
 import taan.online.MatchTerminalFixture;
-import taan.online.LogCapture;
 import taan.online.match.model.MatchPhase;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomState;
-import taan.online.session.model.SessionId;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomMembership;
+import taan.online.session.model.SessionId;
 
 class MatchTerminalOwnershipTest {
     @Test
@@ -33,7 +33,7 @@ class MatchTerminalOwnershipTest {
             var token = draft.token();
             matches.reserve(draft);
             assertEquals(MatchPhase.RESERVED, matches.current(token).orElseThrow().phase());
-            matches.commit(token);
+            matches.commit(token).toCompletableFuture().join();
             MatchFixtures.loaded(matches, token);
             assertEquals(MatchPhase.PREVIEW, matches.current(token).orElseThrow().phase());
             var output = new TestMatchOutput();
@@ -47,11 +47,11 @@ class MatchTerminalOwnershipTest {
                 terminal.mode(),
                 terminal.recipients()
             );
-            matches.dispatchTermination(forged, f.owner);
+            matches.dispatchTermination(forged, f.owner, () -> { });
 
             assertEquals(0, output.ends);
-            matches.dispatchTermination(terminal, f.owner);
-            matches.dispatchTermination(terminal, f.owner);
+            matches.dispatchTermination(terminal, f.owner, () -> { });
+            matches.dispatchTermination(terminal, f.owner, () -> { });
 
             assertEquals(1, output.ends);
             assertNull(matches.prepareTermination(token, RoomMatchEndReason.GIVE_UP, null));
@@ -152,7 +152,7 @@ class MatchTerminalOwnershipTest {
 
             assertNull(f.room.scenario.rooms.matchContext(f.room.owner));
             assertTrue(
-                f.room.scenario.rooms.matchAccess().loadingDone(
+                f.room.scenario.matches.loadingDone(
                     new RoomMatchContext(f.room.scenario.rooms.membership(f.room.owner).orElseThrow(), f.token),
                     0,
                     97,
@@ -176,19 +176,19 @@ class MatchTerminalOwnershipTest {
             var matches = MatchFixtures.registry();
             var draft = f.draft();
             matches.reserve(draft);
-            matches.commit(draft.token());
+            matches.commit(draft.token()).toCompletableFuture().join();
             MatchFixtures.loaded(matches, draft.token());
             var old = matches.prepareTermination(draft.token(), RoomMatchEndReason.GIVE_UP, null);
             var next = f.draft();
             matches.reserve(next);
-            matches.commit(next.token());
+            matches.commit(next.token()).toCompletableFuture().join();
             MatchFixtures.loaded(matches, next.token());
             var terminal = matches.prepareTermination(next.token(), RoomMatchEndReason.GIVE_UP, null);
             matches.cancel(old.token(), "STALE_CALLBACK");
 
-            assertTrue(matches.dispatchTermination(old, null).toCompletableFuture().isDone());
+            assertTrue(matches.dispatchTermination(old, null, () -> { }).toCompletableFuture().isDone());
             assertEquals(next.token(), matches.resultToken(draft.participants().getFirst().membership()));
-            matches.dispatchTermination(terminal, null);
+            matches.dispatchTermination(terminal, null, () -> { });
             matches.unsubscribe(f.owner);
 
             assertNull(matches.resultToken(draft.participants().getFirst().membership()));

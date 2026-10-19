@@ -1,11 +1,11 @@
 package taan.online.match.model;
 
-import java.util.HashSet;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
@@ -25,7 +25,8 @@ public final class Match {
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
     private final int firstTurnSlot;
-    private final Map<UUID, MapSpawnDefinition> placements = new HashMap<>();
+    private final Map<UUID, MatchActorState> actors = new HashMap<>();
+    private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
     private long phaseRevision;
     private long deadlineNanos;
@@ -56,6 +57,18 @@ public final class Match {
         this.captains = captains;
         this.firstTurnSlot = firstTurnSlot;
         validate();
+        participants.forEach(
+            value -> actors.put(
+                value.sessionId(),
+                new MatchActorState(
+                    value.spawn().rawX(),
+                    value.spawn().rawY(),
+                    value.facing(),
+                    value.hp(),
+                    value.energy()
+                )
+            )
+        );
     }
 
     private void validate() {
@@ -147,8 +160,16 @@ public final class Match {
         return 0;
     }
 
-    public Map<UUID, MapSpawnDefinition> placements() {
-        return Map.copyOf(placements);
+    public Set<UUID> loadedSessions() {
+        return Set.copyOf(loaded);
+    }
+
+    public Map<UUID, MatchActorState> actors() {
+        return Map.copyOf(actors);
+    }
+
+    public MatchTurn turn() {
+        return new MatchTurn(firstTurnSlot, initialWindRaw(), 0, 0, 100);
     }
 
     public long phaseRevision() {
@@ -181,10 +202,10 @@ public final class Match {
             return "FOREIGN_SLOT";
         }
 
-        var accepted = placements.get(session);
+        var accepted = loaded.contains(session) ? actors.get(session) : null;
 
         if (accepted != null) {
-            return accepted.settledX() == x && accepted.settledY() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
+            return accepted.x() == x && accepted.y() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
         }
 
         if (phase != MatchPhase.LOADING) {
@@ -200,7 +221,8 @@ public final class Match {
             return "INVALID_POSITION";
         }
 
-        placements.put(session, placement);
+        actors.put(session, new MatchActorState(x, y, actor.facing(), actor.hp(), actor.energy()));
+        loaded.add(session);
         return "ACCEPTED";
     }
 
@@ -214,7 +236,7 @@ public final class Match {
     }
 
     public boolean beginSynchronization() {
-        if (phase != MatchPhase.LOADING || placements.size() != participants.size()
+        if (phase != MatchPhase.LOADING || loaded.size() != participants.size()
             || delivered.size() != participants.size()) {
             return false;
         }
@@ -243,9 +265,9 @@ public final class Match {
         }
 
         var actor = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElse(null);
-        var placement = placements.get(session);
-        return actor != null && actor.slotIndex() == slot && actor.facing() == facing
-            && placement.settledX() == x && placement.settledY() == y;
+        var placement = actors.get(session);
+        return actor != null && actor.slotIndex() == slot && placement.facing() == facing
+            && placement.x() == x && placement.y() == y;
     }
 
     public boolean beginTermination() {

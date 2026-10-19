@@ -1,18 +1,19 @@
 package taan.online.match.service;
 
 import java.util.UUID;
-import taan.online.room.service.RoomMatchAccess;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import taan.online.room.service.model.RoomMatchContext;
 
 public final class ReportMatchEnemiesAction {
-    private final RoomMatchAccess rooms;
+    private final MatchRegistry matches;
 
-    public ReportMatchEnemiesAction(RoomMatchAccess rooms) {
-        this.rooms = rooms;
+    public ReportMatchEnemiesAction(MatchRegistry matches) {
+        this.matches = matches;
     }
 
-    public boolean execute(UUID id, RoomMatchContext context) {
+    public CompletionStage<Boolean> execute(UUID id, RoomMatchContext context) {
         return context != null && context.membership().sessionId().equals(id)
-            ? rooms.reportEnemies(context) : false;
+            ? matches.reportEnemies(context) : CompletableFuture.completedFuture(false);
     }
 }
