@@ -113,7 +113,7 @@ public final class ProtocolMatchView implements MatchOutput {
                 var placement = snapshot.actors().get(member.sessionId());
                 roots.add(
                     codec.encode(
-                        new PcGamePlaySetPos(member.slotIndex(), placement.x(), placement.y(), member.facing())
+                        new PcGamePlaySetPos(member.slotIndex(), placement.x(), placement.y(), placement.facing())
                     )
                 );
             }

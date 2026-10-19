@@ -24,7 +24,7 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
-import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
@@ -54,7 +54,7 @@ import taan.online.room.service.model.RoomMembership;
 public final class MatchRegistry implements RoomMatchLifecycle {
     private static final EventLogger LOG = EventLogger.forClass(MatchRegistry.class);
 
-    private final MatchDefinitions definitions;
+    private final MatchDefinitionCatalog definitions;
     private final MatchPreparation preparation;
     private final MatchBootstrapSettings settings;
     private final MatchScheduler scheduler;
@@ -71,7 +71,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     private final Map<RoomMatchToken, MatchTerminationDispatch> terminations = new ConcurrentHashMap<>();
 
     public MatchRegistry(
-        MatchDefinitions definitions,
+        MatchDefinitionCatalog definitions,
         MatchBootstrapSettings settings,
         MatchScheduler scheduler,
         LongSupplier clock,
@@ -122,7 +122,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 draft.ownerSessionId(),
                 draft.settings().mode(),
                 draft.settings().rule(),
-                definitions,
+                definitions.select(draft.settings().mapId()),
                 participants,
                 draft.captains(),
                 participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex()

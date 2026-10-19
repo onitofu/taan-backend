@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "catalog.properties": "3df5c7352e25a5ea41a3ec4464b020cd6120ac4c581b653be882327ceb937844",
+      "original_file": "catalog.properties",
+      "origin": "DERIVED"
+    },
+    {
+      "map-spawns.csv": "e89fdab127eca58b21003e87e8ee694875aae47ef011dc236df203de80eb3749",
+      "original_file": "map-spawns.csv",
+      "origin": "DERIVED"
+    },
+    {
+      "maps.csv": "1393c1bdf375a52f87187fa5c5a688c6790ac6e8cf96c0f4f3a6ac9bdd8bae6f",
+      "original_file": "maps.csv",
+      "origin": "DERIVED"
+    },
+    {
+      "weapons.csv": "f4f33f8646835b90340395e0076a20cc93f4fb11dca0a83785e5193696a3df0b",
+      "original_file": "weapons.csv",
+      "origin": "DERIVED"
+    }
+  ]
+}

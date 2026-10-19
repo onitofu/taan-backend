@@ -17,6 +17,16 @@ import taan.online.channel.model.ChannelGroupDefinition;
 
 class GetChannelListActionTest {
     @Test
+    void rejectsUnsupportedKindsIndependentlyOfTheGroupDescriptionType() {
+        for (int kind : new int[]{-1, 2, 3, 5, 7}) {
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> new ChannelDefinition(1, "Moon", true, 1, 109, 100, kind)
+            );
+        }
+    }
+
+    @Test
     void returnsTheConfiguredDirectoryOnlyWhileTheSelectionIsCurrent() {
         for (int allowed : new int[]{0, 1, 2, 3}) {
             var calls = new AtomicInteger();
@@ -48,18 +58,18 @@ class GetChannelListActionTest {
     @Test
     void rejectsAmbiguousIdentifiersAndUnsupportedNamesTypesAndLimits() {
         for (int id : new int[]{0, 65535}) {
-            assertThrows(IllegalArgumentException.class, () -> new ChannelDefinition(id, "Moon", true, 1, 109, 100));
+            assertThrows(IllegalArgumentException.class, () -> new ChannelDefinition(id, "Moon", true, 1, 109, 100, 0));
         }
 
         for (String name : List.of(" ", "x".repeat(65))) {
-            assertThrows(IllegalArgumentException.class, () -> new ChannelDefinition(1, name, true, 1, 109, 100));
+            assertThrows(IllegalArgumentException.class, () -> new ChannelDefinition(1, name, true, 1, 109, 100, 0));
             assertThrows(IllegalArgumentException.class, () -> new ChannelGroupDefinition(1, name, 0, List.of()));
         }
 
         for (int[] bounds : new int[][]{{0, 109, 100}, {1, 110, 100}, {2, 1, 100}, {1, 109, 0}}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new ChannelDefinition(1, "Moon", true, bounds[0], bounds[1], bounds[2])
+                () -> new ChannelDefinition(1, "Moon", true, bounds[0], bounds[1], bounds[2], 0)
             );
         }
 

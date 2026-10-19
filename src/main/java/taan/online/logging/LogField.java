@@ -59,6 +59,14 @@ public final class LogField {
         return new LogField("channelId", value);
     }
 
+    public static LogField channelKind(int value) {
+        return new LogField("channelKind", value);
+    }
+
+    public static LogField turnRevision(long value) {
+        return new LogField("turnRevision", value);
+    }
+
     public static LogField roomCount(int value) {
         return new LogField("roomCount", value);
     }

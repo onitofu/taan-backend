@@ -1,0 +1,2 @@
+ALTER TABLE channels
+    ADD COLUMN kind SMALLINT NOT NULL DEFAULT 0 CHECK (kind IN (0, 1, 4, 6));

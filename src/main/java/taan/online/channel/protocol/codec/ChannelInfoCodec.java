@@ -5,7 +5,8 @@ import taan.online.protocol.BinaryWriter;
 
 public final class ChannelInfoCodec {
     public void write(BinaryWriter output, ChannelInfo info) {
-        output.unsignedInt(ChannelInfo.TYPE_ID).wideString(info.name()).unsignedShort(info.channelId()).unsignedByte(0);
+        output.unsignedInt(ChannelInfo.TYPE_ID).wideString(info.name()).unsignedShort(info.channelId())
+            .unsignedByte(info.kind());
         endpoint(output, info.port());
         output.unsignedInt(info.fill()).unsignedInt(0).unsignedShort(info.minLevel()).unsignedShort(info.maxLevel())
             .unsignedByte(info.disabled() ? 1 : 0);

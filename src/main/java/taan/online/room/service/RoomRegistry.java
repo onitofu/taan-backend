@@ -115,7 +115,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             this::changed,
             new AdvanceCaptainSelectionAction(this)
         );
-        matches = new RoomMatchOperations(this, channels, rooms, memberships, starts, lifecycle, this::changed);
+        matches = new RoomMatchOperations(this, channels, rooms, memberships, starts, lifecycle, this::changed, maps);
         matchCoordinator = new RoomMatchCoordinator(this, matches, starts, () -> phase, this::controlRejection);
         departures = new RoomDepartureOperations(
             channels,
@@ -237,7 +237,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             return CreateRoomResult.rejected("CHARACTER_CHANGED");
         }
 
-        if (!maps.contains(settings.mapId())) {
+        if (!maps.forKind(context.kind()).contains(settings.mapId())) {
             return CreateRoomResult.rejected("UNSUPPORTED_MAP");
         }
 
@@ -414,10 +414,12 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
 
         var subscription = memberships.get(id);
         var room = rooms.get(subscription.membership().roomId());
+        int kind = channels.kind(room.channelId());
         return RoomControlOperations.publishSettings(
             room,
             id,
-            maps,
+            maps.forKind(kind),
+            kind,
             mapId,
             gameType,
             rule,

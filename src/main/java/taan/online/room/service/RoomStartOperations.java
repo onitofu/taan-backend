@@ -2,6 +2,8 @@ package taan.online.room.service;
 
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.channelKind;
+import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
@@ -356,6 +358,8 @@ final class RoomStartOperations {
             characterId(participant.character().id().value()),
             roomId(room.id().value()),
             channelId(room.channelId()),
+            channelKind(channels.kind(room.channelId())),
+            mapId(room.settings().mapId()),
             selectionId(selection),
             outcome(result),
             reason(result)

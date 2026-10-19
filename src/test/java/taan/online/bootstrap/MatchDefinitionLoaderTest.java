@@ -8,13 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.match.model.MatchDefinitions;
 
 class MatchDefinitionLoaderTest {
     @Test
     void loadsAllFourteenRawAndSettledSpawnsAndTwelveReferenceWeapons() {
-        var definitions = load(resource("jungle.properties"), resource("jungle-spawns.csv"), resource("weapons.csv"));
+        var definitions = load(resource("catalog.properties"), resource("map-spawns.csv"), resource("weapons.csv"));
 
         assertEquals(
             "d7d54a39d0e5d75819894c812acd34b39e803fa1f0e7fe87d519f4a211e4b67f",
@@ -87,14 +90,14 @@ class MatchDefinitionLoaderTest {
 
     @Test
     void rejectsMalformedPropertiesCsvNumbersAndValidityWithoutFallingBackToDefaults() throws Exception {
-        String properties = text("jungle.properties");
-        String spawns = text("jungle-spawns.csv");
+        String properties = text("catalog.properties");
+        String spawns = text("map-spawns.csv");
         String weapons = text("weapons.csv");
 
         for (String invalid : new String[]{
-            properties.replace("map.id=1", "map.id=no"),
+            properties.replace("catalog.version=", "catalog.version=bad"),
             properties + "unknown=1\n",
-            properties.replace("map.id=1\n", "")
+            ""
         }) {
             assertThrows(IllegalArgumentException.class, () -> load(input(invalid), input(spawns), input(weapons)));
         }
@@ -120,8 +123,8 @@ class MatchDefinitionLoaderTest {
 
     @Test
     void propagatesMalformedUtf8ReadAndCloseFailuresWithoutLoggingRawContents() throws Exception {
-        byte[] properties = resource("jungle.properties").readAllBytes();
-        byte[] spawns = resource("jungle-spawns.csv").readAllBytes();
+        byte[] properties = resource("catalog.properties").readAllBytes();
+        byte[] spawns = resource("map-spawns.csv").readAllBytes();
         byte[] weapons = resource("weapons.csv").readAllBytes();
 
         for (boolean failRead : new boolean[]{true, false}) {
@@ -149,7 +152,7 @@ class MatchDefinitionLoaderTest {
     @Test
     void closesAllProvidedResourcesEvenWhenTheFirstDefinitionIsInvalid() throws Exception {
         var properties = new TrackingDefinitionStream(new byte[0]);
-        var spawns = new TrackingDefinitionStream(resource("jungle-spawns.csv").readAllBytes());
+        var spawns = new TrackingDefinitionStream(resource("map-spawns.csv").readAllBytes());
         var weapons = new TrackingDefinitionStream(resource("weapons.csv").readAllBytes());
 
         assertThrows(IllegalArgumentException.class, () -> load(properties, spawns, weapons));
@@ -158,8 +161,74 @@ class MatchDefinitionLoaderTest {
         assertTrue(weapons.closed());
     }
 
+    @Test
+    void rejectsDuplicateMissingAndOrphanMapDataAndClosesFailingMapStreams() throws Exception {
+        var loader = new MatchDefinitionLoader();
+        String maps = text("maps.csv");
+        String spawns = text("map-spawns.csv");
+        String properties = text("catalog.properties");
+        String weapons = text("weapons.csv");
+        String firstMap = maps.lines().skip(1).findFirst().orElseThrow();
+
+        for (String invalid : new String[]{
+            maps + firstMap + "\n",
+            maps.replace(firstMap + "\n", ""),
+            maps.replace("map_id,asset", "wrong,asset"),
+            maps.replace(",true,true,false,true", ",true,maybe,false,true")
+        }) {
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> loader.load(input(properties), input(invalid), input(spawns), input(weapons))
+            );
+        }
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> loader.load(input(properties), input(maps), input(spawns + "22,0,1,1,1,1,0,0,true\n"), input(weapons))
+        );
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> loader.load(
+                input(properties),
+                input(maps),
+                input(spawns.replace("1,0,97,686", "22,0,97,686")),
+                input(weapons)
+            )
+        );
+
+        for (boolean failRead : new boolean[]{true, false}) {
+            assertThrows(
+                IllegalStateException.class,
+                () -> loader.load(
+                    input(properties),
+                    new BrokenDefinitionStream(maps.getBytes(StandardCharsets.UTF_8), failRead),
+                    input(spawns),
+                    input(weapons)
+                )
+            );
+        }
+    }
+
+    @Test
+    void checksTheReadableExportAgainstItsRecordedHashes() throws Exception {
+        String provenance = text("catalog-provenance.json");
+
+        for (String name : List.of("catalog.properties", "maps.csv", "map-spawns.csv", "weapons.csv")) {
+            byte[] bytes;
+
+            try (var input = resource(name)) {
+                bytes = input.readAllBytes();
+            }
+
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            assertTrue(provenance.contains("\"" + name + "\": \"" + hash + "\""));
+        }
+
+        assertEquals(338, text("map-spawns.csv").lines().count());
+    }
+
     private MatchDefinitions load(InputStream properties, InputStream spawns, InputStream weapons) {
-        return new MatchDefinitionLoader().load(properties, spawns, weapons);
+        return new MatchDefinitionLoader().load(properties, resource("maps.csv"), spawns, weapons).select(1);
     }
 
     private InputStream resource(String name) {

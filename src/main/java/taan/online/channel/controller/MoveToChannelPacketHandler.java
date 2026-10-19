@@ -60,7 +60,8 @@ public final class MoveToChannelPacketHandler {
                 snapshot.fill(),
                 channel.minLevel(),
                 channel.maxLevel(),
-                !channel.enabled()
+                !channel.enabled(),
+                channel.kind()
             );
         }
 

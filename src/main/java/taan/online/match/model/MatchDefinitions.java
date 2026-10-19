@@ -9,12 +9,11 @@ public record MatchDefinitions(String catalogVersion, MatchMapDefinition map, Li
         Objects.requireNonNull(map);
         weapons = List.copyOf(weapons);
 
-        if (!catalogVersion.matches("[0-9a-f]{64}") || map.mapId() != 1
-            || map.spawns().size() != 14 || weapons.size() != 12) {
+        if (!catalogVersion.matches("[0-9a-f]{64}") || weapons.size() != 12) {
             throw new IllegalArgumentException("Incomplete match reference definitions");
         }
 
-        for (int index = 0; index < 14; index++) {
+        for (int index = 0; index < map.spawns().size(); index++) {
             if (map.spawns().get(index).index() != index) {
                 throw new IllegalArgumentException("Invalid map spawn order");
             }

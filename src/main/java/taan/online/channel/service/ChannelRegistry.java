@@ -61,6 +61,11 @@ public final class ChannelRegistry {
         return new ChannelCatalogSnapshot(directory, fills);
     }
 
+    public synchronized int kind(int channelId) {
+        return directory.channels().stream().filter(channel -> channel.id() == channelId)
+            .findFirst().orElseThrow().kind();
+    }
+
     public synchronized Optional<ChannelMembershipSnapshot> membership(UUID id) {
         var member = members.get(id);
 
@@ -68,7 +73,12 @@ public final class ChannelRegistry {
             return Optional.empty();
         }
 
-        return Optional.of(new ChannelMembershipSnapshot(member.channelId, member.phase, member.participant));
+        return Optional.of(new ChannelMembershipSnapshot(
+            member.channelId,
+            member.phase,
+            member.participant,
+            kind(member.channelId)
+        ));
     }
 
     public synchronized MoveToResult move(UUID sessionId, MoveToCommand command) {

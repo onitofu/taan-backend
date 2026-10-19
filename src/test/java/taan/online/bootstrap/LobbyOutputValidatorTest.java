@@ -56,7 +56,7 @@ class LobbyOutputValidatorTest {
     }
 
     private ChannelCatalogSnapshot catalog(int capacity) {
-        var channel = new ChannelDefinition(1, "Channel", true, 1, 109, capacity);
+        var channel = new ChannelDefinition(1, "Channel", true, 1, 109, capacity, 0);
         return new ChannelCatalogSnapshot(
             new ChannelDirectory(List.of(new ChannelGroupDefinition(1, "Solar", 0, List.of(channel))), 2181),
             Map.of()

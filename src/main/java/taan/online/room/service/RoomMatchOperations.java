@@ -20,6 +20,7 @@ import taan.online.room.model.CaptainSelectionPhase;
 import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
+import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.service.model.RoomMatchContext;
@@ -40,6 +41,7 @@ final class RoomMatchOperations {
     private final Object monitor;
     private final Map<RoomMatchToken, CompletableFuture<Void>> pending = new HashMap<>();
     private final ChannelRegistry channels;
+    private final RoomMapCatalog maps;
     private final Map<RoomId, Room> rooms;
     private final Map<UUID, RoomSubscription> memberships;
     private final RoomStartOperations starts;
@@ -53,7 +55,8 @@ final class RoomMatchOperations {
         Map<UUID, RoomSubscription> memberships,
         RoomStartOperations starts,
         RoomMatchLifecycle lifecycle,
-        Consumer<Room> changed
+        Consumer<Room> changed,
+        RoomMapCatalog maps
     ) {
         this.monitor = monitor;
         this.channels = channels;
@@ -62,6 +65,7 @@ final class RoomMatchOperations {
         this.starts = starts;
         this.lifecycle = lifecycle;
         this.changed = changed;
+        this.maps = maps;
     }
 
     InventoryMoveContext inventoryContext(InventoryActor actor, RoomRegistryPhase phase) {
@@ -362,7 +366,8 @@ final class RoomMatchOperations {
             }
         }
 
-        return null;
+        int kind = channels.kind(room.channelId());
+        return maps.forKind(kind).contains(room.settings().mapId()) ? null : "UNSUPPORTED_MAP";
     }
 
     private static RoomMatchToken token(Room room) {

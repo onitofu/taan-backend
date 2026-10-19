@@ -9,6 +9,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.bootstrap.ChannelMatchAccess;
+import taan.online.bootstrap.RoomDefinitionLoader;
+import taan.online.channel.model.ChannelDefinition;
+import taan.online.channel.model.ChannelGroupDefinition;
+import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
@@ -77,13 +81,38 @@ public final class RoomScenario implements AutoCloseable {
     }
 
     public RoomScenario(MatchCommandExecutor executor, int capacity) {
+        this(executor, capacity, null);
+    }
+
+    public RoomScenario(int kind) {
+        this(Runnable::run, 64, kind);
+    }
+
+    private RoomScenario(MatchCommandExecutor executor, int capacity, Integer kind) {
         sessions = new SessionRegistry();
         access = new SessionChannelAccess(sessions);
-        channels = SelectionFixtures.registry(access);
+        channels = new ChannelRegistry(access, 2181);
+        channels.initialize(kind == null ? SelectionFixtures.directory().groups() : List.of(
+            new ChannelGroupDefinition(
+                1,
+                "Solar",
+                0,
+                List.of(
+                    new ChannelDefinition(1, "Moon", true, 1, 109, 100, kind),
+                    new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0)
+                )
+            )
+        ));
+        var baseline = MatchFixtures.definitions();
+        var catalog = kind == null ? new MatchDefinitionCatalog(
+            baseline.catalogVersion(),
+            Map.of(1, baseline.map()),
+            baseline.weapons()
+        ) : MatchFixtures.catalog();
         timers = new TestRoomSelectionScheduler();
         matchTimers = new TestMatchScheduler();
         matches = MatchFixtures.registry(
-            MatchFixtures.definitions(),
+            catalog,
             matchTimers,
             new Random(1),
             new ChannelMatchAccess(channels),
@@ -93,7 +122,7 @@ public final class RoomScenario implements AutoCloseable {
         rooms = new RoomRegistry(
             channels,
             new RoomIdPool(),
-            RoomScenario.maps(),
+            kind == null ? RoomScenario.maps() : new RoomDefinitionLoader().maps(catalog),
             timers,
             timers::nanoTime,
             new Random(1),
@@ -106,7 +135,8 @@ public final class RoomScenario implements AutoCloseable {
             rooms,
             new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
             new RoomTitleFilter(List.of("denied")),
-            new RoomBootstrapDefinition(1, 0)
+            new RoomBootstrapDefinition(1, 0),
+            kind == null ? RoomScenario.maps() : new RoomDefinitionLoader().maps(catalog)
         );
         enter = new EnterRoomAction(
             access,
@@ -204,7 +234,8 @@ public final class RoomScenario implements AutoCloseable {
                     rooms,
                     new RoomCharacterLoader(characters, InventoryFixtures.catalog()),
                     new RoomTitleFilter(List.of()),
-                    new RoomBootstrapDefinition(1, 0)
+                    new RoomBootstrapDefinition(1, 0),
+                    new RoomDefinitionLoader().maps(MatchFixtures.catalog())
                 ),
                 new EnterRoomAction(
                     access,
