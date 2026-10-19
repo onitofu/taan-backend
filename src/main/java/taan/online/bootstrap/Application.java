@@ -58,6 +58,7 @@ import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
@@ -177,7 +178,8 @@ public final class Application implements AutoCloseable {
             new MatchBootstrapSettings(
                 TimeUnit.SECONDS.toNanos(config.matchLoadingTimeoutSeconds()),
                 TimeUnit.SECONDS.toNanos(config.matchPreviewTimeoutSeconds()),
-                config.matchReportsPerSecond()
+                config.matchReportsPerSecond(),
+                MatchExecutionMode.PREVIEW
             ),
             matchScheduler,
             System::nanoTime,

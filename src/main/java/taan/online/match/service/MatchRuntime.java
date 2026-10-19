@@ -28,6 +28,11 @@ import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.PreparedScenario;
+import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchDeadlineExpiredCommand;
@@ -47,6 +52,7 @@ final class MatchRuntime {
     private static final EventLogger LOG = EventLogger.forClass(MatchRuntime.class);
 
     private final Match match;
+    private final MatchScenarioExecution scenarios;
     private final MatchMailbox mailbox;
     private final MatchAdmissionAccess access;
     private final MatchBootstrapSettings settings;
@@ -82,6 +88,48 @@ final class MatchRuntime {
         this.warnings = warnings;
         mailbox = new MatchMailbox(executor, capacity);
         snapshot = MatchSnapshot.from(match);
+        scenarios = new MatchScenarioExecution(this, access);
+    }
+
+    CompletableFuture<ScenarioApplicationResult> applyScenario(ApplyScenarioCommand command) {
+        return mailbox.submit(
+            () -> scenarios.execute(command),
+            ScenarioApplicationResult.ignored("CANCELLED"),
+            () -> rejected(new TerminateMatchCommand(command.context(), RoomMatchEndReason.PREPARATION_FAILED))
+        );
+    }
+
+    boolean scenarioCurrent(ApplyScenarioCommand command) {
+        return settings.executionMode() == MatchExecutionMode.SCENARIO_PREPARATION && admits(command.context());
+    }
+
+    boolean commitScenario(ApplyScenarioCommand command, PreparedScenario prepared, MatchSnapshot publication) {
+        synchronized (admission) {
+            if (!scenarioCurrent(command) || match.expired(clock.getAsLong())
+                || !match.commitScenario(prepared.baseWorldRevision(), command.turnRevision(), prepared.world())) {
+                return false;
+            }
+
+            snapshot = publication;
+            publishedRevision = publication.phaseRevision();
+            return true;
+        }
+    }
+
+    CompletionStage<Void> publishScenario(CommittedScenario scenario, ScenarioApplicationResult result) {
+        new MatchBootstrapDelivery(snapshot, recipients, this, scheduler, progress(), warnings).dispatch(null);
+        return scenarios.relay().deliver(result, snapshot, recipients);
+    }
+
+    void scenarioDeliveryFailed(CommittedScenario scenario, Throwable failure) {
+        mailbox.submit(
+            () -> scenarios.deliveryFailed(scenario, failure),
+            () -> scenarios.deliveryFailed(scenario, failure)
+        );
+    }
+
+    boolean running() {
+        return !closed;
     }
 
     MatchSnapshot snapshot() {
@@ -150,7 +198,7 @@ final class MatchRuntime {
                 }
 
                 if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())) {
-                    ending = match.phase() == MatchPhase.PREVIEW
+                    ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
                         ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
                     warnings.warn(WarningEvent.LIMIT_EXCEEDED, ending.name());
                     accepted = false;
@@ -307,8 +355,14 @@ final class MatchRuntime {
             return false;
         }
 
-        if (!beginSynchronization() && match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())) {
-            LOG.log(MatchLogEvent.STARTED, matchId(snapshot.id().value()), reason("PREVIEW"));
+        if (!beginSynchronization()) {
+            boolean started = settings.executionMode() == MatchExecutionMode.PREVIEW
+                ? match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())
+                : match.actionStarted(clock.getAsLong(), settings.previewTimeoutNanos());
+
+            if (started) {
+                LOG.log(MatchLogEvent.STARTED, matchId(snapshot.id().value()), reason(settings.executionMode().name()));
+            }
         }
 
         return true;
@@ -398,7 +452,7 @@ final class MatchRuntime {
         terminate(RoomMatchEndReason.PREPARATION_FAILED);
     }
 
-    private void terminate(RoomMatchEndReason reason) {
+    void terminate(RoomMatchEndReason reason) {
         if (callbacks != null) {
             callbacks.terminateMatch(token(), reason, null);
         }

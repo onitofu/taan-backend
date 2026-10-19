@@ -46,6 +46,10 @@ final class MatchBootstrapDelivery {
     }
 
     CompletionStage<Void> dispatch(UUID requester) {
+        if (!callbacks.running()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
         scheduler.cancel(token.match().matchId());
         scheduler.schedule(
             new MatchDeadline(token, snapshot.deadlineNanos()),
@@ -53,7 +57,8 @@ final class MatchBootstrapDelivery {
             this::closeAll
         );
 
-        if (!callbacks.beginPublication(snapshot) || snapshot.phase() == MatchPhase.PREVIEW) {
+        if (!callbacks.beginPublication(snapshot)
+            || snapshot.phase() != MatchPhase.LOADING && snapshot.phase() != MatchPhase.SYNCHRONIZING) {
             return CompletableFuture.completedFuture(null);
         }
 

@@ -10,18 +10,21 @@ public record MatchMapDefinition(
     int width,
     int height,
     List<MapSpawnDefinition> spawns,
-    Set<Integer> channelKinds
+    Set<Integer> channelKinds,
+    List<TerrainLayerDefinition> terrainLayers
 ) {
     public MatchMapDefinition {
         Objects.requireNonNull(asset);
         spawns = List.copyOf(spawns);
+        terrainLayers = List.copyOf(terrainLayers);
         channelKinds = Set.copyOf(channelKinds);
 
         if (channelKinds.isEmpty() || !Set.of(0, 1, 4, 6).containsAll(channelKinds)) {
             throw new IllegalArgumentException("Invalid map channel kinds");
         }
 
-        if (mapId < 1 || mapId > 65535 || asset.isBlank() || width < 1 || height < 1 || spawns.isEmpty()) {
+        if (mapId < 1 || mapId > 65535 || asset.isBlank() || width < 1 || height < 1
+            || spawns.isEmpty() || terrainLayers.isEmpty()) {
             throw new IllegalArgumentException("Invalid match map definition");
         }
 

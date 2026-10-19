@@ -5,14 +5,15 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 final class MatchMailbox {
-    private final ArrayDeque<MatchMailboxTask> pending = new ArrayDeque<>();
+    private final ArrayDeque<MatchMailboxTask<?>> pending = new ArrayDeque<>();
     private final MatchCommandExecutor executor;
     private final int capacity;
     private boolean scheduled;
     private boolean closed;
-    private MatchMailboxTask terminal;
+    private MatchMailboxTask<Boolean> terminal;
 
     MatchMailbox(MatchCommandExecutor executor, int capacity) {
         if (capacity < 1) {
@@ -24,7 +25,11 @@ final class MatchMailbox {
     }
 
     CompletableFuture<Boolean> submit(BooleanSupplier command, Runnable rejected) {
-        var task = new MatchMailboxTask(command);
+        return submit(command::getAsBoolean, false, rejected);
+    }
+
+    <T> CompletableFuture<T> submit(Supplier<T> command, T cancelled, Runnable rejected) {
+        var task = new MatchMailboxTask<>(command, cancelled);
         boolean schedule = false;
         boolean overflow = false;
         boolean stopped;
@@ -57,9 +62,9 @@ final class MatchMailbox {
     }
 
     CompletableFuture<Boolean> terminate(BooleanSupplier command) {
-        List<MatchMailboxTask> cancelled;
+        List<MatchMailboxTask<?>> cancelled;
         boolean schedule;
-        MatchMailboxTask task;
+        MatchMailboxTask<Boolean> task;
 
         synchronized (this) {
             if (terminal != null) {
@@ -69,7 +74,7 @@ final class MatchMailbox {
             closed = true;
             cancelled = List.copyOf(pending);
             pending.clear();
-            task = new MatchMailboxTask(command);
+            task = new MatchMailboxTask<>(command::getAsBoolean, false);
             terminal = task;
             schedule = !scheduled;
             scheduled = true;
@@ -88,8 +93,8 @@ final class MatchMailbox {
         try {
             executor.execute(this::run);
         } catch (RejectedExecutionException failure) {
-            List<MatchMailboxTask> cancelled;
-            MatchMailboxTask ending;
+            List<MatchMailboxTask<?>> cancelled;
+            MatchMailboxTask<Boolean> ending;
 
             synchronized (this) {
                 scheduled = false;
@@ -110,7 +115,7 @@ final class MatchMailbox {
 
     private void run() {
         while (true) {
-            MatchMailboxTask work;
+            MatchMailboxTask<?> work;
 
             synchronized (this) {
                 work = pending.pollFirst();

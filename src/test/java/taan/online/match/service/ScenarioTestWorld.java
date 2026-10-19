@@ -11,12 +11,16 @@ import taan.online.MatchFixtures;
 import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.MatchWorldState;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurn;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.service.model.AcceptedScenario;
+import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.ScenarioApplicationResult;
+import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioAdmissionContext;
@@ -34,6 +38,7 @@ public final class ScenarioTestWorld implements AutoCloseable {
     public int channel = original.channelId();
     public List<MatchParticipant> members = original.participants();
     public final Map<UUID, MatchActorState> actors = new HashMap<>();
+    public MatchWorldState applied;
     public MatchDefinitions definitions = original.definitions();
     public MatchPhase phase = MatchPhase.ACTION;
     public int activeSlot = 2;
@@ -75,7 +80,7 @@ public final class ScenarioTestWorld implements AutoCloseable {
             original.captains(),
             phase,
             original.loadedSessions(),
-            actors,
+            applied == null ? MatchWorldState.initial(actors, definitions.map().terrainLayers()) : applied,
             new MatchTurn(activeSlot, 0, 0, boxBudget, 0, List.of(0, 2), revision, OptionalLong.of(1)),
             3,
             100
@@ -88,6 +93,18 @@ public final class ScenarioTestWorld implements AutoCloseable {
 
     public ScenarioAdmissionContext admission(MatchCommandContext context, Optional<AcceptedScenario> previous) {
         return new ScenarioAdmissionContext(snapshot(), context, 7, previous);
+    }
+
+    public ScenarioApplicationResult appliedResult() {
+        var accepted = execute(claims).accepted().orElseThrow();
+        var prepared = new PrepareScenarioAction().execute(snapshot(), accepted);
+        applied = prepared.world();
+        phase = MatchPhase.COMPLETION;
+        return new ScenarioApplicationResult(
+            ScenarioApplicationOutcome.APPLIED,
+            "APPLIED",
+            Optional.of(new CommittedScenario(accepted, snapshot(), prepared.changedCells(), prepared.deaths()))
+        );
     }
 
     public ScenarioAdmissionResult execute(ScenarioClaims candidate) {

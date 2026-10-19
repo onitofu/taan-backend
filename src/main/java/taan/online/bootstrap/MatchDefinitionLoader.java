@@ -30,8 +30,26 @@ public final class MatchDefinitionLoader {
         InputStream weapons,
         InputStream cannon
     ) {
+        return load(
+            properties,
+            maps,
+            spawns,
+            weapons,
+            cannon,
+            name -> getClass().getResourceAsStream("/match/" + name)
+        );
+    }
+
+    public MatchDefinitionCatalog load(
+        InputStream properties,
+        InputStream maps,
+        InputStream spawns,
+        InputStream weapons,
+        InputStream cannon,
+        Function<String, InputStream> resources
+    ) {
         try (properties; maps; spawns; weapons; cannon) {
-            return definitions(properties, maps, spawns, weapons, cannon);
+            return definitions(properties, maps, spawns, weapons, cannon, resources);
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot load match definitions", failure);
         }
@@ -42,7 +60,8 @@ public final class MatchDefinitionLoader {
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
-        InputStream cannon
+        InputStream cannon,
+        Function<String, InputStream> resources
     ) throws IOException {
         var values = new Properties();
         values.load(new InputStreamReader(Objects.requireNonNull(properties), StandardCharsets.UTF_8.newDecoder()));
@@ -70,6 +89,9 @@ public final class MatchDefinitionLoader {
         ).stream().collect(
             Collectors.groupingBy(Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList()))
         );
+        var terrain = new MatchTerrainDefinitionLoader();
+        var layers = terrain.layers(resources.apply("terrain-layers.csv"), resources);
+        var missiles = terrain.missiles(resources.apply("missile-terrain.csv"), resources);
         var definitions = new HashMap<Integer, MatchMapDefinition>();
 
         for (var map : csv(
@@ -81,7 +103,8 @@ public final class MatchDefinitionLoader {
                 Integer.parseInt(row[2]),
                 Integer.parseInt(row[3]),
                 points.getOrDefault(Integer.parseInt(row[0]), List.of()),
-                kinds(row)
+                kinds(row),
+                layers.getOrDefault(Integer.parseInt(row[0]), List.of())
             )
         )) {
             if (definitions.put(map.mapId(), map) != null) {
@@ -91,7 +114,8 @@ public final class MatchDefinitionLoader {
 
         var expected = IntStream.rangeClosed(1, 21).boxed().collect(Collectors.toSet());
 
-        if (!definitions.keySet().equals(expected) || !points.keySet().equals(expected)) {
+        if (!definitions.keySet().equals(expected) || !points.keySet().equals(expected)
+            || !layers.keySet().equals(expected)) {
             throw new IllegalArgumentException("Incomplete ordinary map catalog");
         }
 
@@ -127,7 +151,8 @@ public final class MatchDefinitionLoader {
             values.getProperty("catalog.version"),
             definitions,
             weaponDefinitions,
-            shots.getFirst()
+            shots.getFirst(),
+            missiles
         );
     }
 

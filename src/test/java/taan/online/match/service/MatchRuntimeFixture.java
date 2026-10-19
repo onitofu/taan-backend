@@ -12,6 +12,7 @@ import taan.online.match.model.Match;
 import taan.online.match.model.MatchId;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchToken;
 
@@ -25,8 +26,13 @@ final class MatchRuntimeFixture implements AutoCloseable {
     final TestMatchCallbacks callbacks;
     final RoomMatchToken token;
     boolean admitted = true;
+    Runnable onAccess = () -> { };
 
     MatchRuntimeFixture(int capacity) {
+        this(capacity, MatchExecutionMode.PREVIEW);
+    }
+
+    MatchRuntimeFixture(int capacity, MatchExecutionMode mode) {
         var definitions = MatchFixtures.definitions();
         var draft = room.draft();
         token = draft.token();
@@ -45,7 +51,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
         );
         runtime = new MatchRuntime(
             match,
-            new MatchBootstrapSettings(30, 20, 8),
+            new MatchBootstrapSettings(30, 20, 8, mode),
             timers,
             () -> timers.now,
             new WarningLogLimiter(
@@ -56,7 +62,10 @@ final class MatchRuntimeFixture implements AutoCloseable {
             ),
             tasks::addLast,
             capacity,
-            (context, participant) -> admitted
+            (context, participant) -> {
+                onAccess.run();
+                return admitted;
+            }
         );
         callbacks = new TestMatchCallbacks(runtime);
     }

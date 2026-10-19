@@ -20,7 +20,7 @@ import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import taan.online.match.service.MatchOutput;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.service.model.AcceptedScenario;
+import taan.online.match.service.model.CommittedScenario;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.option.packet.OptionList;
 import taan.online.room.model.RoomSlotState;
@@ -141,8 +141,8 @@ public final class ProtocolMatchView implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> scenario(AcceptedScenario scenario) {
-        return output.send(List.of(scenario.root()));
+    public CompletionStage<Void> scenario(CommittedScenario scenario) {
+        return output.send(List.of(scenario.scenario().root()));
     }
 
     @Override

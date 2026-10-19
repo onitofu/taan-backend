@@ -15,8 +15,8 @@ class MatchArchitectureTest {
     static final ArchRule SCENARIO_STAGING = noClasses().that().resideInAnyPackage(
         "taan.online.bootstrap..",
         "taan.online.server.."
-    ).should().dependOnClassesThat().haveFullyQualifiedName(
-        "taan.online.match.controller.ValidateScenarioPacketHandler"
+    ).should().dependOnClassesThat().haveNameMatching(
+        "taan\\.online\\.match\\.controller\\.(ValidateScenarioPacketHandler|ApplyScenarioPacketHandler)"
     );
 
     @ArchTest
@@ -129,7 +129,7 @@ class MatchArchitectureTest {
     static final ArchRule RUNTIME_OWNER = classes().that().haveSimpleName("MatchRuntime")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.service\\."
-                + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch)"
+                + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch|MatchScenarioExecution)"
         );
 
     @ArchTest

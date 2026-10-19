@@ -75,7 +75,9 @@ public final class ScenarioClaimsMapper {
                 weapon.sequence(),
                 weapon.variant(),
                 weapon.shotTick(),
-                Float.intBitsToFloat(weapon.scalar24Bits())
+                Float.intBitsToFloat(weapon.scalar24Bits()),
+                weapon.position().x(),
+                weapon.position().y()
             );
         }
 

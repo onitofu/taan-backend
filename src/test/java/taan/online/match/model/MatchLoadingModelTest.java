@@ -111,9 +111,18 @@ class MatchLoadingModelTest {
             spawns.set(8, new MapSpawnDefinition(8, 500, 500, 500, 500, 1, 0, false));
             var definitions = new MatchDefinitions(
                 source.definitions().catalogVersion(),
-                new MatchMapDefinition(map.mapId(), map.asset(), map.width(), map.height(), spawns, Set.of(0, 1, 6)),
+                new MatchMapDefinition(
+                    map.mapId(),
+                    map.asset(),
+                    map.width(),
+                    map.height(),
+                    spawns,
+                    Set.of(0, 1, 6),
+                    MatchFixtures.terrainLayers()
+                ),
                 source.definitions().weapons(),
-                MatchFixtures.cannonShot()
+                MatchFixtures.cannonShot(),
+                MatchFixtures.missileTerrain()
             );
             var match = new Match(
                 source.id(),

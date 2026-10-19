@@ -276,11 +276,11 @@ class ValidateScenarioActionTest {
             var original = (ScenarioProjectileClaim) world.claims.commands().get(2);
 
             for (var bad : List.of(
-                new ScenarioProjectileClaim(original.header(), 1, 0, 700, 1),
-                new ScenarioProjectileClaim(original.header(), 0, 1, 700, 1),
-                new ScenarioProjectileClaim(original.header(), 0, 0, 701, 1),
-                new ScenarioProjectileClaim(original.header(), 0, 0, 700, Float.NaN),
-                new ScenarioProjectileClaim(original.header(), 0, 0, 700, -1)
+                new ScenarioProjectileClaim(original.header(), 1, 0, 700, 1, 100, 200),
+                new ScenarioProjectileClaim(original.header(), 0, 1, 700, 1, 100, 200),
+                new ScenarioProjectileClaim(original.header(), 0, 0, 701, 1, 100, 200),
+                new ScenarioProjectileClaim(original.header(), 0, 0, 700, Float.NaN, 100, 200),
+                new ScenarioProjectileClaim(original.header(), 0, 0, 700, -1, 100, 200)
             )) {
                 assertEquals(ScenarioAdmissionOutcome.REJECTED, world.execute(replace(world, 2, bad)).outcome());
             }
@@ -292,7 +292,9 @@ class ValidateScenarioActionTest {
                 terminal.sequence(),
                 terminal.variant(),
                 terminal.shotTick(),
-                terminal.terrainFactor()
+                terminal.terrainFactor(),
+                100,
+                200
             );
 
             assertEquals(ScenarioAdmissionOutcome.ACCEPTED, world.execute(replace(world, 3, alternate)).outcome());

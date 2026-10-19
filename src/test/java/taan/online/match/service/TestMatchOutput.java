@@ -7,10 +7,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.service.model.AcceptedScenario;
+import taan.online.match.service.model.CommittedScenario;
 
 public final class TestMatchOutput implements MatchOutput {
-    public final List<AcceptedScenario> scenarios = new ArrayList<>();
+    public final List<CommittedScenario> scenarios = new ArrayList<>();
     public final List<MatchSnapshot> starts = new ArrayList<>();
     public final List<MatchSnapshot> turns = new ArrayList<>();
     public CompletableFuture<Void> startDelivery = CompletableFuture.completedFuture(null);
@@ -45,7 +45,7 @@ public final class TestMatchOutput implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> scenario(AcceptedScenario scenario) {
+    public CompletionStage<Void> scenario(CommittedScenario scenario) {
         scenarios.add(scenario);
         return delivery;
     }

@@ -5,6 +5,8 @@ public record ScenarioProjectileClaim(
     int sequence,
     int variant,
     int shotTick,
-    float terrainFactor
+    float terrainFactor,
+    int x,
+    int y
 ) implements ScenarioClaim {
 }

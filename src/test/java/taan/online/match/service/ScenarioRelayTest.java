@@ -13,10 +13,13 @@ import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.match.model.MatchId;
+import taan.online.match.model.MatchWorldState;
+import taan.online.match.model.ScenarioCommitReceipt;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.AcceptedScenario;
-import taan.online.match.service.model.ScenarioAdmissionOutcome;
-import taan.online.match.service.model.ScenarioAdmissionResult;
+import taan.online.match.service.model.ScenarioApplicationOutcome;
+import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.view.ProtocolMatchView;
 import taan.online.room.model.RoomId;
 
@@ -24,7 +27,7 @@ class ScenarioRelayTest {
     @Test
     void relaysExactRootOnlyToCurrentObserversAndWaitsForDelivery() throws Exception {
         try (var world = new ScenarioTestWorld()) {
-            var result = world.execute(world.claims);
+            var result = world.appliedResult();
             var observer = world.members.getFirst();
             var wire = new CollectingPacketOutput();
             var shooter = new TestMatchOutput();
@@ -60,6 +63,58 @@ class ScenarioRelayTest {
     }
 
     @Test
+    void refusesMissingOrWrongCommitReceiptsAndStopsPublishingAfterTheOwnerCloses() throws Exception {
+        try (var world = new ScenarioTestWorld()) {
+            var result = world.appliedResult();
+            var output = new TestMatchOutput();
+            var subscriptions = List.of(new MatchSubscription(world.members.getFirst().sessionId(), output));
+            var relay = new ScenarioRelay((context, member) -> true);
+            var applied = world.applied;
+            world.applied = new MatchWorldState(
+                applied.revision() + 1,
+                applied.actors(),
+                applied.terrain(),
+                applied.falls(),
+                applied.processedDeaths(),
+                applied.receipt()
+            );
+            relay.deliver(result, world.snapshot(), subscriptions).toCompletableFuture().join();
+            world.applied = new MatchWorldState(
+                applied.revision(),
+                applied.actors(),
+                applied.terrain(),
+                applied.falls(),
+                applied.processedDeaths(),
+                Optional.empty()
+            );
+            relay.deliver(result, world.snapshot(), subscriptions).toCompletableFuture().join();
+            var receipt = applied.receipt().orElseThrow();
+            world.applied = new MatchWorldState(
+                applied.revision(),
+                applied.actors(),
+                applied.terrain(),
+                applied.falls(),
+                applied.processedDeaths(),
+                Optional.of(new ScenarioCommitReceipt(
+                    "wrong",
+                    receipt.sessionId(),
+                    receipt.admissionId(),
+                    7,
+                    applied.revision()
+                ))
+            );
+            relay.deliver(result, world.snapshot(), subscriptions).toCompletableFuture().join();
+            world.applied = applied;
+            new ScenarioRelay((context, member) -> true, () -> false).deliver(
+                result,
+                world.snapshot(),
+                subscriptions
+            ).toCompletableFuture().join();
+            assertTrue(output.scenarios.isEmpty());
+        }
+    }
+
+    @Test
     void discardsRejectedDuplicateAndIgnoredResults() throws Exception {
         try (var world = new ScenarioTestWorld()) {
             var output = new TestMatchOutput();
@@ -67,12 +122,12 @@ class ScenarioRelayTest {
             var relay = new ScenarioRelay((context, member) -> true);
 
             for (var outcome : List.of(
-                ScenarioAdmissionOutcome.REJECTED,
-                ScenarioAdmissionOutcome.DUPLICATE,
-                ScenarioAdmissionOutcome.IGNORED
+                ScenarioApplicationOutcome.REJECTED,
+                ScenarioApplicationOutcome.DUPLICATE,
+                ScenarioApplicationOutcome.IGNORED
             )) {
                 relay.deliver(
-                    new ScenarioAdmissionResult(outcome, "IGNORED", Optional.empty()),
+                    new ScenarioApplicationResult(outcome, "IGNORED", Optional.empty()),
                     world.snapshot(),
                     subscriptions
                 ).toCompletableFuture().join();
@@ -85,13 +140,13 @@ class ScenarioRelayTest {
     @Test
     void revalidatesMatchChannelRoomGenerationAdmissionAndTurnBeforePublishing() throws Exception {
         try (var world = new ScenarioTestWorld()) {
-            var result = world.execute(world.claims);
+            var result = world.appliedResult();
             var output = new TestMatchOutput();
             var subscriptions = List.of(new MatchSubscription(world.members.getFirst().sessionId(), output));
             var relay = new ScenarioRelay((context, member) -> true);
             world.phase = MatchPhase.PREVIEW;
             relay.deliver(result, world.snapshot(), subscriptions).toCompletableFuture().join();
-            world.phase = MatchPhase.ACTION;
+            world.phase = MatchPhase.COMPLETION;
             world.id = new MatchId(UUID.randomUUID());
             relay.deliver(result, world.snapshot(), subscriptions).toCompletableFuture().join();
             world.id = world.original.id();
@@ -122,11 +177,15 @@ class ScenarioRelayTest {
                 world.snapshot(),
                 subscriptions
             ).toCompletableFuture().join();
-            var accepted = result.accepted().orElseThrow();
+            var accepted = result.committed().orElseThrow().scenario();
             var staleAdmission = world.context(world.sender.sessionId(), UUID.randomUUID());
             var stale = new AcceptedScenario(staleAdmission, 7, world.root, accepted.journal());
             relay.deliver(
-                new ScenarioAdmissionResult(ScenarioAdmissionOutcome.ACCEPTED, "VALIDATED", Optional.of(stale)),
+                new ScenarioApplicationResult(
+                    ScenarioApplicationOutcome.APPLIED,
+                    "VALIDATED",
+                    Optional.of(new CommittedScenario(stale, world.snapshot(), 0, 0))
+                ),
                 world.snapshot(),
                 subscriptions
             ).toCompletableFuture().join();

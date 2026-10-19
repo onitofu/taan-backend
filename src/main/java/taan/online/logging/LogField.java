@@ -75,6 +75,18 @@ public final class LogField {
         return new LogField("commandCount", value);
     }
 
+    public static LogField worldRevision(long value) {
+        return new LogField("worldRevision", value);
+    }
+
+    public static LogField changedCells(int value) {
+        return new LogField("changedCells", value);
+    }
+
+    public static LogField processedDeaths(int value) {
+        return new LogField("processedDeaths", value);
+    }
+
     public static LogField turnRevision(long value) {
         return new LogField("turnRevision", value);
     }
