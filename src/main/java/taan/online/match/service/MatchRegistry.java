@@ -25,7 +25,6 @@ import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurnPolicy;
-import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
@@ -49,6 +48,7 @@ import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.RoomMatchLifecycle;
@@ -295,7 +295,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         return runtime != null && runtime.live();
     }
 
-    public CompletionStage<Boolean> activateSpecial(ActivateSpecialCommand command) {
+    public CompletionStage<Boolean> useItem(UseMatchItemCommand command) {
         var runtime = find(command.context().token());
         return runtime == null ? CompletableFuture.completedFuture(false)
             : runtime.turnWork(() -> runtime.items.activate(command));

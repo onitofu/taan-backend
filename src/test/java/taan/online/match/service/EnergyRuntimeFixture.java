@@ -10,18 +10,25 @@ import taan.online.match.protocol.packet.ScenarioCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponFields;
-import taan.online.match.service.model.ActivateSpecialCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
-import taan.online.match.service.model.SpentMatchItem;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.SpentMatchItem;
+import taan.online.match.service.model.UseMatchItemCommand;
 
 final class EnergyRuntimeFixture implements AutoCloseable {
-    final MovementRuntimeFixture movement = new MovementRuntimeFixture();
-    final MatchRuntimeFixture f = movement.f;
+    final MovementRuntimeFixture movement;
+    final MatchRuntimeFixture f;
 
     EnergyRuntimeFixture() throws Exception {
+        this(MatchLootPolicy.disabled());
+    }
+
+    EnergyRuntimeFixture(MatchLootPolicy policy) throws Exception {
+        movement = new MovementRuntimeFixture(policy);
+        f = movement.f;
     }
 
     MatchSnapshot snapshot() {
@@ -35,10 +42,10 @@ final class EnergyRuntimeFixture implements AutoCloseable {
         return MatchCommandContext.from(snapshot, member.sessionId());
     }
 
-    ActivateSpecialCommand use() {
+    UseMatchItemCommand use() {
         var member = snapshot().participants().stream().filter(p -> p.sessionId().equals(context().sessionId()))
             .findFirst().orElseThrow();
-        return new ActivateSpecialCommand(
+        return new UseMatchItemCommand(
             context(),
             snapshot().turn().revision(),
             snapshot().phaseRevision(),
@@ -64,7 +71,7 @@ final class EnergyRuntimeFixture implements AutoCloseable {
         );
     }
 
-    boolean activate(ActivateSpecialCommand command) {
+    boolean activate(UseMatchItemCommand command) {
         var result = f.runtime.turnWork(() -> f.runtime.items.activate(command));
         f.run();
         return result.join();

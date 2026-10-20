@@ -16,13 +16,12 @@ import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
-import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchPickupAction;
-import taan.online.match.service.model.ActivateSpecialCommand;
+import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -30,10 +29,11 @@ import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.match.service.model.SpentMatchItem;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.protocol.MalformedPacketException;
 
 public final class MatchItemPacketHandler {
-    private final ActivateSpecialAction activation;
+    private final UseMatchItemAction activation;
     private final RecordMatchSpendAction spending;
     private final ReportMatchBonusAction bonuses;
     private final ReportMatchPickupAction pickups;
@@ -41,7 +41,7 @@ public final class MatchItemPacketHandler {
     private final DiscardMatchItemAction discards;
 
     public MatchItemPacketHandler(
-        ActivateSpecialAction activation,
+        UseMatchItemAction activation,
         RecordMatchSpendAction spending,
         ReportMatchBonusAction bonuses,
         ReportMatchPickupAction pickups,
@@ -122,7 +122,7 @@ public final class MatchItemPacketHandler {
 
         if (type == PcGamePlayUseItem.TYPE_ID) {
             var packet = new UseItemCodec().decode(root);
-            var command = new ActivateSpecialCommand(
+            var command = new UseMatchItemCommand(
                 sender,
                 request.turnRevision(),
                 request.phaseRevision(),

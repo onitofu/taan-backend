@@ -2,8 +2,8 @@ package taan.online.match.model;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
@@ -47,7 +47,7 @@ class TerrainDefinitionInvariantTest {
         var d = MatchFixtures.definitions();
         for (var shots : List.of(
             Map.of(0, d.cannonShots().get(0)),
-            Map.of(0, d.cannonShots().get(2), 2, d.cannonShots().get(0))
+            Map.of(0, d.cannonShots().get(2), 1, d.cannonShots().get(1), 2, d.cannonShots().get(0))
         )) {
             assertThrows(
                 IllegalArgumentException.class,

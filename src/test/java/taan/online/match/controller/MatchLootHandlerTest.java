@@ -10,12 +10,12 @@ import taan.online.MatchFixtures;
 import taan.online.match.protocol.packet.PcGamePlayEatItemBox;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
-import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchPickupAction;
+import taan.online.match.service.UseMatchItemAction;
 import taan.online.protocol.MalformedPacketException;
 
 class MatchLootHandlerTest {
@@ -24,7 +24,7 @@ class MatchLootHandlerTest {
         try (var f = new MatchItemHandlerFixture()) {
             var matches = f.room.scenario.matches;
             var handler = new MatchItemPacketHandler(
-                new ActivateSpecialAction(matches),
+                new UseMatchItemAction(matches),
                 new RecordMatchSpendAction(matches),
                 new ReportMatchBonusAction(matches),
                 new ReportMatchPickupAction(matches),

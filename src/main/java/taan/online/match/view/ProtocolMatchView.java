@@ -8,8 +8,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.match.model.MatchOutcome;
-import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
+import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ForsakeItemCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
@@ -22,11 +22,9 @@ import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
-import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
-import taan.online.match.protocol.packet.ScenarioCommandHeader;
-import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
+import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
@@ -35,15 +33,18 @@ import taan.online.match.protocol.packet.PcGamePlayTurnStart;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.match.protocol.packet.ScenarioCommandHeader;
+import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.SpentItem;
 import taan.online.match.service.MatchOutput;
 import taan.online.match.service.model.CommittedScenario;
-import taan.online.match.service.model.MatchMovementNotice;
-import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.DiscardMatchItemCommand;
+import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PendingMatchSpend;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.option.packet.OptionList;
 import taan.online.room.model.RoomSlotState;
@@ -207,8 +208,16 @@ public final class ProtocolMatchView implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> special(int slot, int team) {
-        return output.send(List.of(new UseItemCodec().encode(new PcGamePlayUseItem(slot, team, 0, 0, 255, 6))));
+    public CompletionStage<Void> useItem(UseMatchItemCommand command) {
+        var packet = new PcGamePlayUseItem(
+            command.slot(),
+            command.team(),
+            command.flag12(),
+            command.flag13(),
+            command.inventoryIndex(),
+            command.itemId()
+        );
+        return output.send(List.of(new UseItemCodec().encode(packet)));
     }
 
     @Override

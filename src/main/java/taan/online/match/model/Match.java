@@ -157,12 +157,14 @@ public final class Match {
 
     public void withdraw(UUID session, MatchExitKind kind) {
         loot = loot.without(session);
+        attacks.remove(session);
         resolution = resolution.exit(session, kind, participants, world, turn.activeSlot());
         completion = completion.map(value -> value.acknowledged(session));
     }
 
     public void exclude(Set<UUID> sessions) {
         sessions.forEach(session -> loot = loot.without(session));
+        attacks.keySet().removeAll(sessions);
         resolution = resolution.exclude(sessions, participants, world, turn.activeSlot());
         sessions.forEach(session -> completion = completion.map(value -> value.acknowledged(session)));
     }
@@ -171,17 +173,29 @@ public final class Match {
         return Map.copyOf(attacks);
     }
 
-    public boolean activateSpecial(UUID session) {
-        var actor = world.actors().get(session);
-
-        if (phase != MatchPhase.ACTION || !activeSession().equals(session) || actor.dead()
-            || actor.energy() != participants.stream().filter(p -> p.sessionId().equals(session))
-                .findFirst().orElseThrow().maxEnergy()) {
+    public boolean useItem(UUID session, int index, int itemId) {
+        if (phase != MatchPhase.ACTION || !activeSession().equals(session) || world.actors().get(session).dead()) {
             return false;
         }
 
-        world = world.energy(session, 0);
-        attacks.put(session, MatchAttackSelection.SPECIAL);
+        var member = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElseThrow();
+        var activation = MatchItemSelectionRules.activate(
+            member,
+            world,
+            loot,
+            attacks.getOrDefault(session, MatchAttackSelection.NORMAL),
+            index,
+            itemId
+        );
+
+        if (activation.isEmpty()) {
+            return false;
+        }
+
+        var applied = activation.orElseThrow();
+        world = applied.world();
+        loot = applied.loot();
+        attacks.put(session, applied.selection());
         return true;
     }
 
@@ -241,21 +255,6 @@ public final class Match {
         return world;
     }
 
-    public boolean commitScenario(long expectedWorldRevision, long expectedTurnRevision, MatchWorldState prepared) {
-        return commitScenario(expectedWorldRevision, expectedTurnRevision, prepared, Optional.empty());
-    }
-
-    public boolean commitScenario(
-        long expectedWorldRevision,
-        long expectedTurnRevision,
-        MatchWorldState prepared,
-        Optional<MatchCompletion> pending
-    ) {
-        var appliedLoot = new ScenarioLootDraft(loot).finish(prepared);
-
-        return commitScenario(expectedWorldRevision, expectedTurnRevision, prepared, pending, loot, appliedLoot);
-    }
-
     public boolean commitScenario(
         long expectedWorldRevision,
         long expectedTurnRevision,
@@ -272,6 +271,7 @@ public final class Match {
         var active = activeSession();
         movements.put(active, MatchScenarioCommitRules.movement(world, prepared, active, movements.get(active)));
         attacks.remove(activeSession());
+        attacks.keySet().removeIf(session -> prepared.actors().get(session).dead());
         world = prepared;
         loot = preparedLoot;
         resolution = resolution.evaluate(participants, world, turn.activeSlot());
@@ -468,6 +468,7 @@ public final class Match {
 
         world = world.settled(session, movement.fall().orElseThrow().endY(), definitions.map().height());
         loot = new ScenarioLootDraft(loot).finish(world);
+        attacks.keySet().removeIf(id -> world.actors().get(id).dead());
         resolution = resolution.settled(participants, world, turn.activeSlot());
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }

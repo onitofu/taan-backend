@@ -94,7 +94,7 @@ final class MatchRuntime {
         scenarios = new MatchScenarioExecution(this, access, settings.lootPolicy());
         turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
         outcomes = new MatchOutcomeExecution(this, match, admission, clock);
-        items = new MatchItemExecution(this, match, admission, clock, settings.lootPolicy());
+        items = new MatchItemExecution(this, match, admission, clock, settings.lootPolicy(), warnings);
         movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
     }
 

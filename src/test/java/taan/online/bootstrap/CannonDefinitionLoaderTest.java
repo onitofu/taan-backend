@@ -27,6 +27,7 @@ class CannonDefinitionLoaderTest {
 
         assertEquals(new CannonShotDefinition(0, 0, 0, 100, 0, 0), catalog.cannonShots().get(0));
         assertEquals(catalog.cannonShots().get(0), catalog.select(1).cannonShots().get(0));
+        assertEquals(new CannonShotDefinition(0, 1, 0, 100, 1, 1), catalog.cannonShots().get(1));
         assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
         String csv = new String(bytes, StandardCharsets.UTF_8);
 
@@ -55,6 +56,8 @@ class CannonDefinitionLoaderTest {
         int[][] invalid = {
             {1, 0, 0, 100, 0, 0},
             {0, 1, 0, 100, 0, 0},
+            {0, -1, 0, 100, 0, 0},
+            {0, 3, 0, 100, 3, 3},
             {0, 0, -1, 100, 0, 0},
             {0, 0, 0, 101, 0, 0},
             {0, 0, 50, 49, 0, 0},

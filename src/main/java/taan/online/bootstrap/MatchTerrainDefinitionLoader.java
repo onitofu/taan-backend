@@ -86,7 +86,7 @@ public final class MatchTerrainDefinitionLoader {
                 require(result.put(id, definition) == null, "Duplicate missile terrain identity");
             }
 
-            require(result.keySet().equals(Set.of(0, 2)), "Incomplete ordinary cannon terrain definitions");
+            require(result.keySet().equals(Set.of(0, 1, 2)), "Incomplete ordinary cannon terrain definitions");
             return Map.copyOf(result);
         } catch (IOException | NoSuchAlgorithmException failure) {
             throw new IllegalStateException("Cannot load missile terrain definitions", failure);

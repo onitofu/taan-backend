@@ -2,18 +2,18 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
-import taan.online.match.service.model.ActivateSpecialCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
-import taan.online.match.service.model.SpentMatchItem;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
+import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.SpentMatchItem;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchSpecialAdmissionTest {
@@ -23,9 +23,9 @@ class MatchSpecialAdmissionTest {
             var use = e.use();
             var c = use.context();
             var other = e.snapshot().participants().get(1);
-            assertFalse(e.f.match.activateSpecial(other.sessionId()));
+            assertFalse(e.f.match.useItem(other.sessionId(), 255, 6));
             var commands = List.of(
-                new ActivateSpecialCommand(
+                new UseMatchItemCommand(
                     new MatchCommandContext(
                         c.matchId(),
                         c.roomId(),
@@ -43,7 +43,7 @@ class MatchSpecialAdmissionTest {
                     255,
                     6
                 ),
-                new ActivateSpecialCommand(
+                new UseMatchItemCommand(
                     MatchCommandContext.from(e.snapshot(), other.sessionId()),
                     use.turnRevision(),
                     use.phaseRevision(),
@@ -54,9 +54,9 @@ class MatchSpecialAdmissionTest {
                     255,
                     6
                 ),
-                new ActivateSpecialCommand(c, use.turnRevision() + 1, use.phaseRevision(), 0, 1, 0, 0, 255, 6),
-                new ActivateSpecialCommand(c, use.turnRevision(), use.phaseRevision() + 1, 0, 1, 0, 0, 255, 6),
-                new ActivateSpecialCommand(c, use.turnRevision(), use.phaseRevision(), 2, 1, 0, 0, 255, 6)
+                new UseMatchItemCommand(c, use.turnRevision() + 1, use.phaseRevision(), 0, 1, 0, 0, 255, 6),
+                new UseMatchItemCommand(c, use.turnRevision(), use.phaseRevision() + 1, 0, 1, 0, 0, 255, 6),
+                new UseMatchItemCommand(c, use.turnRevision(), use.phaseRevision(), 2, 1, 0, 0, 255, 6)
             );
 
             for (var command : commands) {
@@ -81,7 +81,7 @@ class MatchSpecialAdmissionTest {
             assertNull(e.f.callbacks.reason);
             e.f.runtime.stop();
             e.f.match.cancel();
-            assertFalse(e.f.match.activateSpecial(e.f.room.owner));
+            assertFalse(e.f.match.useItem(e.f.room.owner, 255, 6));
         }
 
         try (var e = new EnergyRuntimeFixture()) {
@@ -100,14 +100,14 @@ class MatchSpecialAdmissionTest {
             e.f.match.settleMovement(e.snapshot().movements().get(e.f.room.owner).fall().orElseThrow().endsAtNanos());
             e.f.runtime.refresh();
             assertTrue(e.snapshot().actors().get(e.f.room.owner).dead());
-            assertFalse(e.f.match.activateSpecial(e.f.room.owner));
+            assertFalse(e.f.match.useItem(e.f.room.owner, 255, 6));
             assertFalse(e.activate(e.use()));
             assertNull(e.f.callbacks.reason);
         }
 
         try (var f = new ScenarioRuntimeFixture()) {
             var s = f.f.runtime.snapshot();
-            var result = f.f.runtime.turnWork(() -> f.f.runtime.items.activate(new ActivateSpecialCommand(
+            var result = f.f.runtime.turnWork(() -> f.f.runtime.items.activate(new UseMatchItemCommand(
                 f.f.context(),
                 s.turn().revision(),
                 s.phaseRevision(),
@@ -131,7 +131,7 @@ class MatchSpecialAdmissionTest {
             try (var e = new EnergyRuntimeFixture()) {
                 e.charge();
                 var use = e.use();
-                assertFalse(e.activate(new ActivateSpecialCommand(
+                assertFalse(e.activate(new UseMatchItemCommand(
                     use.context(),
                     use.turnRevision(),
                     use.phaseRevision(),

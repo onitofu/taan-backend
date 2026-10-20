@@ -20,15 +20,15 @@ import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.SpentItem;
-import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchPickupAction;
-import taan.online.match.service.model.ActivateSpecialCommand;
+import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomTeam;
 
@@ -82,7 +82,7 @@ class MatchItemHandlerTest {
     void ignoresMissingForeignAndNoLongerExistingMemberships() {
         try (var f = new MatchItemHandlerFixture()) {
             var matches = f.room.scenario.matches;
-            var activation = new ActivateSpecialAction(matches);
+            var activation = new UseMatchItemAction(matches);
             var spending = new RecordMatchSpendAction(matches);
             var direct = new MatchItemPacketHandler(
                 activation,
@@ -108,7 +108,7 @@ class MatchItemHandlerTest {
             )
                 .toCompletableFuture().join();
             f.room.scenario.rooms.leave(f.room.owner, f.token.roomId().value(), 0);
-            assertFalse(activation.execute(new ActivateSpecialCommand(
+            assertFalse(activation.execute(new UseMatchItemCommand(
                 command,
                 captured.turnRevision(),
                 captured.phaseRevision(),

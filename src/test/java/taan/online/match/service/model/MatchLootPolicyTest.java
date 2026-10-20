@@ -20,10 +20,18 @@ class MatchLootPolicyTest {
         }
 
         assertFalse(policy.permits(2, 0));
+        var repeat = new MatchLootPolicy(Set.of(1, 2));
+        assertTrue(repeat.allowsUse(1));
+        assertTrue(repeat.allowsUse(2));
+        assertFalse(repeat.allowsUse(5));
+        assertTrue(repeat.permits(1, 0));
+        assertFalse(repeat.permits(2, 0));
+        assertFalse(repeat.permits(2, 70));
+        assertFalse(MatchLootPolicy.disabled().allowsUse(2));
         assertFalse(MatchLootPolicy.disabled().enabled());
         assertFalse(MatchLootPolicy.disabled().permits(5, 0));
 
-        for (int item : new int[]{0, 2, 3, 4, 6, 1000, 1006, 1055, 65535}) {
+        for (int item : new int[]{0, 3, 4, 6, 1000, 1006, 1055, 65535}) {
             assertThrows(IllegalArgumentException.class, () -> new MatchLootPolicy(Set.of(item)));
         }
 

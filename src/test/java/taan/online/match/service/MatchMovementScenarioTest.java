@@ -7,15 +7,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import taan.online.MatchStateTestAccess;
+import taan.online.match.controller.ScenarioClaimsMapper;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchWorldState;
 import taan.online.match.model.ScenarioCommitReceipt;
 import taan.online.match.model.TerrainLayerDefinition;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
-import taan.online.match.controller.ScenarioClaimsMapper;
-import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
@@ -137,7 +138,7 @@ class MatchMovementScenarioTest {
                     before.revision() + 1
                 ))
             );
-            assertTrue(f.match.commitScenario(before.revision(), f.match.turn().revision(), destroyed));
+            assertTrue(MatchStateTestAccess.commit(f.match, before.revision(), f.match.turn().revision(), destroyed));
             var movement = f.match.movements().get(member.sessionId());
             f.match.settleMovement(movement.fall().orElseThrow().endsAtNanos());
             assertEquals(0, f.match.actors().get(member.sessionId()).hp());

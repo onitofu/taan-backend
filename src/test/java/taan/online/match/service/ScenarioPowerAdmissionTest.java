@@ -2,8 +2,8 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.jupiter.api.Test;
 import java.util.Map;
+import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchDefinitions;
@@ -22,6 +22,8 @@ class ScenarioPowerAdmissionTest {
                 Map.of(
                     0,
                     new CannonShotDefinition(0, 0, 25, 75, 0, 0),
+                    1,
+                    new CannonShotDefinition(0, 1, 0, 100, 1, 1),
                     2,
                     new CannonShotDefinition(0, 2, 0, 100, 2, 2)
                 ),

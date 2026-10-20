@@ -231,7 +231,14 @@ public final class MatchFixtures {
     }
 
     public static Map<Integer, CannonShotDefinition> cannonShots() {
-        return Map.of(0, cannonShot(), 2, new CannonShotDefinition(0, 2, 0, 100, 2, 2));
+        return Map.of(
+            0,
+            cannonShot(),
+            1,
+            new CannonShotDefinition(0, 1, 0, 100, 1, 1),
+            2,
+            new CannonShotDefinition(0, 2, 0, 100, 2, 2)
+        );
     }
 
     public static CannonShotDefinition cannonShot() {

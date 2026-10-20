@@ -1,6 +1,6 @@
 package taan.online.match.service.model;
 
-public record ActivateSpecialCommand(
+public record UseMatchItemCommand(
     MatchCommandContext context,
     long turnRevision,
     long phaseRevision,
