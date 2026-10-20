@@ -263,7 +263,8 @@ class MatchModelTest {
             MatchFixtures.definitions(),
             participants,
             captains,
-            participants.isEmpty() ? 0 : participants.getFirst().slotIndex()
+            participants.isEmpty() ? 0 : participants.getFirst().slotIndex(),
+            MatchBoxPolicy.DISABLED
         );
     }
 

@@ -59,6 +59,22 @@ public record MatchTurn(
         );
     }
 
+    public MatchTurn withBoxAttemptBudget(int budget) {
+        return new MatchTurn(
+            activeSlot,
+            windRaw,
+            energyGrant,
+            budget,
+            pickerBase,
+            order,
+            revision,
+            issuedAtNanos,
+            round,
+            remainingThisRound,
+            randomState
+        );
+    }
+
     public MatchTurn {
         order = List.copyOf(order);
         remainingThisRound = Set.copyOf(remainingThisRound);

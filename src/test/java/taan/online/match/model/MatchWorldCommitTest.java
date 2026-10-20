@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
-import java.util.UUID;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.match.service.ScenarioTestWorld;
 
@@ -27,7 +27,8 @@ class MatchWorldCommitTest {
                 s.definitions(),
                 s.participants(),
                 s.captains(),
-                0
+                0,
+                MatchBoxPolicy.DISABLED
             );
             var initial = match.world();
             assertFalse(match.actionStarted(0, 20));

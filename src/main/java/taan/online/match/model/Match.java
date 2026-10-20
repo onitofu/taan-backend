@@ -24,6 +24,7 @@ public final class Match {
     private final RoomMode mode;
     private final RoomRule rule;
     private final MatchDefinitions definitions;
+    private final MatchBoxPolicy boxPolicy;
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
     private MatchTurn turn;
@@ -51,7 +52,8 @@ public final class Match {
         MatchDefinitions definitions,
         List<MatchParticipant> participants,
         CaptainSelectionResult captains,
-        int firstTurnSlot
+        int firstTurnSlot,
+        MatchBoxPolicy boxPolicy
     ) {
         this.id = Objects.requireNonNull(id);
         this.roomId = Objects.requireNonNull(roomId);
@@ -61,10 +63,12 @@ public final class Match {
         this.mode = Objects.requireNonNull(mode);
         this.rule = Objects.requireNonNull(rule);
         this.definitions = Objects.requireNonNull(definitions);
+        this.boxPolicy = Objects.requireNonNull(boxPolicy);
         this.participants = List.copyOf(participants);
         this.captains = captains;
         turn = MatchTurnPolicy.roster(this, firstTurnSlot);
         world = MatchWorldState.initial(participants, definitions.map().terrainLayers());
+        turn = turn.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
     }
 
     public Match(
@@ -78,7 +82,8 @@ public final class Match {
         MatchDefinitions definitions,
         List<MatchParticipant> participants,
         CaptainSelectionResult captains,
-        MatchTurn initialTurn
+        MatchTurn initialTurn,
+        MatchBoxPolicy boxPolicy
     ) {
         this(
             id,
@@ -91,9 +96,10 @@ public final class Match {
             definitions,
             participants,
             captains,
-            initialTurn.activeSlot()
+            initialTurn.activeSlot(),
+            boxPolicy
         );
-        turn = initialTurn;
+        turn = initialTurn.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
     }
 
     public Optional<MatchCompletion> completion() {
@@ -124,15 +130,10 @@ public final class Match {
         var alive = participants.stream().filter(p -> world.actors().get(p.sessionId()).hp() > 0)
             .map(MatchParticipant::slotIndex).collect(Collectors.toSet());
         var next = new MatchTurnPolicy().next(turn, alive, now);
-        turn = next;
+        turn = next.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
         var member = participants.stream().filter(p -> p.slotIndex() == next.activeSlot()).findFirst().orElseThrow();
         loot = loot.expired(member.sessionId());
-        int energy = MatchEnergyRules.adjust(
-            actors().get(member.sessionId()).energy(),
-            next.energyGrant(),
-            member.maxEnergy()
-        );
-        world = world.energy(member.sessionId(), energy);
+        world = world.grantEnergy(member, next.energyGrant());
         completion = Optional.empty();
         phase = MatchPhase.ACTION;
         phaseRevision++;
@@ -412,13 +413,7 @@ public final class Match {
 
     private void startMovement(long now) {
         int budget = definitions.weapons().getFirst().resourceMove();
-        movements.put(
-            activeSession(),
-            new MatchMovementState(
-                new MovementAllowance(turn.revision(), now, now, budget, 0, 20),
-                Optional.empty()
-            )
-        );
+        movements.put(activeSession(), MatchMovementState.initial(turn.revision(), now, budget));
     }
 
     public void move(UUID session, int x, int y, int facing, long now) {
@@ -482,6 +477,7 @@ public final class Match {
         }
 
         loot = MatchLootState.empty();
+        world = world.withoutBoxes();
         phase = MatchPhase.TERMINATING;
         return true;
     }
@@ -492,6 +488,7 @@ public final class Match {
         }
 
         attacks.clear();
+        world = world.withoutBoxes();
         loot = MatchLootState.empty();
         resolution = MatchResolutionState.initial();
         phase = MatchPhase.CANCELLED;

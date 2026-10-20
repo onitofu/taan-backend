@@ -6,6 +6,7 @@ import taan.online.match.protocol.packet.ScenarioCommand;
 import taan.online.match.protocol.packet.ScenarioDamageCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioGuidedCommand;
+import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.service.model.ScenarioActorClaim;
@@ -15,6 +16,7 @@ import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
@@ -42,6 +44,10 @@ public final class ScenarioClaimsMapper {
             default -> 0;
         };
         var header = new ScenarioEventTime(value.slot(), value.kind(), Integer.toUnsignedLong(value.tick()), duration);
+
+        if (command instanceof ScenarioMakeItemBoxCommand box && value.kind() == 10) {
+            return new ScenarioMakeItemBoxClaim(header, box.entityId(), box.position().x(), box.position().y());
+        }
 
         if (value.kind() >= 10) {
             return new ScenarioUnsupportedClaim(header);

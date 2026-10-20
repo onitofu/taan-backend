@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
@@ -135,7 +135,8 @@ class MatchLoadingModelTest {
                 definitions,
                 source.participants(),
                 source.captains(),
-                0
+                0,
+                MatchBoxPolicy.DISABLED
             );
             match.commit(0, 30);
 
@@ -156,7 +157,8 @@ class MatchLoadingModelTest {
             source.definitions(),
             source.participants(),
             source.captains(),
-            first
+            first,
+            MatchBoxPolicy.DISABLED
         );
     }
 }

@@ -14,6 +14,7 @@ import taan.online.bootstrap.MatchDefinitionLoader;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.CannonShotDefinition;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MissileTerrainDefinition;
@@ -143,6 +144,20 @@ public final class MatchFixtures {
         MatchExecutionMode mode,
         MatchLootPolicy policy
     ) {
+        return registry(catalog, scheduler, random, access, executor, capacity, mode, policy, MatchBoxPolicy.DISABLED);
+    }
+
+    public static MatchRegistry registry(
+        MatchDefinitionCatalog catalog,
+        TestMatchScheduler scheduler,
+        RandomGenerator random,
+        MatchAdmissionAccess access,
+        MatchCommandExecutor executor,
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        MatchBoxPolicy boxes
+    ) {
         return new MatchRegistry(
             catalog,
             new MatchBootstrapSettings(
@@ -152,7 +167,8 @@ public final class MatchFixtures {
                 mode,
                 20_000_000_000L,
                 10_000_000_000L,
-                policy
+                policy,
+                boxes
             ),
             scheduler,
             () -> scheduler.now,

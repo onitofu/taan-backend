@@ -2,6 +2,7 @@ package taan.online.match.service.model;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import taan.online.match.model.MatchBoxPolicy;
 
 public record MatchBootstrapSettings(
     long loadingTimeoutNanos,
@@ -10,8 +11,30 @@ public record MatchBootstrapSettings(
     MatchExecutionMode executionMode,
     long actionTimeoutNanos,
     long completionGraceNanos,
-    MatchLootPolicy lootPolicy
+    MatchLootPolicy lootPolicy,
+    MatchBoxPolicy boxPolicy
 ) {
+    public MatchBootstrapSettings(
+        long loadingTimeoutNanos,
+        long previewTimeoutNanos,
+        int reportsPerSecond,
+        MatchExecutionMode executionMode,
+        long actionTimeoutNanos,
+        long completionGraceNanos,
+        MatchLootPolicy lootPolicy
+    ) {
+        this(
+            loadingTimeoutNanos,
+            previewTimeoutNanos,
+            reportsPerSecond,
+            executionMode,
+            actionTimeoutNanos,
+            completionGraceNanos,
+            lootPolicy,
+            MatchBoxPolicy.DISABLED
+        );
+    }
+
     public MatchBootstrapSettings(
         long loadingTimeoutNanos,
         long previewTimeoutNanos,
@@ -56,7 +79,8 @@ public record MatchBootstrapSettings(
                 MatchExecutionMode.PREVIEW,
                 actionTimeoutNanos,
                 completionGraceNanos,
-                MatchLootPolicy.disabled()
+                MatchLootPolicy.disabled(),
+                MatchBoxPolicy.DISABLED
             ) : this;
     }
 
@@ -67,6 +91,7 @@ public record MatchBootstrapSettings(
     public MatchBootstrapSettings {
         Objects.requireNonNull(executionMode);
         Objects.requireNonNull(lootPolicy);
+        Objects.requireNonNull(boxPolicy);
         if (loadingTimeoutNanos <= 0 || previewTimeoutNanos <= 0 || reportsPerSecond <= 0
             || actionTimeoutNanos <= 0 || completionGraceNanos <= 0) {
             throw new IllegalArgumentException("Invalid match bootstrap settings");

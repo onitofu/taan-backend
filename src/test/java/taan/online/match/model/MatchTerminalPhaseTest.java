@@ -25,7 +25,8 @@ class MatchTerminalPhaseTest {
                 MatchFixtures.definitions(),
                 snapshot.participants(),
                 null,
-                snapshot.firstTurnSlot()
+                snapshot.firstTurnSlot(),
+                MatchBoxPolicy.DISABLED
             );
 
             assertFalse(match.previewStarted(0, 20_000_000_000L));

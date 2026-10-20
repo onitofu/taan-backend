@@ -14,6 +14,7 @@ import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
@@ -23,7 +24,12 @@ public final class PrepareScenarioAction {
             Collectors.toUnmodifiableMap(MatchParticipant::slotIndex, MatchParticipant::sessionId)
         );
         var journal = scenario.journal();
-        var draft = new ScenarioWorldDraft(snapshot.world(), snapshot.definitions(), snapshot.participants());
+        var draft = new ScenarioWorldDraft(
+            snapshot.world(),
+            snapshot.definitions(),
+            snapshot.participants(),
+            snapshot.turn().boxAttemptBudget()
+        );
 
         var shooter = scenario.sender().sessionId();
         draft.grantEnergy(shooter, journal.headerEnergyGrant());
@@ -66,6 +72,7 @@ public final class PrepareScenarioAction {
                     }
                 }
                 case ScenarioFireClaim ignored -> { }
+                case ScenarioMakeItemBoxClaim box -> draft.createBox(box.entityId(), box.x(), box.y());
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioWorldException("UNSUPPORTED_FEATURE");
             }
         }
