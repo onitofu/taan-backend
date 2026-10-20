@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
@@ -81,6 +83,17 @@ class MatchEnergyIntegrationTest {
                     assertTrue(matches.current(token).orElseThrow().actors().values().stream()
                         .allMatch(p -> p.energy() == 0));
 
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+
+                    while (matches.current(token).orElseThrow().phase() != MatchPhase.ACTION
+                        && System.nanoTime() < deadline) {
+                        Thread.sleep(1);
+                    }
+
+                    assertEquals(MatchPhase.ACTION, matches.current(token).orElseThrow().phase());
+                    lootMessages(matches, token, owner, 0);
+                    lootMessages(matches, token, guest, 2);
+
                     for (int use = 0; use < 2; use++) {
                         for (int pass = 0; pass < 20; pass++) {
                             pass(matches, token, owner, guest);
@@ -102,6 +115,21 @@ class MatchEnergyIntegrationTest {
                 }
             }
         }
+    }
+
+    private void lootMessages(MatchRegistry matches, RoomMatchToken token, CharacterTestClient client, int slot)
+        throws Exception {
+        var before = matches.current(token).orElseThrow();
+        byte[] pickup = MatchFixtures.root("EatItemBox-plain.synthetic");
+        pickup[4] = (byte) slot;
+        pickup[9] = (byte) slot;
+        byte[] receipt = MatchFixtures.root("notify-slot0-power-actor" + slot + ".synthetic");
+        byte[] discard = MatchFixtures.root("forsake-known-slot1-actor" + slot + ".synthetic");
+
+        client.sendFragmented(pickup);
+        client.sendTogether(receipt, discard, SelectionFixtures.cash(0, 0));
+        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertEquals(before, matches.current(token).orElseThrow());
     }
 
     private void pass(MatchRegistry matches, RoomMatchToken token, CharacterTestClient owner, CharacterTestClient guest)

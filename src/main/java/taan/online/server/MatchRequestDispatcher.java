@@ -3,18 +3,21 @@ package taan.online.server;
 import java.util.UUID;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.controller.MatchRequestContext;
-import taan.online.match.protocol.packet.PcGamePlayGiveUp;
-import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
-import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
-import taan.online.match.protocol.packet.PcGamePlaySetPos;
-import taan.online.match.protocol.packet.PcGamePlayMove;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
-import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
+import taan.online.match.protocol.packet.PcGamePlayEatItemBox;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
+import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
+import taan.online.match.protocol.packet.PcGamePlayGiveUp;
+import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
+import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGamePlaySetPos;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
+import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
 import taan.online.protocol.PacketOutput;
 
 public final class MatchRequestDispatcher {
@@ -45,7 +48,9 @@ public final class MatchRequestDispatcher {
 
     static boolean accepts(int type) {
         return type == PcGamePlaySpendItem.TYPE_ID || type == PcGamePlayEatBonusItem.TYPE_ID
-            || type == PcGamePlayLoadingDone.TYPE_ID || type == PcGamePlaySetPos.TYPE_ID
+            || type == PcGamePlayEatItemBox.TYPE_ID || type == PcGamePlayNotifyEatItem.TYPE_ID
+            || type == PcGamePlayForsakeItem.TYPE_ID || type == PcGamePlayLoadingDone.TYPE_ID
+            || type == PcGamePlaySetPos.TYPE_ID
             || type == PqGameSessionReportEnemies.TYPE_ID || type == PcGamePlayEndScenario.TYPE_ID
             || type == PcGamePlayMove.TYPE_ID || type == PcGamePlayPassTurn.TYPE_ID
             || type == UnsupportedGameplayPacket.USE_ITEM_TYPE_ID || type == UnsupportedGameplayPacket.SCENARIO_TYPE_ID

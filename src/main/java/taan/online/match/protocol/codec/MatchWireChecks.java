@@ -23,6 +23,12 @@ final class MatchWireChecks {
         }
     }
 
+    static void inventoryIndex(int value) {
+        if (value < 0 || value > 2) {
+            throw new MalformedPacketException("INVALID_INVENTORY_INDEX");
+        }
+    }
+
     static void facing(int value) {
         if (value < 0 || value > 1) {
             throw new MalformedPacketException("INVALID_MATCH_FACING");

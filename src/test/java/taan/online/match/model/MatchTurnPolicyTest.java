@@ -33,12 +33,16 @@ class MatchTurnPolicyTest {
                 assertEquals(Integer.parseInt(values[2]), turn.windRaw());
                 assertEquals(1, turn.round());
                 assertEquals(0, turn.energyGrant());
+                assertEquals(0, turn.pickerBase());
+                assertEquals(0, turn.boxAttemptBudget());
 
                 for (int expected : integers(values[3])) {
                     for (int index = 0; index < 3; index++) {
                         int wind = turn.windRaw();
                         turn = policy.next(turn, Set.of(0, 1, 2, 3), 100);
                         assertEquals(wind, turn.windRaw());
+                        assertEquals(0, turn.pickerBase());
+                        assertEquals(0, turn.boxAttemptBudget());
                     }
 
                     int previous = turn.windRaw();

@@ -50,21 +50,24 @@ import taan.online.lobby.service.LeaveLobbyAction;
 import taan.online.lobby.service.ListLobbyRoomsAction;
 import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
-import taan.online.match.controller.MatchPacketHandler;
-import taan.online.match.controller.MatchItemPacketHandler;
-import taan.online.match.service.ActivateSpecialAction;
-import taan.online.match.service.RecordMatchSpendAction;
-import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.controller.ApplyScenarioPacketHandler;
+import taan.online.match.controller.MatchItemPacketHandler;
+import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ApplyScenarioAction;
-import taan.online.match.service.ConfirmScenarioAction;
-import taan.online.match.service.MoveMatchActorAction;
-import taan.online.match.service.PassMatchTurnAction;
+import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.ConsumeMatchResultAction;
+import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.MoveMatchActorAction;
+import taan.online.match.service.PassMatchTurnAction;
+import taan.online.match.service.RecordMatchSpendAction;
+import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -221,7 +224,10 @@ public final class Application implements AutoCloseable {
                 new MatchItemPacketHandler(
                     new ActivateSpecialAction(matches),
                     new RecordMatchSpendAction(matches),
-                    new ReportMatchBonusAction(matches)
+                    new ReportMatchBonusAction(matches),
+                    new ReportMatchPickupAction(matches),
+                    new ConfirmMatchItemReceiptAction(matches),
+                    new DiscardMatchItemAction(matches)
                 )
             )
         );

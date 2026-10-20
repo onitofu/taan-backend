@@ -1,19 +1,19 @@
 package taan.online.server;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static taan.online.server.RoomConnectionWorld.read;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.server.RoomConnectionWorld.drain;
+import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
-import taan.online.SelectionFixtures;
 import taan.online.RuntimeRoomTestAccess;
+import taan.online.SelectionFixtures;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
@@ -21,8 +21,8 @@ import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.packet.LoadingPosition;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
-import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
+import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 
 class MatchBootstrapConnectionTest {
@@ -58,7 +58,11 @@ class MatchBootstrapConnectionTest {
             assertEquals(0, ownerTurn.energyGrant());
             assertEquals(0, ownerTurn.windRawTenths());
             assertEquals(0, ownerTurn.boxAttemptBudget());
-            assertEquals(100, ownerTurn.pickerBase());
+            assertEquals(0, ownerTurn.pickerBase());
+            assertEquals(0, ownerTurn.pickerTeam0());
+            assertEquals(0, ownerTurn.pickerTeam1());
+            assertEquals(0, ownerTurn.pickerTeam2());
+            assertEquals(0, ownerTurn.boxAttemptBudget());
             world.request(
                 owner,
                 new SetPosCodec().encode(new PcGamePlaySetPos(first.slotIndex(), 336, 676, first.facing()))
