@@ -70,7 +70,7 @@ public final class MatchScenarioTestPackets {
         );
     }
 
-    private static ScenarioCommand withHeader(ScenarioCommand event, ScenarioCommandHeader header) {
+    public static ScenarioCommand withHeader(ScenarioCommand event, ScenarioCommandHeader header) {
         if (event instanceof ScenarioNormalCommand normal) {
             return new ScenarioNormalCommand(header, normal.scalar14(), normal.scalar18());
         }

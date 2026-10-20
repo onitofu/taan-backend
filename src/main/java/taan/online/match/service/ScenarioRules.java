@@ -21,7 +21,7 @@ import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
 final class ScenarioRules {
     private static final long HORIZON = 120000;
-    private static final Set<Integer> SHOOTER_KINDS = Set.of(0, 1, 2, 3, 9, 10, 11, 13);
+    private static final Set<Integer> SHOOTER_KINDS = Set.of(0, 1, 2, 3, 9, 10, 11, 13, 14, 16);
 
     ScenarioJournal validate(MatchSnapshot match, ScenarioClaims claims, MatchParticipant shooter) {
         var actor = match.actors().get(shooter.sessionId());
@@ -105,7 +105,15 @@ final class ScenarioRules {
                 case ScenarioMakeItemBoxClaim ignored -> { }
                 case ScenarioEatItemBoxClaim ignored -> require(projectiles.hasFire(), "MISSING_PROJECTILE");
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioRejectedException("UNSUPPORTED_FEATURE");
-                case ScenarioActorClaim ignored -> { }
+                case ScenarioActorClaim ignored -> {
+                    if (header.kind() == 14) {
+                        require(special, "UNAUTHORIZED_SPECIAL_ANIMATION");
+                    }
+
+                    if (header.kind() == 14 || header.kind() == 16) {
+                        require(header.duration() == 0, "INVALID_ANIMATION_DURATION");
+                    }
+                }
             }
         }
 

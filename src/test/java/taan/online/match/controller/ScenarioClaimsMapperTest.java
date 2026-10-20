@@ -24,6 +24,8 @@ import taan.online.match.protocol.packet.ScenarioIntPoint;
 import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioTail;
+import taan.online.match.protocol.packet.ScenarioTeamGaugeCommand;
+import taan.online.match.protocol.packet.ScenarioUseBonusCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponEffect;
 import taan.online.match.protocol.packet.ScenarioWeaponFields;
@@ -36,6 +38,7 @@ import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
+import taan.online.match.service.model.ScenarioUnsupportedClaim;
 import taan.online.protocol.MalformedPacketException;
 
 class ScenarioClaimsMapperTest {
@@ -56,6 +59,9 @@ class ScenarioClaimsMapperTest {
             new ScenarioFireCommand(h(8), fields, 0, 0, point, point, 0, 0),
             new ScenarioGuidedCommand(h(13), fields, new ScenarioIntPoint(3, 4)),
             new ScenarioNormalCommand(h(14), 39, 8),
+            new ScenarioNormalCommand(h(16), -1, -1),
+            new ScenarioTeamGaugeCommand(h(12), 0, 50, 0),
+            new ScenarioUseBonusCommand(h(15), 5),
             new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200)),
             new ScenarioEatItemBoxCommand(h(5), -1L, 5, -1)
         );
@@ -114,6 +120,11 @@ class ScenarioClaimsMapperTest {
         assertEquals(4, guided.targetY());
         assertEquals(0, guided.header().duration());
         assertEquals(700, mapped.get(11).header().duration());
+        assertInstanceOf(ScenarioActorClaim.class, mapped.get(11));
+        assertInstanceOf(ScenarioActorClaim.class, mapped.get(12));
+        assertEquals(700, mapped.get(12).header().duration());
+        assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(13));
+        assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(14));
         assertInstanceOf(ScenarioActorClaim.class, mapped.getLast());
     }
 

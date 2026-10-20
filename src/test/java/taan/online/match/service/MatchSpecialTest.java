@@ -128,7 +128,7 @@ class MatchSpecialTest {
     }
 
     @Test
-    void acceptsCapturedSpecialFireAfterRemovingDeferredBoxAndEffectCommands() throws Exception {
+    void acceptsCapturedSpecialWithItsNativeAnimationWithoutUnrelatedBoxOperations() throws Exception {
         try (var e = new EnergyRuntimeFixture()) {
             e.charge();
             assertTrue(e.activate(e.use()));
@@ -146,7 +146,8 @@ class MatchSpecialTest {
                 new GameScenario(
                     scene.slot(),
                     scene.scalar09(),
-                    scene.commands().stream().filter(event -> event.header().kind() < 10).toList(),
+                    scene.commands().stream()
+                        .filter(event -> event.header().kind() != 10 && event.header().kind() != 11).toList(),
                     scene.selectedItems(),
                     scene.effects(),
                     scene.flags(),
@@ -158,6 +159,8 @@ class MatchSpecialTest {
                 captured.scalar1c(),
                 captured.tail()
             );
+            assertEquals(captured.scenario().commands().getFirst(), packet.scenario().commands().getFirst());
+            assertEquals(14, packet.scenario().commands().getFirst().header().kind());
             root = new ScenarioCodec().encode(packet);
             var result = e.f.runtime.applyScenario(new ApplyScenarioCommand(
                 e.context(),
