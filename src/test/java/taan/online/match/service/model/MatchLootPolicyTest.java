@@ -31,7 +31,7 @@ class MatchLootPolicyTest {
         assertFalse(MatchLootPolicy.disabled().enabled());
         assertFalse(MatchLootPolicy.disabled().permits(5, 0));
 
-        for (int item : new int[]{0, 3, 4, 6, 1000, 1006, 1055, 65535}) {
+        for (int item : new int[]{0, 4, 6, 1000, 1006, 1055, 65535}) {
             assertThrows(IllegalArgumentException.class, () -> new MatchLootPolicy(Set.of(item)));
         }
 
@@ -53,4 +53,28 @@ class MatchLootPolicyTest {
             null
         ));
     }
+
+    @Test
+    void allowsEveryMinimalDamageCardOnlyInTheExplicitControlledProfile() {
+        for (int item = 1005; item <= 1050; item += 5) {
+            var policy = new MatchLootPolicy(Set.of(item));
+            assertTrue(policy.allowsUse(item));
+            assertTrue(policy.permits(item, 0));
+            assertFalse(policy.permits(item, 1));
+            assertFalse(MatchLootPolicy.disabled().allowsUse(item));
+            assertFalse(MatchLootPolicy.disabled().permits(item, 0));
+        }
+    }
+
+    @Test
+    void permitsSpreadUseInControlledFixturesWithoutAddingItToScalarZeroLoot() {
+        var policy = new MatchLootPolicy(Set.of(1, 2, 3));
+        assertTrue(policy.allowsUse(3));
+        assertFalse(policy.permits(3, 0));
+        assertFalse(policy.permits(3, 50));
+        assertFalse(MatchLootPolicy.disabled().allowsUse(3));
+        assertTrue(policy.permits(1, 0));
+        assertFalse(policy.permits(2, 0));
+    }
+
 }

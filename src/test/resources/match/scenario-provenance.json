@@ -1,6 +1,11 @@
 {
   "fixtures": [
     {
+      "00159-c2s-combat.hex": "e6c7df5eab81f94558918bfaf48894aeaa42741b168455549c48324a3c619694",
+      "original_file": "native-cannon-guided.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
       "equipment-perks-kind15-fixtures-kind15-slot2-damage10.synthetic.root.hex": "7545becc665f3c3237906ebb5223debd6f13cd3aecdefbfc2559f4caba6a3ba4",
       "original_file": "equipment-perks-kind15-fixtures-kind15-slot2-damage10.synthetic.root.hex",
       "origin": "SYNTHETIC"

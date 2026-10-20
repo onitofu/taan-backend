@@ -20,7 +20,7 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
     }
 
     public boolean permits(int itemId, int scalar) {
-        return scalar == 0 && itemId != 2 && allowedItemIds.contains(itemId);
+        return scalar == 0 && itemId != 2 && itemId != 3 && allowedItemIds.contains(itemId);
     }
 
     public boolean allowsUse(int itemId) {
@@ -28,6 +28,7 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
     }
 
     private static boolean candidate(int item) {
-        return item == 1 || item == 2 || item == 5 || item == 7 || item >= 1005 && item <= 1050 && item % 5 == 0;
+        return item == 1 || item == 2 || item == 3 || item == 5 || item == 7
+            || item >= 1005 && item <= 1050 && item % 5 == 0;
     }
 }

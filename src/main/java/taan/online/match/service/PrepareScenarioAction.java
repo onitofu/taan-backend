@@ -18,6 +18,7 @@ import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
@@ -81,6 +82,7 @@ public final class PrepareScenarioAction {
                     }
                 }
                 case ScenarioFireClaim ignored -> { }
+                case ScenarioGuidedClaim ignored -> { }
                 case ScenarioMakeItemBoxClaim box -> draft.createBox(box.entityId(), box.x(), box.y());
                 case ScenarioEatItemBoxClaim pickup -> {
                     if (!policy.permits(pickup.itemId(), Math.toIntExact(snapshot.turn().pickerBase()))) {

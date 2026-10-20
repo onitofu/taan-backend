@@ -18,7 +18,7 @@ public record MatchAttackSelection(List<Integer> activeItems, Map<Integer, Match
             throw new ScenarioWorldException("ACTIVE_ITEM_LIMIT");
         }
 
-        if (activeItems.stream().anyMatch(item -> item != 1 && item != 2 && item != 5 && item != 6)) {
+        if (activeItems.stream().anyMatch(item -> !MatchItemSelectionRules.supports(item))) {
             throw new IllegalArgumentException("Unsupported active item");
         }
     }
@@ -47,7 +47,9 @@ public record MatchAttackSelection(List<Integer> activeItems, Map<Integer, Match
     }
 
     public int shotLimit() {
-        return 1 + selectedItems().stream().filter(item -> item == 1 || item == 2).mapToInt(Integer::intValue).sum();
+        var selected = selectedItems();
+        int launches = 1 + selected.stream().filter(item -> item == 1 || item == 2).mapToInt(Integer::intValue).sum();
+        return selected.contains(3) ? launches * 3 : launches;
     }
 
     public int attackKind() {
