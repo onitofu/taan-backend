@@ -67,7 +67,7 @@ class ScenarioBoundaryTest {
                 command.root()
             );
 
-            assertFalse(f.runtime.commitScenario(stale, prepared, before.completed(prepared.world())));
+            assertTrue(f.runtime.commitScenario(stale, prepared).isEmpty());
             assertSame(before, f.runtime.snapshot());
         }
     }

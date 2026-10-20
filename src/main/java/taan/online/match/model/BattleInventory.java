@@ -7,6 +7,10 @@ import java.util.UUID;
 public record BattleInventory(List<Integer> slots, List<MatchItemReceipt> receipts) {
     public static final int EMPTY = 65535;
     public static final int CAPACITY = 3;
+    private static final BattleInventory EMPTY_INVENTORY = new BattleInventory(
+        List.of(EMPTY, EMPTY, EMPTY),
+        List.of()
+    );
 
     public BattleInventory {
         slots = List.copyOf(slots);
@@ -18,7 +22,7 @@ public record BattleInventory(List<Integer> slots, List<MatchItemReceipt> receip
     }
 
     public static BattleInventory empty() {
-        return new BattleInventory(List.of(EMPTY, EMPTY, EMPTY), List.of());
+        return EMPTY_INVENTORY;
     }
 
     public int firstEmpty() {

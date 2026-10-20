@@ -7,15 +7,12 @@ import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.slotIndex;
 import static taan.online.logging.LogField.turnRevision;
 
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchBonusOffer;
 import taan.online.match.model.MatchParticipant;
-import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
@@ -47,7 +44,7 @@ final class MatchLootExecution {
                 .findFirst().orElseThrow();
             var context = MatchCommandContext.from(owner.snapshot(), member.sessionId());
 
-            if (!current(context) || match.actors().get(member.sessionId()).dead()) {
+            if (!owner.reportCurrent(context) || match.actors().get(member.sessionId()).dead()) {
                 return;
             }
 
@@ -73,7 +70,7 @@ final class MatchLootExecution {
         var context = command.context();
 
         synchronized (admission) {
-            if (!current(context)) {
+            if (!owner.reportCurrent(context)) {
                 return false;
             }
 
@@ -121,7 +118,7 @@ final class MatchLootExecution {
             command.itemId(),
             command.opaque24()
         );
-        deliver(output -> output.bonus(bonus));
+        owner.items.deliver(output -> output.bonus(bonus));
         return true;
     }
 
@@ -210,14 +207,8 @@ final class MatchLootExecution {
             accepted(context, command.slotIndex(), MatchLogEvent.ITEM_DISCARDED);
         }
 
-        deliver(output -> output.discard(command));
+        owner.items.deliver(output -> output.discard(command));
         return true;
-    }
-
-    private boolean current(MatchCommandContext context) {
-        return owner.live() && owner.admits(context) && !match.resolution().exits().containsKey(context.sessionId())
-            && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
-                || match.phase() == MatchPhase.COMPLETION);
     }
 
     private MatchParticipant member(MatchCommandContext context) {
@@ -226,7 +217,7 @@ final class MatchLootExecution {
     }
 
     private boolean inventoryMessage(MatchCommandContext context, int slot, int index, boolean discard) {
-        if (!current(context)) {
+        if (!owner.reportCurrent(context)) {
             return false;
         }
 
@@ -265,15 +256,4 @@ final class MatchLootExecution {
         return valid;
     }
 
-    private void deliver(Function<MatchOutput, CompletionStage<Void>> delivery) {
-        try {
-            for (var recipient : owner.recipients()) {
-                if (owner.items.recipientCurrent(recipient)) {
-                    owner.items.observe(delivery.apply(recipient.output()));
-                }
-            }
-        } catch (RuntimeException failure) {
-            owner.items.deliveryFailed(failure);
-        }
-    }
 }

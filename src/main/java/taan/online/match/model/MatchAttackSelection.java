@@ -47,13 +47,10 @@ public record MatchAttackSelection(List<Integer> activeItems, Map<Integer, Match
     }
 
     public int shotLimit() {
-        var selected = selectedItems();
-        int launches = 1 + selected.stream().filter(item -> item == 1 || item == 2).mapToInt(Integer::intValue).sum();
-        return selected.contains(3) ? launches * 3 : launches;
+        return MatchItemSelectionRules.shotLimit(selectedItems());
     }
 
     public int attackKind() {
-        var selected = selectedItems();
-        return selected.contains(6) ? 2 : selected.contains(5) ? 1 : 0;
+        return MatchItemSelectionRules.attackKind(selectedItems());
     }
 }

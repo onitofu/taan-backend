@@ -6,9 +6,31 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
+import taan.online.match.model.MatchItemSelectionRules;
 import org.junit.jupiter.api.Test;
 
 class MatchLootPolicyTest {
+    @Test
+    void enablesOnlyTheThirteenImplementedNativeScalarZeroItems() {
+        var policy = MatchLootPolicy.minimalCannon();
+        assertEquals(
+            Set.of(1, 5, 7, 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050),
+            policy.allowedItemIds()
+        );
+
+        for (int item : policy.allowedItemIds()) {
+            assertTrue(MatchItemSelectionRules.supports(item));
+            assertTrue(policy.allowsUse(item));
+            assertTrue(policy.permits(item, 0));
+            assertFalse(policy.permits(item, 1));
+        }
+
+        assertFalse(policy.permits(2, 0));
+        assertFalse(policy.permits(3, 0));
+        assertFalse(policy.permits(4, 0));
+        assertThrows(UnsupportedOperationException.class, () -> policy.allowedItemIds().clear());
+    }
+
     @Test
     void restrictsControlledFixturesToTheThirteenScalarZeroCandidatesAndDisablesNormalMatches() {
         var policy = new MatchLootPolicy(Set.of(1, 5, 7, 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050));

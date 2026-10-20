@@ -1,6 +1,5 @@
 package taan.online.match.service.model;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -102,49 +101,6 @@ public record MatchSnapshot(
 
     public Map<UUID, MatchActorState> actors() {
         return world.actors();
-    }
-
-    public MatchSnapshot completed(MatchWorldState applied) {
-        return completed(applied, Optional.empty());
-    }
-
-    public MatchSnapshot completed(MatchWorldState applied, Optional<MatchCompletion> pending) {
-        return completed(applied, loot, pending);
-    }
-
-    public MatchSnapshot completed(
-        MatchWorldState applied,
-        MatchLootState appliedLoot,
-        Optional<MatchCompletion> pending
-    ) {
-        var remaining = new HashMap<>(attacks);
-        participants.stream().filter(p -> p.slotIndex() == turn.activeSlot())
-            .forEach(p -> remaining.remove(p.sessionId()));
-        remaining.keySet().removeIf(session -> applied.actors().get(session).dead());
-        return new MatchSnapshot(
-            id,
-            roomId,
-            roomGeneration,
-            channelId,
-            ownerSessionId,
-            mode,
-            rule,
-            definitions,
-            participants,
-            captains,
-            MatchPhase.COMPLETION,
-            loadedSessions,
-            applied,
-            turn,
-            phaseRevision + 1,
-            pending.map(MatchCompletion::deadlineNanos).orElse(deadlineNanos),
-            pending,
-            movements,
-            closure,
-            remaining,
-            resolution.evaluate(participants, applied, turn.activeSlot()),
-            appliedLoot
-        );
     }
 
     public int firstTurnSlot() {

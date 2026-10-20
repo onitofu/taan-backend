@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioClaims;
@@ -20,6 +21,7 @@ import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
 final class ScenarioRules {
     private static final long HORIZON = 120000;
+    private static final Set<Integer> SHOOTER_KINDS = Set.of(0, 1, 2, 3, 9, 10, 11, 13);
 
     ScenarioJournal validate(MatchSnapshot match, ScenarioClaims claims, MatchParticipant shooter) {
         var actor = match.actors().get(shooter.sessionId());
@@ -30,9 +32,13 @@ final class ScenarioRules {
             "INVALID_SHOOTER"
         );
         var selection = match.attacks().getOrDefault(shooter.sessionId(), MatchAttackSelection.NORMAL);
-        boolean special = selection.attackKind() == 2;
+        var selected = selection.selectedItems();
+        int attackKind = MatchItemSelectionRules.attackKind(selected);
+        int shotLimit = MatchItemSelectionRules.shotLimit(selected);
+        boolean guided = selected.contains(7);
+        boolean special = attackKind == 2;
         require(
-            claims.selectedItems().equals(selection.selectedItems()) && !claims.effectsPresent()
+            claims.selectedItems().equals(selected) && !claims.effectsPresent()
                 && (claims.flags() & 1) == (special ? 1 : 0),
             "UNSUPPORTED_ATTACK_FEATURE"
         );
@@ -40,7 +46,7 @@ final class ScenarioRules {
             claims.headerEnergyGrant() >= 0 && claims.headerEnergyGrant() <= shooter.maxEnergy(),
             "INVALID_HEADER_ENERGY"
         );
-        var definition = match.definitions().cannonShots().get(selection.attackKind());
+        var definition = match.definitions().cannonShots().get(attackKind);
         float power = claims.power();
         require(
             Float.isFinite(power) && power >= 0 && power <= 1
@@ -54,7 +60,7 @@ final class ScenarioRules {
             refitted.size() == claims.refittedSlots().size() && occupied.containsAll(refitted),
             "INVALID_REFITTED_SLOTS"
         );
-        var projectiles = new ScenarioProjectileRules(definition, selection.shotLimit());
+        var projectiles = new ScenarioProjectileRules(definition, shotLimit);
         long previous = -1;
         long finish = 0;
         long endTick = -1;
@@ -75,7 +81,7 @@ final class ScenarioRules {
                 finish = Math.max(finish, header.tick() + header.duration());
             }
 
-            if (Set.of(0, 1, 2, 3, 9, 10, 11, 13).contains(header.kind())) {
+            if (SHOOTER_KINDS.contains(header.kind())) {
                 require(header.slot() == shooter.slotIndex(), "INVALID_COMMAND_OWNER");
             }
 
@@ -83,7 +89,7 @@ final class ScenarioRules {
                 case ScenarioFireClaim value -> projectiles.fire(value);
                 case ScenarioProjectileClaim value -> projectiles.event(value);
                 case ScenarioGuidedClaim value -> {
-                    require(selection.selectedItems().contains(7), "UNAUTHORIZED_GUIDANCE");
+                    require(guided, "UNAUTHORIZED_GUIDANCE");
                     projectiles.guided(value);
                 }
                 case ScenarioDamageClaim value -> require(

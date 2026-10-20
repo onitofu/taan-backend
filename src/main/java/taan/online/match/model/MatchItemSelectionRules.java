@@ -76,6 +76,15 @@ public final class MatchItemSelectionRules {
         return List.copyOf(selected);
     }
 
+    public static int shotLimit(List<Integer> selected) {
+        int launches = 1 + selected.stream().filter(item -> item == 1 || item == 2).mapToInt(Integer::intValue).sum();
+        return selected.contains(3) ? launches * 3 : launches;
+    }
+
+    public static int attackKind(List<Integer> selected) {
+        return selected.contains(6) ? 2 : selected.contains(5) ? 1 : 0;
+    }
+
     public static Optional<MatchItemActivation> activate(
         MatchParticipant member,
         MatchWorldState world,

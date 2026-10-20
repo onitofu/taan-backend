@@ -95,7 +95,8 @@ class MatchBootstrapIntegrationTest {
                 assertTrue(start.players().stream().anyMatch(player -> player.slotIndex() == first.activeSlot()));
                 assertEquals(0, first.energyGrant());
                 assertEquals(start.initialWindRaw(), first.windRawTenths());
-                assertEquals(0, first.boxAttemptBudget());
+                assertEquals(1, first.boxAttemptBudget());
+                RuntimeRoomTestAccess.awaitMatchAction(app, 1);
                 var active = first.activeSlot() == 0 ? owner : guest;
                 var observer = first.activeSlot() == 0 ? guest : owner;
                 var position = first.activeSlot() == 0 ? guestPose : ownerPose;
@@ -279,6 +280,7 @@ class MatchBootstrapIntegrationTest {
                 var turn = new TurnStartCodec().decode(host.read());
                 assertEquals(turn, new TurnStartCodec().decode(peer.read()));
 
+                RuntimeRoomTestAccess.awaitMatchAction(app, 1);
                 for (int count = 0; count < 2; count++) {
                     int slot = turn.activeSlot();
                     var active = slot == 0 ? host : peer;
@@ -335,6 +337,7 @@ class MatchBootstrapIntegrationTest {
                 assertEquals(start.initialWindRaw(), turn.windRawTenths());
 
                 for (int index = 0; index < 3; index++) {
+                    RuntimeRoomTestAccess.awaitMatchAction(app, 1);
                     int active = turn.activeSlot();
                     var shooter = active == 0 ? owner : guest;
                     var observer = active == 0 ? guest : owner;
@@ -354,7 +357,9 @@ class MatchBootstrapIntegrationTest {
                             var actor = snapshot.actors().get(member.sessionId());
                             var move = new PcGamePlayMove(active, actor.x() + 1, actor.y(), actor.facing());
                             shooter.sendTogether(new MoveCodec().encode(move), root, ack);
-                            assertEquals(move, new MoveCodec().decode(observer.read()));
+                            byte[] moved = observer.read();
+                            assertEquals(PcGamePlayMove.TYPE_ID, ChannelFixtures.type(moved));
+                            assertEquals(move, new MoveCodec().decode(moved));
                         } else {
                             shooter.sendTogether(root, ack);
                         }
@@ -371,7 +376,7 @@ class MatchBootstrapIntegrationTest {
                     assertEquals(next, new TurnStartCodec().decode(guest.read()));
                     assertEquals(active == 0 ? 2 : 0, next.activeSlot());
                     assertEquals(index == 0 ? 0 : 10, next.energyGrant());
-                    assertEquals(0, next.boxAttemptBudget());
+                    assertEquals(1, next.boxAttemptBudget());
                     assertTrue(Math.abs(next.windRawTenths() - turn.windRawTenths()) <= 20);
 
                     if (index != 1) {

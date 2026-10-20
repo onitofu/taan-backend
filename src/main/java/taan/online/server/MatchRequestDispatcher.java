@@ -15,6 +15,7 @@ import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
+import taan.online.match.protocol.packet.PqGamePlayMakeGhost;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
@@ -47,7 +48,8 @@ public final class MatchRequestDispatcher {
     }
 
     static boolean accepts(int type) {
-        return type == PcGamePlaySpendItem.TYPE_ID || type == PcGamePlayEatBonusItem.TYPE_ID
+        return type == PqGamePlayMakeGhost.TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID
+            || type == PcGamePlayEatBonusItem.TYPE_ID
             || type == PcGamePlayEatItemBox.TYPE_ID || type == PcGamePlayNotifyEatItem.TYPE_ID
             || type == PcGamePlayForsakeItem.TYPE_ID || type == PcGamePlayLoadingDone.TYPE_ID
             || type == PcGamePlaySetPos.TYPE_ID

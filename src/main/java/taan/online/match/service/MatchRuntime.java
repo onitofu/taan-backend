@@ -21,7 +21,6 @@ import taan.online.logging.WarningEvent;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
-import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
@@ -111,24 +110,23 @@ final class MatchRuntime {
             && !snapshot.resolution().exits().containsKey(command.context().sessionId());
     }
 
-    boolean commitScenario(ApplyScenarioCommand command, PreparedScenario prepared, MatchSnapshot publication) {
+    Optional<MatchSnapshot> commitScenario(ApplyScenarioCommand command, PreparedScenario prepared) {
         synchronized (admission) {
             if (!scenarioCurrent(command) || match.expired(clock.getAsLong())
                 || !match.commitScenario(
                     prepared.baseWorldRevision(),
                     command.turnRevision(),
                     prepared.world(),
-                    publication.completion(),
+                    turns.completion(prepared),
                     prepared.baseLoot(),
                     prepared.loot()
                 )) {
-                return false;
+                return Optional.empty();
             }
 
             items.clear();
-            snapshot = publication;
-            publishedRevision = publication.phaseRevision();
-            return true;
+            refresh();
+            return Optional.of(snapshot);
         }
     }
 
@@ -150,6 +148,12 @@ final class MatchRuntime {
 
     boolean live() {
         return settings.executionMode() == MatchExecutionMode.CANNON_1V1;
+    }
+
+    boolean reportCurrent(MatchCommandContext context) {
+        return live() && admits(context) && !match.resolution().exits().containsKey(context.sessionId())
+            && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
+                || match.phase() == MatchPhase.COMPLETION);
     }
 
     CompletableFuture<Boolean> confirmScenario(ConfirmScenarioCommand command) {
@@ -177,11 +181,6 @@ final class MatchRuntime {
 
     void turnDeadlineExpired(MatchTurnToken token, Optional<String> fingerprint) {
         turnWork(() -> turns.expired(token, fingerprint));
-    }
-
-    Optional<MatchCompletion> completion(PreparedScenario prepared) {
-        return settings.executionMode() == MatchExecutionMode.CANNON_1V1
-            ? Optional.of(turns.prepare(prepared)) : Optional.empty();
     }
 
     List<MatchSubscription> recipients() {
