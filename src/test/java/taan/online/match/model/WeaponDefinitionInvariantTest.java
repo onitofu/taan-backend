@@ -15,17 +15,17 @@ class WeaponDefinitionInvariantTest {
         }
 
         assertEquals(65535, new WeaponMissileKey(11, 65535).missileTypeId());
-        assertThrows(NullPointerException.class, () -> new WeaponAttackDefinition(null, 0, 100, 0, 0, 0));
+        assertThrows(NullPointerException.class, () -> new WeaponAttackDefinition(null, 0, 100, 0, 0, 0, false));
 
         for (int animation : new int[]{-1, 256}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation)
+                () -> new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation, false)
             );
         }
 
         for (int animation : new int[]{0, 8, 15, 255}) {
-            assertEquals(38, new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation)
+            assertEquals(38, new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation, false)
                 .specialAnimation());
         }
 
@@ -44,7 +44,7 @@ class WeaponDefinitionInvariantTest {
     }
 
     @Test
-    void validatesCompleteWeaponCatalogsAndRejectsCrossWeaponAliasesEvenWhenAllNineRowsArePresent() {
+    void validatesCompleteWeaponCatalogsAndRejectsCrossWeaponAliasesEvenWhenAllTwelveRowsArePresent() {
         var original = MatchFixtures.definitions();
 
         for (int kind = 0; kind < 5; kind++) {

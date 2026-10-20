@@ -27,7 +27,7 @@ class CannonDefinitionLoaderTest {
         }
 
         assertEquals(
-            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9),
+            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9, false),
             catalog.attacks().get(new WeaponAttackKey(0, 0))
         );
         assertEquals(
@@ -35,7 +35,7 @@ class CannonDefinitionLoaderTest {
             catalog.select(1).attacks().get(new WeaponAttackKey(0, 0))
         );
         assertEquals(
-            new WeaponAttackDefinition(new WeaponAttackKey(0, 1), 0, 100, 1, 1, 10),
+            new WeaponAttackDefinition(new WeaponAttackKey(0, 1), 0, 100, 1, 1, 10, false),
             catalog.attacks().get(new WeaponAttackKey(0, 1))
         );
         assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
@@ -86,7 +86,8 @@ class CannonDefinitionLoaderTest {
                     row[3],
                     row[4],
                     row[5],
-                    9 + row[1]
+                    9 + row[1],
+                    false
                 )
             );
         }

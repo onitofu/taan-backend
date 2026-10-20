@@ -8,7 +8,8 @@ public record WeaponAttackDefinition(
     int maxPower,
     int missileVariant,
     int missileTypeId,
-    int animationType
+    int animationType,
+    boolean intrinsicGuidance
 ) {
     public WeaponAttackDefinition {
         Objects.requireNonNull(key);

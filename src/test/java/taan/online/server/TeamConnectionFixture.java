@@ -30,6 +30,10 @@ final class TeamConnectionFixture implements AutoCloseable {
     final RoomMatchToken token;
 
     TeamConnectionFixture(int blue, int red, boolean captain) throws Exception {
+        this(blue, red, captain, 0, 3, 8, 10);
+    }
+
+    TeamConnectionFixture(int blue, int red, boolean captain, int... weapons) throws Exception {
         int room = 0;
 
         for (int i = 0; i < blue + red; i++) {
@@ -44,7 +48,7 @@ final class TeamConnectionFixture implements AutoCloseable {
             }
 
             world.request(client, RoomScenario.team(i < blue ? 1 : 2));
-            world.request(client, RoomScenario.weapon(1001 + i, new int[]{0, 8, 10}[i % 3]));
+            world.request(client, RoomScenario.weapon(1001 + i, weapons[i % weapons.length]));
             world.drainOutputs();
         }
 

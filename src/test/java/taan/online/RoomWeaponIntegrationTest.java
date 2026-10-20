@@ -94,7 +94,7 @@ class RoomWeaponIntegrationTest {
                 assertEquals(0, selected.weaponId());
                 assertEquals(selected, wire.changeWeapon(guest.read()));
                 guest.sendTogether(weapon(2, 0), weapon(1001, 0));
-                for (int unsupported : new int[]{1, 3, 11, 200, 100, 300}) {
+                for (int unsupported : new int[]{1, 4, 11, 200, 100, 300}) {
                     guest.send(weapon(1002, unsupported));
 
                     assertEquals(0, wire.changeWeapon(guest.read()).weaponId());

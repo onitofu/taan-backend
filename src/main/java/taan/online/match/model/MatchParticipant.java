@@ -31,7 +31,7 @@ public record MatchParticipant(
 
         if (!roomSlotState.occupied() || slotIndex < 0 || slotIndex > 7
             || ((slotIndex & 2) == 0) != (team == RoomTeam.BLUE)
-            || weaponId != 0 && weaponId != 8 && weaponId != 10 || !spawn.valid()
+            || weaponId != 0 && weaponId != 3 && weaponId != 8 && weaponId != 10 || !spawn.valid()
             || spawn.side() != 0 && spawn.side() != (team == RoomTeam.BLUE ? 1 : 2)
             || facing < 0 || facing > 1 || hp < 1 || hp > maxHp || energy < 0 || energy > maxEnergy) {
             throw new IllegalArgumentException("Invalid match participant");
