@@ -91,7 +91,7 @@ final class MatchRuntime {
         this.warnings = warnings;
         mailbox = new MatchMailbox(executor, capacity);
         snapshot = MatchSnapshot.from(match);
-        scenarios = new MatchScenarioExecution(this, access);
+        scenarios = new MatchScenarioExecution(this, access, settings.lootPolicy());
         turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
         outcomes = new MatchOutcomeExecution(this, match, admission, clock);
         items = new MatchItemExecution(this, match, admission, clock, settings.lootPolicy());
@@ -118,7 +118,9 @@ final class MatchRuntime {
                     prepared.baseWorldRevision(),
                     command.turnRevision(),
                     prepared.world(),
-                    publication.completion()
+                    publication.completion(),
+                    prepared.baseLoot(),
+                    prepared.loot()
                 )) {
                 return false;
             }

@@ -52,6 +52,16 @@ public final class ScenarioWorldDraft {
         creations++;
     }
 
+    public void pickupBox(long id, int itemId) {
+        var box = boxes.get(id);
+
+        if (box == null) {
+            throw new ScenarioWorldException("UNKNOWN_BOX");
+        }
+
+        boxes.put(id, box.pickedUp(itemId));
+    }
+
     public void grantEnergy(UUID session, int delta) {
         var actor = actor(session);
         int energy = MatchEnergyRules.adjust(actor.energy(), delta, participants.get(session).maxEnergy());

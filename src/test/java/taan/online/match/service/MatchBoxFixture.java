@@ -21,10 +21,16 @@ import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
 
 final class MatchBoxFixture implements AutoCloseable {
-    final LiveMatchFixture live = new LiveMatchFixture(MatchLootPolicy.disabled(), MatchBoxPolicy.ENABLED);
-    final MatchRuntimeFixture f = live.f;
+    final LiveMatchFixture live;
+    final MatchRuntimeFixture f;
 
     MatchBoxFixture() throws IOException {
+        this(MatchLootPolicy.disabled());
+    }
+
+    MatchBoxFixture(MatchLootPolicy policy) throws IOException {
+        live = new LiveMatchFixture(policy, MatchBoxPolicy.ENABLED);
+        f = live.f;
     }
 
     ScenarioMakeItemBoxCommand box(long id, int tick, int x, int y) {
@@ -36,7 +42,7 @@ final class MatchBoxFixture implements AutoCloseable {
         );
     }
 
-    ApplyScenarioCommand command(ScenarioMakeItemBoxCommand... additions) throws IOException {
+    ApplyScenarioCommand command(ScenarioCommand... additions) throws IOException {
         var base = live.shot(false, false);
         var packet = new ScenarioCodec().decode(base.root());
         var scene = packet.scenario();

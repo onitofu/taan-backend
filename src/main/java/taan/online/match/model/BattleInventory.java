@@ -2,6 +2,7 @@ package taan.online.match.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public record BattleInventory(List<Integer> slots, List<MatchItemReceipt> receipts) {
     public static final int EMPTY = 65535;
@@ -36,10 +37,11 @@ public record BattleInventory(List<Integer> slots, List<MatchItemReceipt> receip
         return new BattleInventory(nextSlots, nextReceipts);
     }
 
-    public BattleInventory confirmed(int index, int itemId) {
+    public BattleInventory confirmed(UUID admission, int index, int itemId) {
         var pending = receipts.stream().filter(receipt -> !receipt.confirmed()).findFirst();
 
-        if (pending.isEmpty() || pending.orElseThrow().inventoryIndex() != index
+        if (pending.isEmpty() || !pending.orElseThrow().admissionId().equals(admission)
+            || pending.orElseThrow().inventoryIndex() != index
             || pending.orElseThrow().itemId() != itemId) {
             return this;
         }

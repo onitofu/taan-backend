@@ -12,6 +12,7 @@ import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioClaims;
 import taan.online.match.service.model.ScenarioDamageClaim;
+import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioJournal;
@@ -76,7 +77,7 @@ final class ScenarioRules {
                 finish = Math.max(finish, header.tick() + header.duration());
             }
 
-            if (Set.of(0, 1, 2, 3, 9, 10).contains(header.kind())) {
+            if (Set.of(0, 1, 2, 3, 9, 10, 11).contains(header.kind())) {
                 require(header.slot() == shooter.slotIndex(), "INVALID_COMMAND_OWNER");
             }
 
@@ -116,6 +117,7 @@ final class ScenarioRules {
                     "INVALID_FALL"
                 );
                 case ScenarioMakeItemBoxClaim ignored -> { }
+                case ScenarioEatItemBoxClaim ignored -> require(fire != null, "MISSING_PROJECTILE");
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioRejectedException("UNSUPPORTED_FEATURE");
                 case ScenarioActorClaim ignored -> { }
             }

@@ -2,6 +2,8 @@ package taan.online.match.model;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 public record MatchLootState(
@@ -43,22 +45,52 @@ public record MatchLootState(
 
         var nextOffers = new HashMap<>(offers);
         nextOffers.put(session, offer.used());
+        return new MatchLootState(inventories, nextOffers, grantSequence).inserted(
+            session,
+            offer.admissionId(),
+            offer.turnRevision(),
+            itemId,
+            MatchItemSource.END_TURN_BONUS,
+            OptionalLong.empty(),
+            Optional.empty()
+        );
+    }
+
+    public MatchLootState inserted(
+        UUID session,
+        UUID admission,
+        long turn,
+        int itemId,
+        MatchItemSource source,
+        OptionalLong boxId,
+        Optional<String> scenarioHash
+    ) {
         var inventory = inventory(session);
         int index = inventory.firstEmpty();
 
         if (index < 0) {
-            return new MatchLootState(inventories, nextOffers, grantSequence);
+            return this;
         }
 
         long sequence = Math.incrementExact(grantSequence);
-        var receipt = new MatchItemReceipt(sequence, offer.turnRevision(), index, itemId, false);
+        var receipt = new MatchItemReceipt(
+            sequence,
+            turn,
+            index,
+            itemId,
+            false,
+            admission,
+            source,
+            boxId,
+            scenarioHash
+        );
         var nextInventories = new HashMap<>(inventories);
         nextInventories.put(session, inventory.inserted(receipt));
-        return new MatchLootState(nextInventories, nextOffers, sequence);
+        return new MatchLootState(nextInventories, offers, sequence);
     }
 
-    public MatchLootState confirmed(UUID session, int index, int itemId) {
-        return withInventory(session, inventory(session).confirmed(index, itemId));
+    public MatchLootState confirmed(UUID session, UUID admission, int index, int itemId) {
+        return withInventory(session, inventory(session).confirmed(admission, index, itemId));
     }
 
     public MatchLootState discarded(UUID session, int index, int itemId) {

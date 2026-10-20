@@ -7,6 +7,9 @@ import static taan.online.logging.LogField.boxEntityId;
 import static taan.online.logging.LogField.changedCells;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.grantSequence;
+import static taan.online.logging.LogField.inventoryIndex;
+import static taan.online.logging.LogField.itemId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.processedDeaths;
 import static taan.online.logging.LogField.reason;
@@ -14,6 +17,7 @@ import static taan.online.logging.LogField.roomGeneration;
 import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.scenarioHash;
 import static taan.online.logging.LogField.sessionId;
+import static taan.online.logging.LogField.slotIndex;
 import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.worldRevision;
 
@@ -29,10 +33,13 @@ import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchLootPolicy;
+import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.ScenarioAdmissionContext;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.ScenarioApplicationResult;
+import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 final class MatchScenarioExecution {
@@ -41,10 +48,12 @@ final class MatchScenarioExecution {
     private final ValidateScenarioAction validator;
     private final PrepareScenarioAction prepare = new PrepareScenarioAction();
     private final ScenarioRelay relay;
+    private final MatchLootPolicy lootPolicy;
     private volatile CommittedScenario previous;
 
-    MatchScenarioExecution(MatchRuntime owner, MatchAdmissionAccess access) {
+    MatchScenarioExecution(MatchRuntime owner, MatchAdmissionAccess access, MatchLootPolicy lootPolicy) {
         this.owner = owner;
+        this.lootPolicy = lootPolicy;
         validator = new ValidateScenarioAction(access);
         relay = new ScenarioRelay(access, owner::running);
     }
@@ -160,8 +169,8 @@ final class MatchScenarioExecution {
         }
 
         var spend = owner.items.prepare();
-        var prepared = prepare.execute(before, admission.accepted().orElseThrow());
-        var publication = before.completed(prepared.world(), owner.completion(prepared));
+        var prepared = prepare.execute(before, admission.accepted().orElseThrow(), lootPolicy);
+        var publication = before.completed(prepared.world(), prepared.loot(), owner.completion(prepared));
         var committed = new CommittedScenario(
             prepared.scenario(),
             publication,
@@ -199,6 +208,7 @@ final class MatchScenarioExecution {
                 activeBoxCount(MatchBoxRules.activeCount(publication.world().boxes())),
                 boxAttemptBudget(before.turn().boxAttemptBudget())
             ));
+        logPickups(before, publication, committed);
         previous = committed;
         MatchEnergyLog.scenario(before, committed);
         var sender = command.context();
@@ -219,6 +229,39 @@ final class MatchScenarioExecution {
         );
         publish(committed, result, spend);
         return result;
+    }
+
+    private void logPickups(MatchSnapshot before, MatchSnapshot after, CommittedScenario committed) {
+        long sequence = before.loot().grantSequence();
+        var sender = committed.scenario().sender();
+
+        for (var event : committed.scenario().journal().events()) {
+            if (event instanceof ScenarioEatItemBoxClaim pickup) {
+                boolean inserted = sequence < after.loot().grantSequence();
+                var receipt = after.loot().inventory(sender.sessionId()).receipts().stream()
+                    .filter(value -> value.boxEntityId().isPresent()
+                        && value.boxEntityId().orElseThrow() == pickup.entityId()).findFirst();
+
+                if (inserted) {
+                    sequence++;
+                }
+
+                LOG.log(
+                    MatchLogEvent.BOX_PICKED_UP,
+                    matchId(after.id().value()),
+                    sessionId(sender.sessionId()),
+                    admissionId(sender.admissionId()),
+                    turnRevision(committed.scenario().turnRevision()),
+                    scenarioHash(committed.scenario().hash()),
+                    boxEntityId(pickup.entityId()),
+                    slotIndex(pickup.header().slot()),
+                    itemId(pickup.itemId()),
+                    inventoryIndex(receipt.map(value -> value.inventoryIndex()).orElse(null)),
+                    grantSequence(inserted ? sequence : null),
+                    reason(inserted ? "INSERTED" : "INVENTORY_FULL")
+                );
+            }
+        }
     }
 
     private void publish(

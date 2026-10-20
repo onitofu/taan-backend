@@ -4,6 +4,7 @@ import java.util.Map;
 
 public final class MatchBoxRules {
     public static final int MAX_ACTIVE = 5;
+    public static final int MAX_CREATED = 4096;
 
     private MatchBoxRules() {
     }
@@ -13,7 +14,8 @@ public final class MatchBoxRules {
     }
 
     public static int budget(MatchBoxPolicy policy, Map<Long, MatchItemBox> boxes) {
-        return policy == MatchBoxPolicy.ENABLED && activeCount(boxes) < MAX_ACTIVE ? 1 : 0;
+        return policy == MatchBoxPolicy.ENABLED && boxes.size() < MAX_CREATED
+            && activeCount(boxes) < MAX_ACTIVE ? 1 : 0;
     }
 
     public static void requireId(long id) {
@@ -43,6 +45,10 @@ public final class MatchBoxRules {
 
         if (issuedBudget < 0 || issuedBudget > 1 || creations >= issuedBudget) {
             throw new ScenarioWorldException("BOX_BUDGET_EXCEEDED");
+        }
+
+        if (boxes.size() >= MAX_CREATED) {
+            throw new ScenarioWorldException("BOX_HISTORY_LIMIT_EXCEEDED");
         }
 
         if (activeCount(boxes) >= MAX_ACTIVE) {

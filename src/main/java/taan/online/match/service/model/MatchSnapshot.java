@@ -109,6 +109,14 @@ public record MatchSnapshot(
     }
 
     public MatchSnapshot completed(MatchWorldState applied, Optional<MatchCompletion> pending) {
+        return completed(applied, loot, pending);
+    }
+
+    public MatchSnapshot completed(
+        MatchWorldState applied,
+        MatchLootState appliedLoot,
+        Optional<MatchCompletion> pending
+    ) {
         var remaining = new HashMap<>(attacks);
         participants.stream().filter(p -> p.slotIndex() == turn.activeSlot())
             .forEach(p -> remaining.remove(p.sessionId()));
@@ -134,7 +142,7 @@ public record MatchSnapshot(
             closure,
             remaining,
             resolution.evaluate(participants, applied, turn.activeSlot()),
-            loot
+            appliedLoot
         );
     }
 
