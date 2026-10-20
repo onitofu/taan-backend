@@ -16,10 +16,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MapSpawnDefinition;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchMapDefinition;
+import taan.online.match.model.WeaponAttackDefinition;
+import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.model.WeaponDefinition;
 
 public final class MatchDefinitionLoader {
@@ -28,14 +29,14 @@ public final class MatchDefinitionLoader {
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
-        InputStream cannon
+        InputStream attacks
     ) {
         return load(
             properties,
             maps,
             spawns,
             weapons,
-            cannon,
+            attacks,
             name -> getClass().getResourceAsStream("/match/" + name)
         );
     }
@@ -45,11 +46,11 @@ public final class MatchDefinitionLoader {
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
-        InputStream cannon,
+        InputStream attacks,
         Function<String, InputStream> resources
     ) {
-        try (properties; maps; spawns; weapons; cannon) {
-            return definitions(properties, maps, spawns, weapons, cannon, resources);
+        try (properties; maps; spawns; weapons; attacks) {
+            return definitions(properties, maps, spawns, weapons, attacks, resources);
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot load match definitions", failure);
         }
@@ -60,7 +61,7 @@ public final class MatchDefinitionLoader {
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
-        InputStream cannon,
+        InputStream attacks,
         Function<String, InputStream> resources
     ) throws IOException {
         var values = new Properties();
@@ -121,37 +122,38 @@ public final class MatchDefinitionLoader {
 
         var weaponDefinitions = csv(
             weapons,
-            "weapon_id,asset,resource_max_hp,max_energy,resource_move",
+            "weapon_id,asset,resource_max_hp,max_energy,resource_move,hit_energy",
             row -> new WeaponDefinition(
                 Integer.parseInt(row[0]),
                 row[1],
-                Integer.parseInt(row[2]),
-                Integer.parseInt(row[3]),
-                Integer.parseInt(row[4])
-            )
-        );
-        var shots = csv(
-            cannon,
-            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id",
-            row -> new CannonShotDefinition(
-                Integer.parseInt(row[0]),
-                Integer.parseInt(row[1]),
                 Integer.parseInt(row[2]),
                 Integer.parseInt(row[3]),
                 Integer.parseInt(row[4]),
                 Integer.parseInt(row[5])
             )
         );
+        var shots = csv(
+            attacks,
+            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id,animation_type",
+            row -> new WeaponAttackDefinition(
+                new WeaponAttackKey(Integer.parseInt(row[0]), Integer.parseInt(row[1])),
+                Integer.parseInt(row[2]),
+                Integer.parseInt(row[3]),
+                Integer.parseInt(row[4]),
+                Integer.parseInt(row[5]),
+                Integer.parseInt(row[6])
+            )
+        );
 
-        if (shots.size() != 3) {
-            throw new IllegalArgumentException("Incomplete ordinary cannon definitions");
+        if (shots.size() != 9) {
+            throw new IllegalArgumentException("Incomplete ordinary attacks definitions");
         }
 
         return new MatchDefinitionCatalog(
             values.getProperty("catalog.version"),
             definitions,
             weaponDefinitions,
-            shots.stream().collect(Collectors.toUnmodifiableMap(CannonShotDefinition::attackKind, shot -> shot)),
+            shots.stream().collect(Collectors.toUnmodifiableMap(WeaponAttackDefinition::key, shot -> shot)),
             missiles
         );
     }

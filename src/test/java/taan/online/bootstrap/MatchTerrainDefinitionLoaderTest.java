@@ -11,17 +11,17 @@ import java.security.MessageDigest;
 import java.security.Security;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
+import taan.online.match.model.WeaponMissileKey;
 
 class MatchTerrainDefinitionLoaderTest {
     private static final String LAYERS = "map_id,layer_index,left,top,width,height,resource,sha256\n";
-    private static final String MISSILES = "missile_type_id,width,height,center_x,center_y,resource,sha256\n";
+    private static final String MISSILES = "weapon_id,missile_type_id,width,height,center_x,center_y,resource,sha256\n";
     private final MatchTerrainDefinitionLoader loader = new MatchTerrainDefinitionLoader();
 
     @Test
@@ -30,7 +30,7 @@ class MatchTerrainDefinitionLoaderTest {
         var expected = IntStream.rangeClosed(1, 21).boxed().collect(Collectors.toSet());
         assertEquals(expected, catalog.maps().keySet());
         assertEquals(143, catalog.maps().values().stream().mapToInt(map -> map.terrainLayers().size()).sum());
-        var cannon = catalog.missiles().get(0);
+        var cannon = catalog.missiles().get(new WeaponMissileKey(0, 0));
         assertEquals(0, cannon.missileTypeId());
         assertEquals(256, cannon.mask().width());
         assertEquals(256, cannon.mask().height());
@@ -45,7 +45,7 @@ class MatchTerrainDefinitionLoaderTest {
             }
         }
 
-        assertEquals(Set.of(0, 1, 2), catalog.missiles().keySet());
+        assertEquals(9, catalog.missiles().size());
         assertTrue(provenance.contains(hash(cannon.mask().cells())));
     }
 
@@ -86,7 +86,7 @@ class MatchTerrainDefinitionLoaderTest {
 
     @Test
     void validatesMaskIdentityValuesAndClosesResourcesOnSuccessAndFailure() throws Exception {
-        String row = "0,2,1,0,0,terrain/test.rle," + hash(new byte[]{1, 1}) + "\n";
+        String row = "0,0,2,1,0,0,terrain/test.rle," + hash(new byte[]{1, 1}) + "\n";
         var index = new TrackingDefinitionStream((MISSILES + row + row.replaceFirst("0,", "1,")
             + row.replaceFirst("0,", "2,")).getBytes(StandardCharsets.UTF_8));
         var mask = new TrackingDefinitionStream("TAAN_RLE_V1,2,1\n2:1\n".getBytes(StandardCharsets.UTF_8));
@@ -101,7 +101,7 @@ class MatchTerrainDefinitionLoaderTest {
         assertTrue(secondMask.closed());
         assertTrue(thirdMask.closed());
 
-        for (String invalid : new String[]{MISSILES, MISSILES + row + row, MISSILES + row.replace("0,2,", "1,2,")}) {
+        for (String invalid : new String[]{MISSILES, MISSILES + row + row, MISSILES + row.replaceFirst("0,", "12,")}) {
             assertThrows(
                 IllegalArgumentException.class,
                 () -> loader.missiles(input(invalid), ignored -> input("TAAN_RLE_V1,2,1\n2:1\n"))
@@ -164,7 +164,7 @@ class MatchTerrainDefinitionLoaderTest {
                     resource("maps.csv"),
                     resource("map-spawns.csv"),
                     resource("weapons.csv"),
-                    resource("cannon-shots.csv"),
+                    resource("weapon-attacks.csv"),
                     resources
                 )
             );

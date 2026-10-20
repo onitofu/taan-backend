@@ -187,7 +187,11 @@ public final class LogField {
         return new LogField("roomRule", value);
     }
 
-    public static LogField weaponId(int value) {
+    public static LogField attackKind(int value) {
+        return new LogField("attackKind", value);
+    }
+
+    public static LogField weaponId(Integer value) {
         return new LogField("weaponId", value);
     }
 

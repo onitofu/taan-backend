@@ -34,7 +34,7 @@ class MatchGhostConnectionTest {
     @Test
     void keepsBothPhysicalLoserSlotsConnectedBeforeAckAfterEndGameAndDuringARematch() throws Exception {
         for (boolean suicide : new boolean[]{false, true}) {
-            try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1); var logs = new LogCapture()) {
+            try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO); var logs = new LogCapture()) {
                 var owner = world.client(1);
                 var guest = world.client(2);
                 int room = prepare(world, owner, guest);
@@ -107,7 +107,7 @@ class MatchGhostConnectionTest {
             new BinaryWriter().unsignedInt(PqGamePlayMakeGhost.TYPE_ID).toByteArray(),
             new BinaryWriter().unsignedInt(PqGamePlayMakeGhost.TYPE_ID).unsignedByte(8).toByteArray()
         )) {
-            try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1)) {
+            try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO)) {
                 var owner = world.client(1);
                 world.create(owner);
                 world.drainOutputs();

@@ -101,6 +101,12 @@ final class RoomDepartureOperations {
         var room = rooms.get(expected.roomId());
         matches.departed(room, expected.sessionId(), closeReason);
 
+        var current = memberships.get(expected.sessionId());
+
+        if (!expected.equals(current == null ? null : current.membership())) {
+            return;
+        }
+
         if (matches.deferDeparture(room, () -> remove(expected, closeReason))) {
             return;
         }

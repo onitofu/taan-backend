@@ -95,7 +95,7 @@ public final class ScenarioWorldDraft {
         deaths.add(session);
     }
 
-    public void explode(int missileTypeId, int x, int y, float factor) {
+    public void explode(WeaponMissileKey missileTypeId, int x, int y, float factor) {
         var missile = definitions.missiles().get(missileTypeId);
 
         if (missile == null) {

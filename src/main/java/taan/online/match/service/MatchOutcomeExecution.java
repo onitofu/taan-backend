@@ -12,8 +12,8 @@ import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.winningTeam;
 import static taan.online.logging.LogField.worldRevision;
 
-import java.util.UUID;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.LongSupplier;
@@ -24,6 +24,7 @@ import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchOutcomeCause;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchTurnClosureReason;
 import taan.online.match.service.model.DepartMatchCommand;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnToken;
@@ -68,7 +69,8 @@ final class MatchOutcomeExecution {
     boolean acceptsDeparture() {
         var phase = owner.snapshot().phase();
         return owner.live() && (phase == MatchPhase.ACTION || phase == MatchPhase.SETTLING
-            || phase == MatchPhase.COMPLETION);
+            || phase == MatchPhase.COMPLETION
+            || phase == MatchPhase.SYNCHRONIZING && !owner.snapshot().resolution().exits().isEmpty());
     }
 
     boolean depart(DepartMatchCommand command) {
@@ -79,10 +81,14 @@ final class MatchOutcomeExecution {
         var c = command.context();
         var snapshot = owner.snapshot();
 
-        if (!owner.running() || !owner.live() || !playing() || !c.token().equals(owner.progress().match())
+        if (!owner.running() || !owner.live() || !c.token().equals(owner.progress().match())
             || c.channelId() != snapshot.channelId() || snapshot.participants().stream().noneMatch(p ->
                 p.sessionId().equals(c.sessionId()) && p.admissionId().equals(c.admissionId()))) {
             return false;
+        }
+
+        if (!playing()) {
+            return snapshot.resolution().exits().get(c.sessionId()) == MatchExitKind.DEPARTED;
         }
 
         LOG.log(
@@ -133,13 +139,26 @@ final class MatchOutcomeExecution {
             && match.resolution().exits().values().stream().allMatch(value -> value == MatchExitKind.DEPARTED);
 
         if (nobody) {
-            finish();
+            if (match.resolution().pendingOutcome().isPresent()) {
+                finish();
+            } else {
+                cancel(RoomMatchEndReason.DISCONNECTED, null);
+            }
         } else if (match.phase() == MatchPhase.COMPLETION) {
             owner.turns.finish();
         } else if (match.phase() == MatchPhase.SETTLING) {
             owner.movement.expired();
-        } else {
+        } else if (match.resolution().pendingOutcome().isPresent()) {
             finish();
+        } else if (before.turn().activeSlot() == before.participants().stream()
+            .filter(p -> p.sessionId().equals(session)).findFirst().orElseThrow().slotIndex()) {
+            synchronized (admission) {
+                match.closeTurn(MatchTurnClosureReason.PASS_TURN, clock.getAsLong());
+                owner.refresh();
+            }
+
+            owner.items.clear();
+            owner.turns.advance(true);
         }
 
         return true;

@@ -28,7 +28,7 @@ class TerrainDefinitionInvariantTest {
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions(d.catalogVersion(), m, d.weapons(), d.cannonShots(), Map.of())
+            () -> new MatchDefinitions(d.catalogVersion(), m, d.weapons(), d.attacks(), Map.of())
         );
         assertThrows(
             IllegalArgumentException.class,
@@ -36,8 +36,13 @@ class TerrainDefinitionInvariantTest {
                 d.catalogVersion(),
                 m,
                 d.weapons(),
-                d.cannonShots(),
-                Map.of(0, d.missiles().get(0), 1, d.missiles().get(0))
+                d.attacks(),
+                Map.of(
+                    new WeaponMissileKey(0, 0),
+                    d.missiles().get(new WeaponMissileKey(0, 0)),
+                    new WeaponMissileKey(0, 1),
+                    d.missiles().get(new WeaponMissileKey(0, 0))
+                )
             )
         );
     }
@@ -46,8 +51,15 @@ class TerrainDefinitionInvariantTest {
     void requiresBothAttacksAndMatchingAttackAndMissileKeys() {
         var d = MatchFixtures.definitions();
         for (var shots : List.of(
-            Map.of(0, d.cannonShots().get(0)),
-            Map.of(0, d.cannonShots().get(2), 1, d.cannonShots().get(1), 2, d.cannonShots().get(0))
+            Map.of(new WeaponAttackKey(0, 0), d.attacks().get(new WeaponAttackKey(0, 0))),
+            Map.of(
+                new WeaponAttackKey(0, 0),
+                d.attacks().get(new WeaponAttackKey(0, 2)),
+                new WeaponAttackKey(0, 1),
+                d.attacks().get(new WeaponAttackKey(0, 1)),
+                new WeaponAttackKey(0, 2),
+                d.attacks().get(new WeaponAttackKey(0, 0))
+            )
         )) {
             assertThrows(
                 IllegalArgumentException.class,
@@ -60,8 +72,15 @@ class TerrainDefinitionInvariantTest {
                 d.catalogVersion(),
                 d.map(),
                 d.weapons(),
-                d.cannonShots(),
-                Map.of(0, d.missiles().get(0), 2, d.missiles().get(2), 1, d.missiles().get(0))
+                d.attacks(),
+                Map.of(
+                    new WeaponMissileKey(0, 0),
+                    d.missiles().get(new WeaponMissileKey(0, 0)),
+                    new WeaponMissileKey(0, 2),
+                    d.missiles().get(new WeaponMissileKey(0, 2)),
+                    new WeaponMissileKey(0, 1),
+                    d.missiles().get(new WeaponMissileKey(0, 0))
+                )
             )
         );
     }

@@ -76,6 +76,19 @@ public final class MatchItemSelectionRules {
         return List.copyOf(selected);
     }
 
+    public static List<Integer> selected(List<Integer> active, boolean captain) {
+        var selected = selected(active);
+
+        if (!captain) {
+            return selected;
+        }
+
+        var result = new ArrayList<Integer>();
+        result.add(1);
+        result.addAll(selected);
+        return List.copyOf(result);
+    }
+
     public static int shotLimit(List<Integer> selected) {
         int launches = 1 + selected.stream().filter(item -> item == 1 || item == 2).mapToInt(Integer::intValue).sum();
         return selected.contains(3) ? launches * 3 : launches;

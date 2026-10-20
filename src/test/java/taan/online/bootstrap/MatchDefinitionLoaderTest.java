@@ -183,7 +183,7 @@ class MatchDefinitionLoaderTest {
                     input(invalid),
                     input(spawns),
                     input(weapons),
-                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/weapon-attacks.csv")
                 )
             );
         }
@@ -195,7 +195,7 @@ class MatchDefinitionLoaderTest {
                 input(maps),
                 input(spawns + "22,0,1,1,1,1,0,0,true\n"),
                 input(weapons),
-                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/weapon-attacks.csv")
             )
         );
         assertThrows(
@@ -205,7 +205,7 @@ class MatchDefinitionLoaderTest {
                 input(maps),
                 input(spawns.replace("1,0,97,686", "22,0,97,686")),
                 input(weapons),
-                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+                MatchDefinitionLoaderTest.class.getResourceAsStream("/match/weapon-attacks.csv")
             )
         );
 
@@ -217,7 +217,7 @@ class MatchDefinitionLoaderTest {
                     new BrokenDefinitionStream(maps.getBytes(StandardCharsets.UTF_8), failRead),
                     input(spawns),
                     input(weapons),
-                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+                    MatchDefinitionLoaderTest.class.getResourceAsStream("/match/weapon-attacks.csv")
                 )
             );
         }
@@ -247,7 +247,7 @@ class MatchDefinitionLoaderTest {
             resource("maps.csv"),
             spawns,
             weapons,
-            MatchDefinitionLoaderTest.class.getResourceAsStream("/match/cannon-shots.csv")
+            MatchDefinitionLoaderTest.class.getResourceAsStream("/match/weapon-attacks.csv")
         ).select(1);
     }
 

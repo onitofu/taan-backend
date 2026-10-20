@@ -16,9 +16,12 @@ import static taan.online.logging.LogField.windRaw;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.logging.WarningEvent;
@@ -26,6 +29,7 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchCompletion;
+import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
@@ -69,6 +73,48 @@ final class MatchTurnExecution {
         this.warnings = warnings;
     }
 
+    boolean loadingExpired(RoomMatchProgressToken progress) {
+        if (!owner.running() || !progress.equals(owner.progress()) || match.phase() != MatchPhase.LOADING
+            || !match.expired(clock.getAsLong())) {
+            return false;
+        }
+
+        Set<UUID> missing;
+        boolean cancel;
+
+        synchronized (admission) {
+            var ready = match.loadingReadySessions();
+            missing = match.participants().stream().map(MatchParticipant::sessionId)
+                .filter(id -> !ready.contains(id)).collect(Collectors.toSet());
+            match.exclude(missing);
+            cancel = match.resolution().pendingOutcome().isPresent() || ready.isEmpty();
+
+            if (!cancel) {
+                match.beginSynchronization(clock.getAsLong(), settings.loadingTimeoutNanos());
+            }
+
+            owner.refresh();
+        }
+
+        if (cancel) {
+            owner.terminate(RoomMatchEndReason.LOADING_TIMEOUT);
+        } else {
+            owner.recipients().stream().filter(p -> missing.contains(p.sessionId()))
+                .forEach(p -> p.output().close("MATCH_LOADING_TIMEOUT"));
+            new MatchBootstrapDelivery(
+                owner.snapshot(),
+                owner.recipients(),
+                owner,
+                scheduler,
+                owner.progress(),
+                warnings
+            )
+                .dispatch(null);
+        }
+
+        return true;
+    }
+
     boolean position(ConfirmMatchPositionCommand command) {
         boolean valid = match.confirmsPosition(
             command.context().sessionId(),
@@ -100,7 +146,7 @@ final class MatchTurnExecution {
     }
 
     Optional<MatchCompletion> completion(PreparedScenario prepared) {
-        return settings.executionMode() == MatchExecutionMode.CANNON_1V1
+        return settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
             ? Optional.of(prepare(prepared)) : Optional.empty();
     }
 
@@ -117,7 +163,8 @@ final class MatchTurnExecution {
             accepted.hash(),
             accepted.turnRevision(),
             prepared.world().revision(),
-            owner.snapshot().loadedSessions(),
+            owner.snapshot().loadedSessions().stream()
+                .filter(id -> !owner.snapshot().resolution().exits().containsKey(id)).collect(Collectors.toSet()),
             Math.max(
                 now + TimeUnit.MILLISECONDS.toNanos(fallEnd),
                 owner.snapshot().movements().get(sender.sessionId())
@@ -295,7 +342,7 @@ final class MatchTurnExecution {
                 var before = owner.snapshot();
                 match.nextTurn(clock.getAsLong(), settings.actionTimeoutNanos());
                 owner.refresh();
-                owner.resetScenario();
+                owner.scenarios.reset();
                 MatchEnergyLog.turn(before, owner.snapshot());
                 transition = new MatchTurnTransition(previous, owner.snapshot(), turnEndRequired);
             }

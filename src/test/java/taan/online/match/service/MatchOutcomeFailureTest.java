@@ -17,7 +17,7 @@ class MatchOutcomeFailureTest {
     void releasesARepeatedDepartureWhenItsHandoffFailsWithoutLeakingAnExceptionMessage() {
         var wrapper = new AtomicReference<ControlledDepartureLifecycle>();
         var scenario = new RoomScenario(
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             lifecycle -> {
                 var controlled = new ControlledDepartureLifecycle(lifecycle);
                 wrapper.set(controlled);
@@ -43,7 +43,7 @@ class MatchOutcomeFailureTest {
     void ignoresALateHandoffFailureAfterAnotherMatchWasStartedInTheSameRoom() {
         var wrapper = new AtomicReference<ControlledDepartureLifecycle>();
         var scenario = new RoomScenario(
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             lifecycle -> {
                 var controlled = new ControlledDepartureLifecycle(lifecycle);
                 wrapper.set(controlled);
@@ -70,7 +70,7 @@ class MatchOutcomeFailureTest {
         for (int mode = 0; mode < 3; mode++) {
             var wrapper = new AtomicReference<ControlledDepartureLifecycle>();
             var scenario = new RoomScenario(
-                MatchExecutionMode.CANNON_1V1,
+                MatchExecutionMode.CLIENT_SCENARIO,
                 lifecycle -> {
                     var controlled = new ControlledDepartureLifecycle(lifecycle);
                     wrapper.set(controlled);

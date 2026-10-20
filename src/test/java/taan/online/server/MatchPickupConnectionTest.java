@@ -33,7 +33,7 @@ class MatchPickupConnectionTest {
     @Test
     void commitsAFragmentedPickupAndCorrelatesCoalescedConfirmationsWithoutAnyExtraGrant() throws Exception {
         try (var world = new RoomConnectionWorld(
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             new MatchLootPolicy(Set.of(5)),
             MatchBoxPolicy.ENABLED
         )) {

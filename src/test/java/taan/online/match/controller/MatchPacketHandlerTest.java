@@ -6,40 +6,40 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
-import java.time.Duration;
-import org.slf4j.LoggerFactory;
-import taan.online.MatchRoomFixture;
-import taan.online.TestMatchScheduler;
-import taan.online.logging.WarningLogLimiter;
-import taan.online.match.service.MatchRegistry;
-import taan.online.match.service.ConfirmScenarioAction;
-import taan.online.match.service.ConfirmMatchLoadingAction;
-import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ReportMatchEnemiesAction;
-import taan.online.match.service.model.MatchBootstrapSettings;
-import taan.online.match.service.model.MatchExecutionMode;
-import taan.online.match.service.model.ConfirmScenarioCommand;
-import taan.online.match.service.model.MatchCommandContext;
-import taan.online.room.service.model.RoomMatchContext;
-import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.match.protocol.packet.PcGamePlayScenario;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import taan.online.CollectingPacketOutput;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
+import taan.online.MatchRoomFixture;
 import taan.online.MatchTerminalFixture;
+import taan.online.TestMatchScheduler;
+import taan.online.logging.WarningLogLimiter;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
+import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.ConsumeMatchResultAction;
+import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
+import taan.online.match.service.model.ConfirmScenarioCommand;
+import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.model.RoomMode;
+import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchPacketHandlerTest {
@@ -105,7 +105,7 @@ class MatchPacketHandlerTest {
             var scheduler = new TestMatchScheduler();
             var matches = new MatchRegistry(
                 MatchFixtures.catalog(),
-                new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1),
+                new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO),
                 scheduler,
                 () -> scheduler.now,
                 new Random(1),

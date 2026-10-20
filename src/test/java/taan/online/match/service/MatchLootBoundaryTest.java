@@ -218,7 +218,7 @@ class MatchLootBoundaryTest {
 
         try (var f = new MatchRuntimeFixture(
             8,
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             new MatchLootPolicy(Set.of(5)),
             RoomMode.NO_ITEM
         )) {

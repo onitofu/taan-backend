@@ -64,7 +64,7 @@ class RoomMatchFailureTest {
                 definitions.catalogVersion(),
                 map,
                 definitions.weapons(),
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );

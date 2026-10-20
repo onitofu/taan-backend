@@ -10,6 +10,7 @@ import taan.online.MatchRepeatTestPackets;
 import taan.online.MatchSpreadTestPackets;
 import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.model.MatchBonusOffer;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.protocol.codec.ScenarioCodec;
 
 class NativeSpreadAdmissionTest {
@@ -43,7 +44,12 @@ class NativeSpreadAdmissionTest {
 
                 var journal = new ScenarioRules().validate(before, new ScenarioClaimsMapper().map(packet), member);
                 assertEquals(3, journal.missileDefinitions().size());
-                assertEquals(List.of(0, 0, 0), journal.missileDefinitions().values().stream().sorted().toList());
+                assertEquals(
+                    List.of(0, 0, 0),
+                    journal.missileDefinitions().values().stream().map(
+                        WeaponMissileKey::missileTypeId
+                    ).sorted().toList()
+                );
                 assertEquals(before, p.f.runtime.snapshot());
                 assertArrayEquals(root, new ScenarioCodec().encode(packet));
             }

@@ -13,7 +13,6 @@ import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
-import taan.online.room.model.RoomTeam;
 
 public final class Match {
     private final MatchId id;
@@ -127,7 +126,8 @@ public final class Match {
             return false;
         }
 
-        var alive = participants.stream().filter(p -> world.actors().get(p.sessionId()).hp() > 0)
+        var alive = participants.stream().filter(p -> world.actors().get(p.sessionId()).hp() > 0
+            && !resolution.exits().containsKey(p.sessionId()))
             .map(MatchParticipant::slotIndex).collect(Collectors.toSet());
         var next = new MatchTurnPolicy().next(turn, alive, now);
         turn = next.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
@@ -158,14 +158,22 @@ public final class Match {
     public void withdraw(UUID session, MatchExitKind kind) {
         loot = loot.without(session);
         attacks.remove(session);
-        resolution = resolution.exit(session, kind, participants, world, turn.activeSlot());
+        resolution = resolution.exit(session, kind, participants, world, turn.activeSlot(), captains);
+
+        if (phase == MatchPhase.ACTION && resolution.pendingOutcome().isEmpty()) {
+            movements.computeIfPresent(
+                session,
+                (id, value) -> new MatchMovementState(value.allowance(), Optional.empty())
+            );
+        }
+
         completion = completion.map(value -> value.acknowledged(session));
     }
 
     public void exclude(Set<UUID> sessions) {
         sessions.forEach(session -> loot = loot.without(session));
         attacks.keySet().removeAll(sessions);
-        resolution = resolution.exclude(sessions, participants, world, turn.activeSlot());
+        resolution = resolution.exclude(sessions, participants, world, turn.activeSlot(), captains);
         sessions.forEach(session -> completion = completion.map(value -> value.acknowledged(session)));
     }
 
@@ -274,7 +282,7 @@ public final class Match {
         attacks.keySet().removeIf(session -> prepared.actors().get(session).dead());
         world = prepared;
         loot = preparedLoot;
-        resolution = resolution.evaluate(participants, world, turn.activeSlot());
+        resolution = resolution.evaluate(participants, world, turn.activeSlot(), captains);
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
         phase = MatchPhase.COMPLETION;
@@ -283,7 +291,7 @@ public final class Match {
     }
 
     public boolean actionStarted(long now, long timeoutNanos) {
-        if (phase != MatchPhase.SYNCHRONIZING || delivered.size() != participants.size()) {
+        if (phase != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
             return false;
         }
 
@@ -323,34 +331,20 @@ public final class Match {
     }
 
     public String loadingDone(UUID session, int slot, int x, int y) {
-        var actor = participants.stream().filter(value -> value.sessionId().equals(session)).findFirst().orElse(null);
+        String result = MatchLoadingRules.validate(this, session, slot, x, y);
 
-        if (actor == null || actor.slotIndex() != slot) {
-            return "FOREIGN_SLOT";
+        if (!result.equals("ACCEPTED")) {
+            return result;
         }
 
-        var accepted = loaded.contains(session) ? world.actors().get(session) : null;
-
-        if (accepted != null) {
-            return accepted.x() == x && accepted.y() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
-        }
-
-        if (phase != MatchPhase.LOADING) {
-            return "INVALID_PHASE";
-        }
-
-        int side = actor.team() == RoomTeam.BLUE ? 1 : 2;
-        var placement = definitions.map().spawns().stream()
-            .filter(value -> value.valid() && (value.side() == 0 || value.side() == side))
-            .filter(value -> value.settledX() == x && value.settledY() == y).findFirst().orElse(null);
-
-        if (placement == null) {
-            return "INVALID_POSITION";
-        }
-
+        var actor = participants.stream().filter(p -> p.sessionId().equals(session)).findFirst().orElseThrow();
         world = world.placed(session, new MatchActorState(x, y, actor.facing(), actor.hp(), actor.energy()));
         loaded.add(session);
         return "ACCEPTED";
+    }
+
+    public Set<UUID> loadingReadySessions() {
+        return loaded.stream().filter(delivered::contains).collect(Collectors.toUnmodifiableSet());
     }
 
     public boolean deliveryCompleted(UUID session) {
@@ -363,12 +357,16 @@ public final class Match {
     }
 
     public boolean beginSynchronization(long now) {
-        if (phase != MatchPhase.LOADING || loaded.size() != participants.size()
-            || delivered.size() != participants.size()) {
+        return beginSynchronization(now, 0);
+    }
+
+    public boolean beginSynchronization(long now, long deliveryTimeoutNanos) {
+        if (phase != MatchPhase.LOADING || !MatchLoadingRules.ready(this, delivered)) {
             return false;
         }
 
-        turn = turn.issuedAt(now);
+        turn = MatchLoadingRules.turn(this, now);
+        deadlineNanos = Math.max(deadlineNanos, now + deliveryTimeoutNanos);
         phase = MatchPhase.SYNCHRONIZING;
         phaseRevision++;
         delivered.clear();
@@ -376,7 +374,7 @@ public final class Match {
     }
 
     public boolean previewStarted(long now, long timeoutNanos) {
-        if (phase != MatchPhase.SYNCHRONIZING || delivered.size() != participants.size()) {
+        if (phase != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
             return false;
         }
 
@@ -412,7 +410,9 @@ public final class Match {
     }
 
     private void startMovement(long now) {
-        int budget = definitions.weapons().getFirst().resourceMove();
+        int weapon = participants.stream().filter(p -> p.sessionId().equals(activeSession()))
+            .findFirst().orElseThrow().weaponId();
+        int budget = definitions.weapons().get(weapon).resourceMove();
         movements.put(activeSession(), MatchMovementState.initial(turn.revision(), now, budget));
     }
 
@@ -469,7 +469,7 @@ public final class Match {
         world = world.settled(session, movement.fall().orElseThrow().endY(), definitions.map().height());
         loot = new ScenarioLootDraft(loot).finish(world);
         attacks.keySet().removeIf(id -> world.actors().get(id).dead());
-        resolution = resolution.settled(participants, world, turn.activeSlot());
+        resolution = resolution.settled(participants, world, turn.activeSlot(), captains);
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }
 

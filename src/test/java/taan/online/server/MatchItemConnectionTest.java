@@ -36,7 +36,7 @@ class MatchItemConnectionTest {
     @Test
     void routesTwoChargedSpecialsThroughTheRealConnectionDispatcherAndKeepsNativeBonusReportsHarmless()
         throws Exception {
-        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1)) {
+        try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO)) {
             var owner = world.client(1);
             var guest = world.client(2);
             world.drainOutputs();

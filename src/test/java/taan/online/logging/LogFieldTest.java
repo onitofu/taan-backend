@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.logging.LogField.accountId;
+import static taan.online.logging.LogField.attackKind;
 import static taan.online.logging.LogField.connectionId;
 import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.operationId;
@@ -15,6 +16,7 @@ import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.remoteAddress;
 import static taan.online.logging.LogField.rootBytes;
 import static taan.online.logging.LogField.setting;
+import static taan.online.logging.LogField.weaponId;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -29,6 +31,9 @@ class LogFieldTest {
     @Test
     void preservesFixedStartupAndOperationFieldNamesAndScalarTypes() {
         assertEquals(Map.of("event", "server.ready", "port", 2180), fields(ServerLogEvent.READY, port(2180)));
+        assertEquals(Map.of("event", "server.ready", "weaponId", 8, "attackKind", 2),
+            fields(ServerLogEvent.READY, weaponId(8), attackKind(2)));
+        assertEquals(Map.of("event", "server.ready"), fields(ServerLogEvent.READY, weaponId(null)));
         assertEquals(
             Map.of("event", "server.startup.failed", "setting", "POSTGRES_PASSWORD"),
             fields(ServerLogEvent.INVALID_CONFIGURATION, setting("POSTGRES_PASSWORD"))

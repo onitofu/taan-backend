@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,11 +14,11 @@ import taan.online.LogCapture;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.StartMatchCommand;
-import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchMovementBoundaryTest {
@@ -261,7 +261,7 @@ class MatchMovementBoundaryTest {
 
     @Test
     void loadingAndSettlingKeepTheirOwnDeadlinesAndQueueOverflowFencesFurtherCommands() throws Exception {
-        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CANNON_1V1)) {
+        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             f.activate();
             f.runtime.submit(new StartMatchCommand(f.token));
             f.run();

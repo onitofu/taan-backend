@@ -8,9 +8,9 @@ import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.match.model.MatchExitKind;
+import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchMovementKind;
-import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
 
@@ -53,7 +53,7 @@ class MatchBonusCompatibilityTest {
                 .toCompletableFuture().join());
         }
 
-        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CANNON_1V1)) {
+        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             assertFalse(report(f, command(f.context())));
         }
 

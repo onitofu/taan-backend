@@ -15,8 +15,8 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
-import taan.online.MatchGuidedTestPackets;
 import taan.online.MatchFixtures;
+import taan.online.MatchGuidedTestPackets;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
@@ -50,7 +50,7 @@ class MatchGuidedConnectionTest {
             int item = 7;
             var policy = new MatchLootPolicy(Set.of(item));
 
-            try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, policy)) {
+            try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO, policy)) {
                 var owner = world.client(1);
                 var guest = world.client(2);
                 world.drainOutputs();

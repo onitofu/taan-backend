@@ -13,6 +13,7 @@ import taan.online.LogCapture;
 import taan.online.MatchRepeatTestPackets;
 import taan.online.TestFixtures;
 import taan.online.match.controller.ScenarioClaimsMapper;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.ScenarioBaseCommand;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
@@ -94,8 +95,8 @@ class MatchRepeatTest {
 
             var journal = new ScenarioRules().validate(snapshot, new ScenarioClaimsMapper().map(packet), member);
             assertEquals(2, journal.missileDefinitions().size());
-            assertEquals(0, journal.missileDefinitions().get(0));
-            assertEquals(0, journal.missileDefinitions().get(1));
+            assertEquals(new WeaponMissileKey(0, 0), journal.missileDefinitions().get(0));
+            assertEquals(new WeaponMissileKey(0, 0), journal.missileDefinitions().get(1));
             assertEquals(snapshot, p.f.runtime.snapshot());
         }
     }
@@ -129,7 +130,7 @@ class MatchRepeatTest {
                         assertEquals(ScenarioApplicationOutcome.APPLIED, result.outcome());
                         int missile = attack == 6 ? 2 : 1;
                         assertTrue(result.committed().orElseThrow().scenario().journal().missileDefinitions()
-                            .values().stream().allMatch(value -> value == missile));
+                            .values().stream().allMatch(value -> value.missileTypeId() == missile));
                         p.energy.acknowledge();
                         assertNull(p.f.callbacks.reason);
 

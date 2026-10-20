@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import static taan.online.logging.LogField.admissionId;
+import static taan.online.logging.LogField.attackKind;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.commandCount;
 import static taan.online.logging.LogField.durationMs;
@@ -12,10 +13,12 @@ import static taan.online.logging.LogField.rootBytes;
 import static taan.online.logging.LogField.scenarioHash;
 import static taan.online.logging.LogField.sessionId;
 import static taan.online.logging.LogField.turnRevision;
+import static taan.online.logging.LogField.weaponId;
 
 import java.util.Optional;
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.AcceptedScenario;
@@ -94,6 +97,8 @@ public final class ValidateScenarioAction {
             scenarioHash(AcceptedScenario.hash(root)),
             rootBytes(root.length),
             commandCount(claims.commands().size()),
+            weaponId(member.map(MatchParticipant::weaponId).orElse(null)),
+            attackKind(match.attacks().getOrDefault(sender.sessionId(), MatchAttackSelection.NORMAL).attackKind()),
             reason(result.reason()),
             durationMs((System.nanoTime() - started) / 1000000)
         );

@@ -114,7 +114,7 @@ class MatchSpreadTest {
                         var result = p.apply(scene);
                         assertEquals(ScenarioApplicationOutcome.APPLIED, result.outcome());
                         assertTrue(result.committed().orElseThrow().scenario().journal().missileDefinitions()
-                            .values().stream().allMatch(value -> value == kind));
+                            .values().stream().allMatch(value -> value.missileTypeId() == kind));
                         p.energy.acknowledge();
                         assertNull(p.f.callbacks.reason);
 

@@ -3,9 +3,9 @@ package taan.online.match.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
@@ -125,12 +125,12 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new WeaponDefinition(values[0], "cannon", values[1], values[2], values[3])
+                () -> new WeaponDefinition(values[0], "cannon", values[1], values[2], values[3], 10)
             );
         }
 
-        assertThrows(IllegalArgumentException.class, () -> new WeaponDefinition(0, "", 1000, 100, 2500));
-        assertEquals(65535, new WeaponDefinition(11, "budu", 1000, 65535, 4500).maxEnergy());
+        assertThrows(IllegalArgumentException.class, () -> new WeaponDefinition(0, "", 1000, 100, 2500, 10));
+        assertEquals(65535, new WeaponDefinition(11, "budu", 1000, 65535, 4500, 10).maxEnergy());
     }
 
     @Test
@@ -150,13 +150,13 @@ class MatchDefinitionsTest {
             "a".repeat(64),
             map,
             weapons,
-            MatchFixtures.cannonShots(),
+            MatchFixtures.attacks(),
             MatchFixtures.missileTerrain()
         );
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.cannonShots(), MatchFixtures.missileTerrain())
+            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.attacks(), MatchFixtures.missileTerrain())
         );
         assertEquals(
             2,
@@ -172,7 +172,7 @@ class MatchDefinitionsTest {
                     MatchFixtures.terrainLayers()
                 ),
                 weapons,
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             ).map().mapId()
         );
@@ -182,7 +182,7 @@ class MatchDefinitionsTest {
                 "a".repeat(64),
                 map,
                 weapons.subList(0, 11),
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -205,7 +205,7 @@ class MatchDefinitionsTest {
                     MatchFixtures.terrainLayers()
                 ),
                 weapons,
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -220,7 +220,7 @@ class MatchDefinitionsTest {
                 "a".repeat(64),
                 map,
                 swapped,
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -240,6 +240,6 @@ class MatchDefinitionsTest {
 
     private List<WeaponDefinition> weapons() {
         return IntStream.range(0, 12)
-            .mapToObj(index -> new WeaponDefinition(index, "weapon", 1000, 100, 2500)).toList();
+            .mapToObj(index -> new WeaponDefinition(index, "weapon", 1000, 100, 2500, 10)).toList();
     }
 }

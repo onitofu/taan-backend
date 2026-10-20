@@ -2,11 +2,12 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.Map;
+import java.util.HashMap;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
-import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.WeaponAttackDefinition;
+import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.service.model.ScenarioAdmissionOutcome;
 import taan.online.match.service.model.ScenarioClaims;
 
@@ -15,18 +16,14 @@ class ScenarioPowerAdmissionTest {
     void obeysCatalogPowerBoundsAndAcceptsTheirExactEndpoints() throws Exception {
         try (var world = new ScenarioTestWorld()) {
             var original = world.definitions;
+            var attacks = new HashMap<>(original.attacks());
+            var key = new WeaponAttackKey(0, 0);
+            attacks.put(key, new WeaponAttackDefinition(key, 25, 75, 0, 0, 9));
             world.definitions = new MatchDefinitions(
                 original.catalogVersion(),
                 original.map(),
                 original.weapons(),
-                Map.of(
-                    0,
-                    new CannonShotDefinition(0, 0, 25, 75, 0, 0),
-                    1,
-                    new CannonShotDefinition(0, 1, 0, 100, 1, 1),
-                    2,
-                    new CannonShotDefinition(0, 2, 0, 100, 2, 2)
-                ),
+                attacks,
                 MatchFixtures.missileTerrain()
             );
 

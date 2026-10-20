@@ -111,6 +111,10 @@ public record MatchSnapshot(
         return turn.windRaw();
     }
 
+    public boolean captain(int slot) {
+        return captains != null && (captains.blueLeaderSlot() == slot || captains.redLeaderSlot() == slot);
+    }
+
     public static MatchSnapshot from(Match match) {
         return new MatchSnapshot(
             match.id(),

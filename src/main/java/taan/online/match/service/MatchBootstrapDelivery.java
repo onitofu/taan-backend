@@ -15,13 +15,13 @@ import taan.online.logging.WarningEvent;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.service.model.MatchDeadline;
-import taan.online.match.service.model.MatchCommand;
-import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
-import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.MatchCommand;
+import taan.online.match.service.model.MatchDeadline;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.StartMatchCommand;
 import taan.online.room.service.model.RoomMatchProgressToken;
 
 final class MatchBootstrapDelivery {
@@ -80,6 +80,10 @@ final class MatchBootstrapDelivery {
         CompletionStage<Void> result = CompletableFuture.completedFuture(null);
 
         for (var recipient : recipients) {
+            if (snapshot.resolution().exits().containsKey(recipient.sessionId())) {
+                continue;
+            }
+
             var delivery = send(recipient);
 
             if (recipient.sessionId().equals(requester)) {

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.TestFixtures;
 import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.SpentMatchItem;
 
@@ -49,7 +50,7 @@ class MatchPowerTest {
             var result = p.apply(shot);
             assertEquals(ScenarioApplicationOutcome.APPLIED, result.outcome());
             var committed = result.committed().orElseThrow();
-            assertEquals(Map.of(0, 1), committed.scenario().journal().missileDefinitions());
+            assertEquals(Map.of(0, new WeaponMissileKey(0, 1)), committed.scenario().journal().missileDefinitions());
             assertTrue(committed.changedCells() > 0);
             assertTrue(p.f.runtime.snapshot().attacks().isEmpty());
             assertEquals(1, p.f.owner.spends.size());

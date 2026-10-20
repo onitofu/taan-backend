@@ -66,7 +66,7 @@ class MatchMalformedScenarioTest {
             assertFalse(f.runtime.scenarios.malformed(f.context(), 0, 0, 0));
         }
 
-        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CANNON_1V1)) {
+        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             assertFalse(f.runtime.scenarios.malformed(f.context(), 0, 0, 0));
         }
 

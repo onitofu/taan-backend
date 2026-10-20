@@ -13,12 +13,14 @@ import org.slf4j.LoggerFactory;
 import taan.online.bootstrap.MatchDefinitionLoader;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.MatchPacketHandler;
-import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MissileTerrainDefinition;
 import taan.online.match.model.TerrainLayerDefinition;
+import taan.online.match.model.WeaponAttackDefinition;
+import taan.online.match.model.WeaponAttackKey;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConsumeMatchResultAction;
@@ -100,7 +102,7 @@ public final class MatchFixtures {
                 definitions.catalogVersion(),
                 Map.of(definitions.map().mapId(), definitions.map()),
                 definitions.weapons(),
-                definitions.cannonShots(),
+                definitions.attacks(),
                 MatchFixtures.missileTerrain()
             ),
             scheduler,
@@ -230,19 +232,12 @@ public final class MatchFixtures {
         }
     }
 
-    public static Map<Integer, CannonShotDefinition> cannonShots() {
-        return Map.of(
-            0,
-            cannonShot(),
-            1,
-            new CannonShotDefinition(0, 1, 0, 100, 1, 1),
-            2,
-            new CannonShotDefinition(0, 2, 0, 100, 2, 2)
-        );
+    public static Map<WeaponAttackKey, WeaponAttackDefinition> attacks() {
+        return catalog().attacks();
     }
 
-    public static CannonShotDefinition cannonShot() {
-        return new CannonShotDefinition(0, 0, 0, 100, 0, 0);
+    public static WeaponAttackDefinition cannonAttack() {
+        return attacks().get(new WeaponAttackKey(0, 0));
     }
 
     public static MatchDefinitions definitions() {
@@ -253,7 +248,7 @@ public final class MatchFixtures {
         return catalog().select(1).map().terrainLayers();
     }
 
-    public static Map<Integer, MissileTerrainDefinition> missileTerrain() {
+    public static Map<WeaponMissileKey, MissileTerrainDefinition> missileTerrain() {
         return catalog().missiles();
     }
 
@@ -267,7 +262,7 @@ public final class MatchFixtures {
             MatchFixtures.class.getResourceAsStream("/match/maps.csv"),
             MatchFixtures.class.getResourceAsStream("/match/map-spawns.csv"),
             MatchFixtures.class.getResourceAsStream("/match/weapons.csv"),
-            MatchFixtures.class.getResourceAsStream("/match/cannon-shots.csv")
+            MatchFixtures.class.getResourceAsStream("/match/weapon-attacks.csv")
         );
     }
 }

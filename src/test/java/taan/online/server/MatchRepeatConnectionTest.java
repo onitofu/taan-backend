@@ -46,7 +46,7 @@ import taan.online.network.FrameDecoder;
 class MatchRepeatConnectionTest {
     @Test
     void earnsPlusOneAndProcessesFragmentedUseAndCoalescedSpendAndTwoLaunchesExactlyOnce() throws Exception {
-        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, new MatchLootPolicy(Set.of(1)))) {
+        try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO, new MatchLootPolicy(Set.of(1)))) {
             var owner = world.client(1);
             var guest = world.client(2);
             world.drainOutputs();

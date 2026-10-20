@@ -8,18 +8,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.MatchFixtures;
-import taan.online.MatchScenarioTestPackets;
-import taan.online.match.protocol.codec.ScenarioCodec;
-import taan.online.match.protocol.packet.PcGamePlayScenario;
-import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.protocol.BinaryWriter;
 import taan.online.MatchRoomFixture;
+import taan.online.MatchScenarioTestPackets;
 import taan.online.RoomScenario;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
@@ -33,13 +32,14 @@ import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomState;
 
 class MatchMovementHandlerTest {
     @Test
     void dispatchesEveryMotionKindWithoutEchoAndReturnsDeadActorsToTheRoom() throws Exception {
-        try (var room = new MatchRoomFixture(new RoomScenario(MatchExecutionMode.CANNON_1V1), 2, RoomMode.ITEM)) {
+        try (var room = new MatchRoomFixture(new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO), 2, RoomMode.ITEM)) {
             var matches = room.scenario.matches;
             var handler = new MatchPacketHandler(
                 matches,
