@@ -25,10 +25,13 @@ import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ActivateSpecialCommand;
+import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
+import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
+import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchEndReason;
 
@@ -56,9 +59,7 @@ final class MatchItemExecution {
     private boolean reportBonus(ReportMatchBonusCommand command) {
         var context = command.context();
 
-        if (!owner.live() || !owner.admits(context) || match.resolution().exits().containsKey(context.sessionId())
-            || match.phase() != MatchPhase.ACTION && match.phase() != MatchPhase.SETTLING
-                && match.phase() != MatchPhase.COMPLETION) {
+        if (!reportCurrent(context)) {
             return false;
         }
 
@@ -73,6 +74,80 @@ final class MatchItemExecution {
             admissionId(context.admissionId()),
             slotIndex(command.slotIndex()),
             reason(valid ? "BONUS_DISABLED" : "INVALID_BONUS_CONTEXT")
+        );
+        return valid;
+    }
+
+    static CompletionStage<Boolean> reportPickup(MatchRuntime runtime, ReportMatchPickupCommand command) {
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.reportPickup(command));
+    }
+
+    static CompletionStage<Boolean> confirmItemReceipt(MatchRuntime runtime, ConfirmMatchItemReceiptCommand command) {
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.confirmItemReceipt(command));
+    }
+
+    static CompletionStage<Boolean> discardItem(MatchRuntime runtime, DiscardMatchItemCommand command) {
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.items.discardItem(command));
+    }
+
+    boolean reportPickup(ReportMatchPickupCommand command) {
+        var context = command.context();
+
+        if (!reportCurrent(context)) {
+            return false;
+        }
+
+        boolean valid = member(context).slotIndex() == command.slotIndex()
+            && command.slotIndex() == command.commandSlot()
+            && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
+            && command.entityId() != -1L;
+        return ignored(context, command.slotIndex(), MatchLogEvent.PICKUP_IGNORED, valid, "UNSUPPORTED_PICKUP");
+    }
+
+    boolean confirmItemReceipt(ConfirmMatchItemReceiptCommand command) {
+        return inventoryMessage(
+            command.context(),
+            command.slotIndex(),
+            command.inventoryIndex(),
+            MatchLogEvent.ITEM_RECEIPT_IGNORED
+        );
+    }
+
+    boolean discardItem(DiscardMatchItemCommand command) {
+        return inventoryMessage(
+            command.context(),
+            command.slotIndex(),
+            command.inventoryIndex(),
+            MatchLogEvent.ITEM_DISCARD_IGNORED
+        );
+    }
+
+    private boolean inventoryMessage(MatchCommandContext context, int slot, int index, MatchLogEvent event) {
+        if (!reportCurrent(context)) {
+            return false;
+        }
+
+        boolean valid = member(context).slotIndex() == slot && index >= 0 && index < 3;
+        return ignored(context, slot, event, valid, "FEATURE_DISABLED");
+    }
+
+    private boolean reportCurrent(MatchCommandContext context) {
+        return owner.live() && owner.admits(context) && !match.resolution().exits().containsKey(context.sessionId())
+            && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
+                || match.phase() == MatchPhase.COMPLETION);
+    }
+
+    private boolean ignored(MatchCommandContext context, int slot, MatchLogEvent event, boolean valid, String reason) {
+        LOG.log(
+            event,
+            matchId(match.id().value()),
+            sessionId(context.sessionId()),
+            admissionId(context.admissionId()),
+            slotIndex(slot),
+            reason(valid ? reason : "INVALID_ITEM_CONTEXT")
         );
         return valid;
     }

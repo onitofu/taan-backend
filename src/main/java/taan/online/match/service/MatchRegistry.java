@@ -14,7 +14,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 import taan.online.logging.EventLogger;
@@ -27,10 +26,12 @@ import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurnPolicy;
 import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.DepartMatchCommand;
+import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -43,6 +44,7 @@ import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
+import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
@@ -300,6 +302,18 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         return MatchItemExecution.reportBonus(find(command.context().token()), command);
     }
 
+    public CompletionStage<Boolean> reportPickup(ReportMatchPickupCommand command) {
+        return MatchItemExecution.reportPickup(find(command.context().token()), command);
+    }
+
+    public CompletionStage<Boolean> confirmItemReceipt(ConfirmMatchItemReceiptCommand command) {
+        return MatchItemExecution.confirmItemReceipt(find(command.context().token()), command);
+    }
+
+    public CompletionStage<Boolean> discardItem(DiscardMatchItemCommand command) {
+        return MatchItemExecution.discardItem(find(command.context().token()), command);
+    }
+
     public CompletionStage<Boolean> recordSpend(RecordMatchSpendCommand command) {
         var runtime = find(command.context().token());
         return runtime == null ? CompletableFuture.completedFuture(false)
@@ -439,25 +453,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
     @Override
     public CompletionStage<Void> dispatchTermination(RoomMatchTermination terminal, UUID requester, Runnable queued) {
-        var claimed = new AtomicReference<MatchTerminationDispatch>();
-        terminations.computeIfPresent(
-            terminal.token(),
-            (token, pending) -> {
-                if (!pending.delivery().terminal().equals(terminal)) {
-                    return pending;
-                }
-
-                claimed.set(pending);
-                return null;
-            }
-        );
-        var pending = claimed.get();
-
-        if (pending == null) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        return pending.dispatch(requester, queued);
+        return MatchTerminationDispatch.dispatch(terminations, terminal, requester, queued);
     }
 
     @Override

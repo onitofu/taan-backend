@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
-import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomTeam;
 
 public final class MatchTurnPolicy {
@@ -64,7 +64,7 @@ public final class MatchTurnPolicy {
         int first = order.indexOf(firstTurnSlot);
         var rotated = new ArrayList<>(order.subList(first, order.size()));
         rotated.addAll(order.subList(0, first));
-        return new MatchTurn(firstTurnSlot, 0, 0, 0, 100, rotated, 1, OptionalLong.empty());
+        return new MatchTurn(firstTurnSlot, 0, 0, 0, 0, rotated, 1, OptionalLong.empty());
     }
 
     public MatchTurn initial(List<MatchParticipant> participants, long seed) {
@@ -95,7 +95,7 @@ public final class MatchTurnPolicy {
             wind.value() - 50,
             0,
             0,
-            100,
+            0,
             order,
             1,
             OptionalLong.empty(),

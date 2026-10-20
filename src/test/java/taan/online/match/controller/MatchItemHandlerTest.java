@@ -1,9 +1,9 @@
 package taan.online.match.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,21 +11,24 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchScenarioTestPackets;
 import taan.online.MatchSpecialTestPackets;
-import taan.online.match.protocol.codec.UseItemCodec;
-import taan.online.match.protocol.codec.SpendItemCodec;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.ScenarioCodec;
-import taan.online.match.protocol.packet.PcGamePlayUseItem;
-import taan.online.match.protocol.packet.PcGamePlaySpendItem;
-import taan.online.match.protocol.packet.SpentItem;
+import taan.online.match.protocol.codec.SpendItemCodec;
+import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
+import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
+import taan.online.match.protocol.packet.SpentItem;
 import taan.online.match.service.ActivateSpecialAction;
+import taan.online.match.service.ConfirmMatchItemReceiptAction;
+import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
+import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.model.ActivateSpecialCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.MatchCommandContext;
-import taan.online.match.model.MatchPhase;
+import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomTeam;
 
@@ -81,7 +84,14 @@ class MatchItemHandlerTest {
             var matches = f.room.scenario.matches;
             var activation = new ActivateSpecialAction(matches);
             var spending = new RecordMatchSpendAction(matches);
-            var direct = new MatchItemPacketHandler(activation, spending, new ReportMatchBonusAction(matches));
+            var direct = new MatchItemPacketHandler(
+                activation,
+                spending,
+                new ReportMatchBonusAction(matches),
+                new ReportMatchPickupAction(matches),
+                new ConfirmMatchItemReceiptAction(matches),
+                new DiscardMatchItemAction(matches)
+            );
             var captured = f.handler.capture(f.active().sessionId());
             var command = MatchCommandContext.from(captured.roomContext());
             direct.handle(

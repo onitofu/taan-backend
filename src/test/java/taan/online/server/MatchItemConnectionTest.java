@@ -5,18 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.server.RoomConnectionWorld.read;
 
+import io.netty.buffer.Unpooled;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.MatchScenarioTestPackets;
 import taan.online.MatchSpecialTestPackets;
-import taan.online.RoomScenario;
 import taan.online.RoomFixtures;
+import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
-import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.SelectionFixtures;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
+import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
@@ -26,6 +27,7 @@ import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.network.FrameDecoder;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchToken;
@@ -82,11 +84,27 @@ class MatchItemConnectionTest {
                 ));
                 byte[] ack = new BinaryWriter().unsignedInt(PcGamePlayEndScenario.TYPE_ID)
                     .unsignedByte(member.slotIndex()).unsignedByte(0).toByteArray();
-                active.channel().writeInbound(activation, spend, scenario, ack);
+                active.channel().pipeline().addFirst(new FrameDecoder(16384, 10));
+                var combined = Unpooled.buffer();
+
+                try {
+                    for (byte[] root : new byte[][]{activation, spend, scenario, ack}) {
+                        combined.writeIntLE(root.length).writeBytes(root);
+                    }
+
+                    while (combined.isReadable()) {
+                        int size = use == 0 ? Math.min(7, combined.readableBytes()) : combined.readableBytes();
+                        active.channel().writeInbound(combined.readRetainedSlice(size));
+                    }
+                } finally {
+                    combined.release();
+                }
+
                 while (!active.jobs().isEmpty()) {
                     active.run();
                     world.tick();
                 }
+                active.channel().pipeline().remove(FrameDecoder.class);
                 assertArrayEquals(activation, read(active));
                 assertArrayEquals(activation, read(observer));
                 assertArrayEquals(spend, read(active));

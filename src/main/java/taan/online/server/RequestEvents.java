@@ -11,18 +11,6 @@ import taan.online.character.protocol.packet.PqSelectCharacter;
 import taan.online.inventory.protocol.packet.PqMoveInventoryItem;
 import taan.online.lobby.protocol.packet.PqLobbyEnter;
 import taan.online.lobby.protocol.packet.PqLobbyLeave;
-import taan.online.match.protocol.packet.PcGamePlayGiveUp;
-import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
-import taan.online.match.protocol.packet.PcGamePlaySpendItem;
-import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
-import taan.online.match.protocol.packet.PcGamePlaySetPos;
-import taan.online.match.protocol.packet.PcGamePlayMove;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
-import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
-import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
-import taan.online.match.protocol.packet.PqResultRandSelect;
-import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.connection.packet.PqFirstPacket;
 import taan.online.protocol.connection.packet.PqKeepAlive;
@@ -50,6 +38,10 @@ final class RequestEvents {
     }
 
     static ProtocolEvent forType(int type) {
+        if (MatchRequestDispatcher.accepts(type)) {
+            return ProtocolEvent.MATCH_REQUEST;
+        }
+
         return switch (type) {
             case PqCheckAccount.TYPE_ID -> ProtocolEvent.CHECK_ACCOUNT;
             case PqCreateAccount.TYPE_ID -> ProtocolEvent.CREATE_ACCOUNT;
@@ -80,13 +72,6 @@ final class RequestEvents {
             case PqGameSessionChallengeChief.TYPE_ID, PqGameSessionCancelChief.TYPE_ID ->
                 ProtocolEvent.ROOM_CAPTAIN_CANDIDATE;
             case PqGameSessionReady.TYPE_ID -> ProtocolEvent.ROOM_READY;
-            case PcGamePlayEatBonusItem.TYPE_ID, PcGamePlayLoadingDone.TYPE_ID, PcGamePlaySetPos.TYPE_ID,
-                PqGameSessionReportEnemies.TYPE_ID,
-                PcGamePlayEndScenario.TYPE_ID, PcGamePlayMove.TYPE_ID,
-                PcGamePlayPassTurn.TYPE_ID, PcGamePlaySpendItem.TYPE_ID, UnsupportedGameplayPacket.USE_ITEM_TYPE_ID,
-                UnsupportedGameplayPacket.SCENARIO_TYPE_ID,
-                PcGamePlayGiveUp.TYPE_ID, PqResultRandSelect.TYPE_ID, PqResultSelectCard.TYPE_ID ->
-                ProtocolEvent.MATCH_REQUEST;
             case PqKeepAlive.TYPE_ID -> ProtocolEvent.KEEP_ALIVE;
             default -> throw new MalformedPacketException("UNSUPPORTED_PACKET");
         };

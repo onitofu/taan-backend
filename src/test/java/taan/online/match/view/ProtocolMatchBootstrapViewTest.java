@@ -44,7 +44,7 @@ class ProtocolMatchBootstrapViewTest {
             assertEquals(2, output.batches.size());
             assertEquals(2, new SetPosCodec().decode(output.batches.getLast().getFirst()).slotIndex());
             assertArrayEquals(
-                MatchFixtures.root("first-turn-slot2-grant0-policy-example"),
+                MatchFixtures.root("first-turn-slot2-minimal-loot-policy.synthetic"),
                 output.batches.getLast().getLast()
             );
         }
