@@ -1,9 +1,12 @@
 package taan.online;
 
+import java.util.ArrayList;
 import java.util.List;
 import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.ScenarioCommand;
+import taan.online.match.protocol.packet.ScenarioCommandHeader;
+import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponFields;
@@ -14,7 +17,21 @@ public final class MatchSpecialTestPackets {
 
     public static PcGamePlayScenario special(PcGamePlayScenario packet) {
         var scene = packet.scenario();
-        var commands = scene.commands().stream().map(MatchSpecialTestPackets::special).toList();
+        var commands = new ArrayList<ScenarioCommand>();
+        commands.add(new ScenarioNormalCommand(
+            new ScenarioCommandHeader(packet.shooterSlot(), 14, 0, 0),
+            39,
+            0x3f800000
+        ));
+
+        for (var event : scene.commands()) {
+            var header = event.header();
+            commands.add(MatchScenarioTestPackets.withHeader(
+                special(event),
+                new ScenarioCommandHeader(header.slot(), header.kind(), header.tick() + 2500, header.scalar10())
+            ));
+        }
+
         return new PcGamePlayScenario(
             packet.facing(),
             packet.shooterSlot(),
@@ -59,7 +76,7 @@ public final class MatchSpecialTestPackets {
             value.sequence(),
             2,
             value.position(),
-            value.shotTick(),
+            value.shotTick() + 2500,
             value.scalar24Bits(),
             value.scalar28()
         );

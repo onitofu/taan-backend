@@ -43,7 +43,7 @@ public final class ScenarioClaimsMapper {
     private ScenarioClaim claim(ScenarioCommand command) {
         var value = command.header();
         int duration = switch (value.kind()) {
-            case 1, 2, 3, 6, 9, 14 -> value.scalar10();
+            case 1, 2, 3, 6, 9, 14, 16 -> value.scalar10();
             default -> 0;
         };
         var header = new ScenarioEventTime(value.slot(), value.kind(), Integer.toUnsignedLong(value.tick()), duration);
@@ -68,6 +68,10 @@ public final class ScenarioClaimsMapper {
                 guided.target().x(),
                 guided.target().y()
             );
+        }
+
+        if (command instanceof ScenarioNormalCommand && (value.kind() == 14 || value.kind() == 16)) {
+            return new ScenarioActorClaim(header);
         }
 
         if (value.kind() >= 10) {
