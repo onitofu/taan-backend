@@ -7,6 +7,7 @@ import taan.online.match.protocol.codec.EndScenarioCodec;
 import taan.online.match.protocol.codec.GiveUpCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.MoveCodec;
+import taan.online.match.protocol.codec.MakeGhostRequestCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ReportEnemiesCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
@@ -26,6 +27,7 @@ import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
+import taan.online.match.protocol.packet.PqGamePlayMakeGhost;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.match.service.ApplyScenarioAction;
@@ -41,6 +43,7 @@ import taan.online.match.service.PassMatchTurnAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.ReportMatchGhostAction;
 import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.UseMatchItemAction;
@@ -56,6 +59,7 @@ import taan.online.room.service.model.RoomMatchEndReason;
 
 public final class MatchPacketHandler {
     private final MatchRegistry matches;
+    private final ReportMatchGhostAction ghosts;
     private final MatchItemPacketHandler items;
     private final MoveMatchActorAction movement;
     private final PassMatchTurnAction passing;
@@ -164,6 +168,7 @@ public final class MatchPacketHandler {
         this.scenarios = scenarios;
         this.acknowledgements = acknowledgements;
         this.matches = matches;
+        ghosts = new ReportMatchGhostAction(matches);
         this.terminate = terminate;
         this.consume = consume;
         this.loading = loading;
@@ -192,6 +197,11 @@ public final class MatchPacketHandler {
 
     public CompletionStage<Void> handle(UUID id, int type, byte[] root, MatchRequestContext request) {
         var context = request == null ? null : request.roomContext();
+
+        if (type == PqGamePlayMakeGhost.TYPE_ID) {
+            var packet = new MakeGhostRequestCodec().decode(root);
+            return ghosts.execute(id, context, packet.slotIndex());
+        }
 
         if (type == PcGamePlayGiveUp.TYPE_ID) {
             new GiveUpCodec().decode(root);

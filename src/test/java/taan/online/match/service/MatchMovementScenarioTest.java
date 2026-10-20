@@ -77,6 +77,14 @@ class MatchMovementScenarioTest {
                 f.run();
                 assertEquals(ScenarioApplicationOutcome.APPLIED, result.join().outcome());
                 assertTrue(f.match.movements().get(f.room.owner).fall().isEmpty());
+                var publication = result.join().committed().orElseThrow();
+                assertEquals(f.match.movements(), f.runtime.snapshot().movements());
+                assertEquals(f.match.movements(), publication.snapshot().movements());
+                assertSame(f.runtime.snapshot(), publication.snapshot());
+                assertEquals(f.match.world(), publication.snapshot().world());
+                assertEquals(f.match.resolution(), publication.snapshot().resolution());
+                assertEquals(f.match.attacks(), publication.snapshot().attacks());
+                assertEquals(f.match.loot(), publication.snapshot().loot());
                 var pending = f.runtime.snapshot().completion().orElseThrow();
                 f.runtime.confirmScenario(m.live.ack(0, false));
                 f.runtime.confirmScenario(m.live.ack(1, false));

@@ -13,6 +13,8 @@ import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
+import taan.online.match.protocol.codec.EatBonusItemCodec;
+import taan.online.match.protocol.codec.NotifyEatItemCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
@@ -23,6 +25,7 @@ import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.LoadingPosition;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
@@ -151,9 +154,29 @@ class MatchEnergyIntegrationTest {
         var before = matches.current(token).orElseThrow();
         String fixture = member.slotIndex() == 0 ? "pending-03-PcGamePlay_EatBonusItem"
             : "pending-04-PcGamePlay_EatBonusItem";
-        active.sendTogether(MatchFixtures.root(fixture), SelectionFixtures.cash(0, 0));
+        byte[] bonus = MatchFixtures.root(fixture);
+        int item = new EatBonusItemCodec().decode(bonus).command().itemId();
+        int index = before.loot().inventory(member.sessionId()).firstEmpty();
+        active.sendTogether(bonus, SelectionFixtures.cash(0, 0));
+        assertArrayEquals(bonus, active.read());
         assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
-        assertEquals(before, matches.current(token).orElseThrow());
+        assertArrayEquals(bonus, observer.read());
+        var after = matches.current(token).orElseThrow();
+        assertEquals(before.world(), after.world());
+        assertEquals(before.loot().grantSequence() + (index < 0 ? 0 : 1), after.loot().grantSequence());
+
+        if (index >= 0) {
+            var receipt = new PcGamePlayNotifyEatItem(member.slotIndex(), index, item);
+            active.sendTogether(new NotifyEatItemCodec().encode(receipt), SelectionFixtures.cash(0, 0));
+            assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+            assertTrue(matches.current(token).orElseThrow().loot().inventory(member.sessionId()).receipts().stream()
+                .anyMatch(value -> value.inventoryIndex() == index && value.itemId() == item && value.confirmed()));
+        }
+
+        var confirmed = matches.current(token).orElseThrow();
+        active.sendTogether(bonus, SelectionFixtures.cash(0, 0));
+        assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+        assertEquals(confirmed, matches.current(token).orElseThrow());
     }
 
     private void special(

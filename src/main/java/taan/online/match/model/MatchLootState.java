@@ -31,6 +31,10 @@ public record MatchLootState(
     }
 
     public MatchLootState expired(UUID session) {
+        if (!offers.containsKey(session)) {
+            return this;
+        }
+
         var next = new HashMap<>(offers);
         next.remove(session);
         return new MatchLootState(inventories, next, grantSequence);
@@ -108,6 +112,10 @@ public record MatchLootState(
     }
 
     public MatchLootState without(UUID session) {
+        if (!inventories.containsKey(session) && !offers.containsKey(session)) {
+            return this;
+        }
+
         var nextInventories = new HashMap<>(inventories);
         var nextOffers = new HashMap<>(offers);
         nextInventories.remove(session);

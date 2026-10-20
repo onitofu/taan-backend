@@ -15,6 +15,26 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
         return new MatchLootPolicy(Set.of());
     }
 
+    public static MatchLootPolicy minimalCannon() {
+        return new MatchLootPolicy(
+            Set.of(
+                1,
+                5,
+                7,
+                1005,
+                1010,
+                1015,
+                1020,
+                1025,
+                1030,
+                1035,
+                1040,
+                1045,
+                1050
+            )
+        );
+    }
+
     public boolean enabled() {
         return !allowedItemIds.isEmpty();
     }

@@ -263,10 +263,9 @@ class MatchPickupScenarioTest {
                 command.root()
             ).accepted().orElseThrow();
             var prepared = new PrepareScenarioAction().execute(before, accepted, MatchPickupFixture.POLICY);
-            var publication = before.completed(prepared.world(), prepared.loot(), Optional.empty());
             seedFullInventory(pickup);
 
-            assertFalse(pickup.f.runtime.commitScenario(command, prepared, publication));
+            assertTrue(pickup.f.runtime.commitScenario(command, prepared).isEmpty());
             assertSame(before.world(), pickup.f.match.world());
             assertNotEquals(before.loot(), pickup.f.match.loot());
 

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
@@ -93,7 +94,7 @@ final class MatchItemExecution {
     boolean reportPickup(ReportMatchPickupCommand command) {
         var context = command.context();
 
-        if (!reportCurrent(context)) {
+        if (!owner.reportCurrent(context)) {
             return false;
         }
 
@@ -102,12 +103,6 @@ final class MatchItemExecution {
             && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
             && command.entityId() != -1L;
         return ignored(context, command.slotIndex(), MatchLogEvent.PICKUP_IGNORED, valid, "UNSUPPORTED_PICKUP");
-    }
-
-    private boolean reportCurrent(MatchCommandContext context) {
-        return owner.live() && owner.admits(context) && !match.resolution().exits().containsKey(context.sessionId())
-            && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
-                || match.phase() == MatchPhase.COMPLETION);
     }
 
     private boolean ignored(MatchCommandContext context, int slot, MatchLogEvent event, boolean valid, String reason) {
@@ -201,7 +196,7 @@ final class MatchItemExecution {
         );
 
         if (!duplicate) {
-            deliverUse(command);
+            deliver(output -> output.useItem(command));
         }
 
         return true;
@@ -322,11 +317,11 @@ final class MatchItemExecution {
         return false;
     }
 
-    private void deliverUse(UseMatchItemCommand command) {
+    void deliver(Function<MatchOutput, CompletionStage<Void>> delivery) {
         try {
             for (var recipient : owner.recipients()) {
                 if (recipientCurrent(recipient)) {
-                    observe(recipient.output().useItem(command));
+                    observe(delivery.apply(recipient.output()));
                 }
             }
         } catch (RuntimeException failure) {

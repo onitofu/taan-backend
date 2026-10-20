@@ -170,21 +170,9 @@ final class MatchScenarioExecution {
 
         var spend = owner.items.prepare();
         var prepared = prepare.execute(before, admission.accepted().orElseThrow(), lootPolicy);
-        var publication = before.completed(prepared.world(), prepared.loot(), owner.completion(prepared));
-        var committed = new CommittedScenario(
-            prepared.scenario(),
-            publication,
-            prepared.changedCells(),
-            prepared.deaths()
-        );
+        var committedSnapshot = owner.commitScenario(command, prepared);
 
-        var result = new ScenarioApplicationResult(
-            ScenarioApplicationOutcome.APPLIED,
-            "APPLIED",
-            Optional.of(committed)
-        );
-
-        if (!owner.commitScenario(command, prepared, publication)) {
+        if (committedSnapshot.isEmpty()) {
             LOG.log(
                 MatchLogEvent.SCENARIO_IGNORED,
                 reason("STALE_COMMIT"),
@@ -192,6 +180,19 @@ final class MatchScenarioExecution {
             );
             return ScenarioApplicationResult.ignored("STALE_COMMIT");
         }
+
+        var publication = committedSnapshot.orElseThrow();
+        var committed = new CommittedScenario(
+            prepared.scenario(),
+            publication,
+            prepared.changedCells(),
+            prepared.deaths()
+        );
+        var result = new ScenarioApplicationResult(
+            ScenarioApplicationOutcome.APPLIED,
+            "APPLIED",
+            Optional.of(committed)
+        );
 
         MatchOutcomeExecution.decided(before, publication);
         publication.world().boxes().values().stream()

@@ -32,6 +32,7 @@ import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchDeadline;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnToken;
 import taan.online.match.service.model.MatchTurnTransition;
@@ -96,6 +97,11 @@ final class MatchTurnExecution {
             slotIndex(match.turn().activeSlot()),
             turnRevision(match.turn().revision())
         );
+    }
+
+    Optional<MatchCompletion> completion(PreparedScenario prepared) {
+        return settings.executionMode() == MatchExecutionMode.CANNON_1V1
+            ? Optional.of(prepare(prepared)) : Optional.empty();
     }
 
     MatchCompletion prepare(PreparedScenario prepared) {

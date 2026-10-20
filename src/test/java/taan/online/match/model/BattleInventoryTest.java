@@ -58,6 +58,9 @@ class BattleInventoryTest {
         var admission = UUID.randomUUID();
         var initial = MatchLootState.empty();
         assertSame(initial, initial.granted(session, 5));
+        assertSame(initial, initial.expired(session));
+        assertSame(initial, initial.without(session));
+        assertSame(BattleInventory.empty(), initial.inventory(session));
         assertSame(initial, initial.confirmed(session, admission, 0, 5));
         assertSame(initial, initial.discarded(session, 0, 5));
         var state = initial;
@@ -79,9 +82,13 @@ class BattleInventoryTest {
         assertEquals(OptionalLong.empty(), receipt.boxEntityId());
         assertEquals(Optional.empty(), receipt.scenarioHash());
         assertEquals(session, state.offers().get(session).sessionId());
+        var stranger = UUID.randomUUID();
+        assertSame(state, state.expired(stranger));
+        assertSame(state, state.without(stranger));
         var expired = state.expired(session);
         assertEquals(state.inventories(), expired.inventories());
         assertEquals(0, expired.offers().size());
+        assertSame(expired, expired.expired(session));
         var confirmed = expired.confirmed(session, admission, 0, 5);
         assertEquals(true, confirmed.inventory(session).receipts().getFirst().confirmed());
         var discarded = confirmed.discarded(session, 0, 5);
