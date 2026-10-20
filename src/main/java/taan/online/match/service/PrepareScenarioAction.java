@@ -14,6 +14,7 @@ import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.PreparedScenario;
 import taan.online.match.service.model.ScenarioActorClaim;
+import taan.online.match.service.model.ScenarioAnimationClaim;
 import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
@@ -82,6 +83,7 @@ public final class PrepareScenarioAction {
                     }
                 }
                 case ScenarioFireClaim ignored -> { }
+                case ScenarioAnimationClaim ignored -> { }
                 case ScenarioGuidedClaim ignored -> { }
                 case ScenarioMakeItemBoxClaim box -> draft.createBox(box.entityId(), box.x(), box.y());
                 case ScenarioEatItemBoxClaim pickup -> {

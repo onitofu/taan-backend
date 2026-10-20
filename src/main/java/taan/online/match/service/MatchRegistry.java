@@ -49,7 +49,6 @@ import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.match.service.model.UseMatchItemCommand;
-import taan.online.room.model.RoomMode;
 import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.RoomMatchLifecycle;
 import taan.online.room.service.model.RoomMatchContext;
@@ -141,9 +140,9 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex(),
                 MatchBoxPolicy.DISABLED
             );
-            var profile = settings.forProfile(draft.settings().mode() == RoomMode.ITEM && participants.size() == 2);
+            var profile = settings.forProfile(draft.settings().mode().usesItems());
 
-            if (profile.executionMode() == MatchExecutionMode.CANNON_1V1) {
+            if (profile.executionMode() == MatchExecutionMode.CLIENT_SCENARIO) {
                 var initial = new MatchTurnPolicy().initial(participants, random.nextLong());
                 match = new Match(
                     match.id(),

@@ -25,7 +25,7 @@ final class LiveMatchFixture implements AutoCloseable {
     }
 
     LiveMatchFixture(MatchLootPolicy policy, MatchBoxPolicy boxes) throws IOException {
-        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CANNON_1V1, policy, boxes);
+        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO, policy, boxes);
         f = scenario.f;
     }
 

@@ -2,8 +2,8 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Set;
@@ -106,7 +106,8 @@ class MatchAckTimeoutOutcomeTest {
                     Set.of(UUID.randomUUID()),
                     snapshot.participants(),
                     snapshot.world(),
-                    snapshot.turn().activeSlot()
+                    snapshot.turn().activeSlot(),
+                    snapshot.captains()
                 )
             );
 

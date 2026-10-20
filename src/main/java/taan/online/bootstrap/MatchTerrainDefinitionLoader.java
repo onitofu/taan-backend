@@ -14,11 +14,11 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import taan.online.match.model.MissileTerrainDefinition;
 import taan.online.match.model.TerrainLayerDefinition;
+import taan.online.match.model.WeaponMissileKey;
 
 public final class MatchTerrainDefinitionLoader {
     private static final long MAX_CELLS = 64L * 1024 * 1024;
@@ -60,33 +60,38 @@ public final class MatchTerrainDefinitionLoader {
         }
     }
 
-    public Map<Integer, MissileTerrainDefinition> missiles(
+    public Map<WeaponMissileKey, MissileTerrainDefinition> missiles(
         InputStream index,
         Function<String, InputStream> resources
     ) {
         try (index) {
-            var result = new HashMap<Integer, MissileTerrainDefinition>();
+            var result = new HashMap<WeaponMissileKey, MissileTerrainDefinition>();
 
-            for (var row : rows(index, "missile_type_id,width,height,center_x,center_y,resource,sha256")) {
-                int id = Integer.parseInt(row[0]);
-                int width = Integer.parseInt(row[1]);
-                int height = Integer.parseInt(row[2]);
-                byte[] cells = raster(resources, row[5], width, height, row[6]);
+            for (var row : rows(index, "weapon_id,missile_type_id,width,height,center_x,center_y,resource,sha256")) {
+                int weapon = Integer.parseInt(row[0]);
+                int id = Integer.parseInt(row[1]);
+                int width = Integer.parseInt(row[2]);
+                int height = Integer.parseInt(row[3]);
+                byte[] cells = raster(resources, row[6], width, height, row[7]);
 
                 for (byte cell : cells) {
                     require(cell == 0 || cell == 1, "Invalid destruction mask value");
                 }
 
                 var definition = new MissileTerrainDefinition(
+                    weapon,
                     id,
-                    Integer.parseInt(row[3]),
                     Integer.parseInt(row[4]),
+                    Integer.parseInt(row[5]),
                     new TerrainLayerDefinition(0, 0, width, height, cells)
                 );
-                require(result.put(id, definition) == null, "Duplicate missile terrain identity");
+                require(
+                    result.put(new WeaponMissileKey(weapon, id), definition) == null,
+                    "Duplicate missile terrain identity"
+                );
             }
 
-            require(result.keySet().equals(Set.of(0, 1, 2)), "Incomplete ordinary cannon terrain definitions");
+            require(!result.isEmpty(), "Empty weapon terrain definitions");
             return Map.copyOf(result);
         } catch (IOException | NoSuchAlgorithmException failure) {
             throw new IllegalStateException("Cannot load missile terrain definitions", failure);

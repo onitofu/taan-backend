@@ -40,7 +40,7 @@ import taan.online.network.FrameDecoder;
 class MatchSpreadConnectionTest {
     @Test
     void usesAControlledSpreadCardWithFragmentationCoalescingAndDuplicatePackets() throws Exception {
-        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, new MatchLootPolicy(Set.of(3)))) {
+        try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO, new MatchLootPolicy(Set.of(3)))) {
             var owner = world.client(1);
             var guest = world.client(2);
             world.drainOutputs();

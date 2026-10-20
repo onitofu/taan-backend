@@ -1,4 +1,10 @@
-missile_type_id,width,height,center_x,center_y,resource,sha256
-0,256,256,128,150,terrain/cannon-0-mask.rle,eea0b238518bea2dcc0ae24931f96f900e38c00fe435a795e3d2eeeae97a486f
-1,256,256,128,153,terrain/cannon-1-mask.rle,6cf5459beb9970936d6e0a2dd687b8526e8d3eb01211d39ff19a0c1ff6405d39
-2,256,256,128,163,terrain/cannon-2-mask.rle,dbda2cec6d42f6a77f662de799f2b63c5eda0f4cfba1bc49b1392ae80dbff464
+weapon_id,missile_type_id,width,height,center_x,center_y,resource,sha256
+0,0,256,256,128,150,terrain/cannon-0-mask.rle,eea0b238518bea2dcc0ae24931f96f900e38c00fe435a795e3d2eeeae97a486f
+0,1,256,256,128,153,terrain/cannon-1-mask.rle,6cf5459beb9970936d6e0a2dd687b8526e8d3eb01211d39ff19a0c1ff6405d39
+0,2,256,256,128,163,terrain/cannon-2-mask.rle,dbda2cec6d42f6a77f662de799f2b63c5eda0f4cfba1bc49b1392ae80dbff464
+8,0,256,256,128,135,terrain/bee-0-mask.rle,7804af127596dbc06df15635330d442cded5e2795eafdd41e5322034297e3cf8
+8,1,256,256,128,136,terrain/bee-1-mask.rle,6bd7147f4fbb27633f784dd5b7ac4f1be1c3dcda2dfa84869f521d29312413d7
+8,2,256,256,128,140,terrain/bee-2-mask.rle,448378dbd65c5aef8a937b10b47f8a5dfb148d36c66cfb24d4bfc4688d0eaf43
+10,0,256,256,128,135,terrain/thunder-0-mask.rle,9910e1308636020982dca815c85a95a4c3befe712a585e35d292aebef898d29c
+10,1,256,256,128,137,terrain/thunder-1-mask.rle,0e5f36201bd66301916646cb26f9532d9140d55bacc66dd4d2515cc3caf9fddf
+10,2,256,256,128,139,terrain/thunder-2-mask.rle,c1ac7e577327b6b3bd40952ca41f8413f48038a2e819d1786ef0edde115c5fef

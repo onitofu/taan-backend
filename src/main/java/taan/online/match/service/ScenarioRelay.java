@@ -2,9 +2,9 @@ package taan.online.match.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BooleanSupplier;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchSnapshot;
@@ -57,7 +57,8 @@ final class ScenarioRelay {
         var deliveries = new ArrayList<CompletableFuture<Void>>();
 
         for (var subscription : subscriptions) {
-            if (subscription.sessionId().equals(sender.sessionId())) {
+            if (subscription.sessionId().equals(sender.sessionId())
+                || match.resolution().exits().containsKey(subscription.sessionId())) {
                 continue;
             }
 

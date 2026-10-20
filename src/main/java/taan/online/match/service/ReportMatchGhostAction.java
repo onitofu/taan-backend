@@ -35,7 +35,7 @@ public final class ReportMatchGhostAction {
             && snapshot.participants().stream().anyMatch(p -> p.sessionId().equals(id) && p.slotIndex() == slot)
             && snapshot.actors().get(id).dead();
 
-        ignored(id, sender, slot, ending ? "MATCH_ENDING" : "STALE_OR_INAPPLICABLE");
+        ignored(id, sender, slot, ending ? "SPECTATOR" : "STALE_OR_INAPPLICABLE");
         return CompletableFuture.completedFuture(null);
     }
 

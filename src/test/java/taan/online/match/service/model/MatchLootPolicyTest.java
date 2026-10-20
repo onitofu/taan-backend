@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
-import taan.online.match.model.MatchItemSelectionRules;
 import org.junit.jupiter.api.Test;
+import taan.online.match.model.MatchItemSelectionRules;
 
 class MatchLootPolicyTest {
     @Test
@@ -60,16 +60,16 @@ class MatchLootPolicyTest {
         var preview = new MatchBootstrapSettings(30, 20, 8);
         assertEquals(MatchExecutionMode.PREVIEW, preview.executionMode());
         assertFalse(preview.lootPolicy().enabled());
-        var normal = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1);
+        var normal = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO);
         assertFalse(normal.lootPolicy().enabled());
-        var controlled = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1, 20, 10, policy);
+        var controlled = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO, 20, 10, policy);
         assertEquals(policy, controlled.forProfile(true).lootPolicy());
         assertFalse(controlled.forProfile(false).lootPolicy().enabled());
         assertThrows(NullPointerException.class, () -> new MatchBootstrapSettings(
             30,
             20,
             8,
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             20,
             10,
             null

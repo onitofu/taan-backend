@@ -21,6 +21,7 @@ import taan.online.logging.WarningEvent;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
+import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
@@ -131,7 +132,7 @@ final class MatchRuntime {
     }
 
     CompletionStage<Void> publishScenario(CommittedScenario scenario, ScenarioApplicationResult result) {
-        if (settings.executionMode() == MatchExecutionMode.CANNON_1V1) {
+        if (settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO) {
             turns.arm();
         } else {
             new MatchBootstrapDelivery(snapshot, recipients, this, scheduler, progress(), warnings).dispatch(null);
@@ -147,7 +148,7 @@ final class MatchRuntime {
     }
 
     boolean live() {
-        return settings.executionMode() == MatchExecutionMode.CANNON_1V1;
+        return settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO;
     }
 
     boolean reportCurrent(MatchCommandContext context) {
@@ -157,7 +158,9 @@ final class MatchRuntime {
     }
 
     CompletableFuture<Boolean> confirmScenario(ConfirmScenarioCommand command) {
-        return turnWork(() -> settings.executionMode() == MatchExecutionMode.CANNON_1V1 && turns.acknowledge(command));
+        return turnWork(
+            () -> settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO && turns.acknowledge(command)
+        );
     }
 
     CompletableFuture<Boolean> turnWork(BooleanSupplier command) {
@@ -192,10 +195,6 @@ final class MatchRuntime {
         publishedRevision = snapshot.phaseRevision();
     }
 
-    void resetScenario() {
-        scenarios.reset();
-    }
-
     boolean running() {
         return !closed;
     }
@@ -225,7 +224,8 @@ final class MatchRuntime {
     }
 
     boolean admits(MatchCommandContext context) {
-        return !closed && token().equals(context.token()) && snapshot.channelId() == context.channelId()
+        return !closed && snapshot.resolution().exits().get(context.sessionId()) != MatchExitKind.DEPARTED
+            && token().equals(context.token()) && snapshot.channelId() == context.channelId()
             && snapshot.participants().stream().anyMatch(
                 p -> p.sessionId().equals(context.sessionId()) && p.admissionId().equals(context.admissionId())
                     && access.current(context, p)
@@ -266,7 +266,7 @@ final class MatchRuntime {
                 }
 
                 if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())
-                    && !(settings.executionMode() == MatchExecutionMode.CANNON_1V1
+                    && !(settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
                         && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
                             || match.phase() == MatchPhase.COMPLETION))) {
                     ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
@@ -401,7 +401,7 @@ final class MatchRuntime {
                 ? match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())
                 : match.actionStarted(
                     clock.getAsLong(),
-                    settings.executionMode() == MatchExecutionMode.CANNON_1V1
+                    settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
                     ? settings.actionTimeoutNanos() : settings.previewTimeoutNanos()
                 );
 
@@ -426,7 +426,9 @@ final class MatchRuntime {
     }
 
     void deadlineExpired(RoomMatchProgressToken progress) {
-        if (settings.executionMode() == MatchExecutionMode.CANNON_1V1
+        if (live() && snapshot.phase() == MatchPhase.LOADING) {
+            turnWork(() -> turns.loadingExpired(progress));
+        } else if (settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
             && (snapshot.phase() == MatchPhase.ACTION || snapshot.phase() == MatchPhase.SETTLING
                 || snapshot.phase() == MatchPhase.COMPLETION)) {
             turns.enqueue(progress);

@@ -19,7 +19,7 @@ class MatchDefinitionCatalogTest {
             definitions.catalogVersion(),
             maps,
             definitions.weapons(),
-            MatchFixtures.cannonShots(),
+            MatchFixtures.attacks(),
             MatchFixtures.missileTerrain()
         );
         maps.clear();
@@ -33,7 +33,7 @@ class MatchDefinitionCatalogTest {
                 definitions.catalogVersion(),
                 Map.of(),
                 definitions.weapons(),
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );
@@ -43,7 +43,7 @@ class MatchDefinitionCatalogTest {
                 definitions.catalogVersion(),
                 Map.of(2, definitions.map()),
                 definitions.weapons(),
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
         );

@@ -8,6 +8,7 @@ import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.ScenarioCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
+import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponFields;
 
@@ -78,6 +79,10 @@ public final class MatchPowerTestPackets {
 
         if (command instanceof ScenarioWeaponCommand weapon) {
             return new ScenarioWeaponCommand(weapon.header(), weapon(weapon.weapon(), kind));
+        }
+
+        if (command instanceof ScenarioNormalCommand normal && normal.header().kind() == 9) {
+            return new ScenarioNormalCommand(normal.header(), 9 + kind, normal.scalar18());
         }
 
         return command;

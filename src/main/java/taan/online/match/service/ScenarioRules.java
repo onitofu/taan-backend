@@ -4,10 +4,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.MatchAttackSelection;
-import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchItemSelectionRules;
+import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
+import taan.online.match.service.model.ScenarioAnimationClaim;
 import taan.online.match.service.model.ScenarioClaims;
 import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioEatItemBoxClaim;
@@ -32,7 +34,7 @@ final class ScenarioRules {
             "INVALID_SHOOTER"
         );
         var selection = match.attacks().getOrDefault(shooter.sessionId(), MatchAttackSelection.NORMAL);
-        var selected = selection.selectedItems();
+        var selected = MatchItemSelectionRules.selected(selection.activeItems(), match.captain(shooter.slotIndex()));
         int attackKind = MatchItemSelectionRules.attackKind(selected);
         int shotLimit = MatchItemSelectionRules.shotLimit(selected);
         boolean guided = selected.contains(7);
@@ -46,7 +48,8 @@ final class ScenarioRules {
             claims.headerEnergyGrant() >= 0 && claims.headerEnergyGrant() <= shooter.maxEnergy(),
             "INVALID_HEADER_ENERGY"
         );
-        var definition = match.definitions().cannonShots().get(attackKind);
+        var definition = match.definitions().attacks().get(new WeaponAttackKey(shooter.weaponId(), attackKind));
+        int energy = match.definitions().weapons().get(shooter.weaponId()).hitEnergy();
         float power = claims.power();
         require(
             Float.isFinite(power) && power >= 0 && power <= 1
@@ -93,8 +96,8 @@ final class ScenarioRules {
                     projectiles.guided(value);
                 }
                 case ScenarioDamageClaim value -> require(
-                    value.damage() >= 0 && value.energy1c() >= 0 && value.energy1c() <= 5
-                        && value.energy1e() >= 0 && value.energy1e() <= 30,
+                    value.damage() >= 0 && value.energy1c() >= 0 && value.energy1c() <= energy / 2
+                        && value.energy1e() >= 0 && value.energy1e() <= energy * 3,
                     "INVALID_DAMAGE"
                 );
                 case ScenarioFallClaim value -> require(
@@ -104,13 +107,16 @@ final class ScenarioRules {
                 );
                 case ScenarioMakeItemBoxClaim ignored -> { }
                 case ScenarioEatItemBoxClaim ignored -> require(projectiles.hasFire(), "MISSING_PROJECTILE");
+                case ScenarioAnimationClaim animation -> {
+                    boolean prelude = header.kind() == 14;
+                    require(!prelude || special, "UNAUTHORIZED_SPECIAL_ANIMATION");
+                    int expected = prelude ? definition.specialAnimation() : definition.animationType();
+                    require(animation.animationId() == expected, "INVALID_ATTACK_ANIMATION");
+                    require(header.duration() == 0, "INVALID_ANIMATION_DURATION");
+                }
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioRejectedException("UNSUPPORTED_FEATURE");
                 case ScenarioActorClaim ignored -> {
-                    if (header.kind() == 14) {
-                        require(special, "UNAUTHORIZED_SPECIAL_ANIMATION");
-                    }
-
-                    if (header.kind() == 14 || header.kind() == 16) {
+                    if (header.kind() == 16) {
                         require(header.duration() == 0, "INVALID_ANIMATION_DURATION");
                     }
                 }

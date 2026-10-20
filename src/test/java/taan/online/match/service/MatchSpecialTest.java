@@ -1,25 +1,25 @@
 package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-import java.util.HexFormat;
 import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import taan.online.LogCapture;
+import taan.online.match.controller.ScenarioClaimsMapper;
+import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
-import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.service.model.ApplyScenarioCommand;
-import org.junit.jupiter.api.Test;
-import taan.online.LogCapture;
-import taan.online.match.model.MatchAttackSelection;
-import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.RecordMatchSpendCommand;
-import taan.online.match.service.model.SpentMatchItem;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
+import taan.online.match.service.model.SpentMatchItem;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchSpecialTest {

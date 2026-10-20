@@ -11,7 +11,8 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
-import taan.online.match.model.CannonShotDefinition;
+import taan.online.match.model.WeaponAttackDefinition;
+import taan.online.match.model.WeaponAttackKey;
 
 class CannonDefinitionLoaderTest {
     @Test
@@ -20,14 +21,23 @@ class CannonDefinitionLoaderTest {
         byte[] bytes;
         String provenance;
 
-        try (var stream = resource("cannon-shots.csv"); var evidence = resource("catalog-provenance.json")) {
+        try (var stream = resource("weapon-attacks.csv"); var evidence = resource("catalog-provenance.json")) {
             bytes = stream.readAllBytes();
             provenance = new String(evidence.readAllBytes(), StandardCharsets.UTF_8);
         }
 
-        assertEquals(new CannonShotDefinition(0, 0, 0, 100, 0, 0), catalog.cannonShots().get(0));
-        assertEquals(catalog.cannonShots().get(0), catalog.select(1).cannonShots().get(0));
-        assertEquals(new CannonShotDefinition(0, 1, 0, 100, 1, 1), catalog.cannonShots().get(1));
+        assertEquals(
+            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9),
+            catalog.attacks().get(new WeaponAttackKey(0, 0))
+        );
+        assertEquals(
+            catalog.attacks().get(new WeaponAttackKey(0, 0)),
+            catalog.select(1).attacks().get(new WeaponAttackKey(0, 0))
+        );
+        assertEquals(
+            new WeaponAttackDefinition(new WeaponAttackKey(0, 1), 0, 100, 1, 1, 10),
+            catalog.attacks().get(new WeaponAttackKey(0, 1))
+        );
         assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
         String csv = new String(bytes, StandardCharsets.UTF_8);
 
@@ -54,21 +64,30 @@ class CannonDefinitionLoaderTest {
     @Test
     void rejectsUnsupportedIdentitiesAndInvalidPowerRangesWithoutImportingCriticalPlaceholders() {
         int[][] invalid = {
-            {1, 0, 0, 100, 0, 0},
-            {0, 1, 0, 100, 0, 0},
+            {-1, 0, 0, 100, 0, 0},
+            {12, 0, 0, 100, 0, 0},
             {0, -1, 0, 100, 0, 0},
             {0, 3, 0, 100, 3, 3},
             {0, 0, -1, 100, 0, 0},
             {0, 0, 0, 101, 0, 0},
             {0, 0, 50, 49, 0, 0},
-            {0, 0, 0, 100, 1, 0},
-            {0, 0, 0, 100, 0, 1}
+            {0, 0, 0, 100, -1, 0},
+            {0, 0, 0, 100, 256, 0},
+            {0, 0, 0, 100, 0, -1},
+            {0, 0, 0, 100, 0, 65536}
         };
 
         for (var row : invalid) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new CannonShotDefinition(row[0], row[1], row[2], row[3], row[4], row[5])
+                () -> new WeaponAttackDefinition(
+                    new WeaponAttackKey(row[0], row[1]),
+                    row[2],
+                    row[3],
+                    row[4],
+                    row[5],
+                    9 + row[1]
+                )
             );
         }
     }

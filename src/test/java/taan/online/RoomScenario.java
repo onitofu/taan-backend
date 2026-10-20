@@ -20,6 +20,7 @@ import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
@@ -114,6 +115,21 @@ public final class RoomScenario implements AutoCloseable {
         MatchExecutionMode mode,
         Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle
     ) {
+        this(executor, capacity, kind, mode, lifecycle, MatchLootPolicy.disabled());
+    }
+
+    public RoomScenario(MatchExecutionMode mode, MatchLootPolicy policy) {
+        this(Runnable::run, 64, null, mode, value -> value, policy);
+    }
+
+    private RoomScenario(
+        MatchCommandExecutor executor,
+        int capacity,
+        Integer kind,
+        MatchExecutionMode mode,
+        Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle,
+        MatchLootPolicy policy
+    ) {
         sessions = new SessionRegistry();
         access = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(access, 2181);
@@ -133,7 +149,7 @@ public final class RoomScenario implements AutoCloseable {
             baseline.catalogVersion(),
             Map.of(1, baseline.map()),
             baseline.weapons(),
-            MatchFixtures.cannonShots(),
+            MatchFixtures.attacks(),
             MatchFixtures.missileTerrain()
         ) : MatchFixtures.catalog();
         timers = new TestRoomSelectionScheduler();
@@ -145,7 +161,8 @@ public final class RoomScenario implements AutoCloseable {
             new ChannelMatchAccess(channels),
             executor,
             capacity,
-            mode
+            mode,
+            policy
         );
         rooms = new RoomRegistry(
             channels,

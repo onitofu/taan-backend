@@ -70,7 +70,7 @@ class MatchOutcomeBoundaryTest {
             assertFalse(depart(f, new DepartMatchCommand(f.context(), RoomMatchEndReason.DISCONNECTED)));
         }
 
-        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CANNON_1V1)) {
+        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             assertFalse(f.runtime.outcomes.acceptsDeparture());
             assertFalse(depart(f, new DepartMatchCommand(f.context(), RoomMatchEndReason.DISCONNECTED)));
             f.activate();

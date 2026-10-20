@@ -119,7 +119,7 @@ class MatchLootCompatibilityTest {
 
     @Test
     void ignoresPreviewUnstartedMissingAndStoppedMatches() throws Exception {
-        for (var mode : new MatchExecutionMode[]{MatchExecutionMode.PREVIEW, MatchExecutionMode.CANNON_1V1}) {
+        for (var mode : new MatchExecutionMode[]{MatchExecutionMode.PREVIEW, MatchExecutionMode.CLIENT_SCENARIO}) {
             try (var f = new MatchRuntimeFixture(8, mode)) {
                 var c = f.context();
                 assertFalse(pickup(f, c, 0, 0, OptionalInt.empty(), 123));

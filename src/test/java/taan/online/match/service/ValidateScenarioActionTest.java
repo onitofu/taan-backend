@@ -21,6 +21,7 @@ import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
@@ -49,7 +50,7 @@ class ValidateScenarioActionTest {
             assertEquals(ScenarioAdmissionOutcome.ACCEPTED, result.outcome());
             assertEquals(before, world.snapshot());
             assertEquals(4193, accepted.journal().endTick());
-            assertEquals(0, accepted.journal().missileDefinitions().get(0));
+            assertEquals(new WeaponMissileKey(0, 0), accepted.journal().missileDefinitions().get(0));
             assertEquals(world.claims.commands(), accepted.journal().events());
             assertEquals(world.claims.refittedSlots(), accepted.journal().refittedSlots());
             assertEquals(world.sender, accepted.sender());

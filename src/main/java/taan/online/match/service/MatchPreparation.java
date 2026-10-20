@@ -40,7 +40,9 @@ final class MatchPreparation {
                 return "ADMISSION_MISMATCH";
             }
 
-            if (participant.slot().participant().weaponId() != 0) {
+            if (definitions.attacks().keySet().stream().noneMatch(
+                key -> key.weaponId() == participant.slot().participant().weaponId()
+            )) {
                 return "UNSUPPORTED_WEAPON";
             }
 
@@ -59,13 +61,13 @@ final class MatchPreparation {
     List<MatchParticipant> participants(RoomMatchDraft draft) {
         var result = new ArrayList<MatchParticipant>();
         var used = new HashSet<Integer>();
-        var weapon = definitions.weapons().getFirst();
         var map = definitions.maps().get(draft.settings().mapId());
         var ordered = draft.participants().stream().sorted(Comparator.comparingInt(value -> value.slot().index()))
             .toList();
 
         for (RoomMatchParticipant participant : ordered) {
             var slot = participant.slot();
+            var weapon = definitions.weapons().get(slot.participant().weaponId());
             int side = slot.team() == RoomTeam.BLUE ? 1 : 2;
             var spawn = map.spawns().stream()
                 .filter(value -> value.valid() && !used.contains(value.index()))
@@ -85,7 +87,7 @@ final class MatchPreparation {
                     slot.index(),
                     slot.team(),
                     slot.participant().character(),
-                    0,
+                    weapon.weaponId(),
                     spawn,
                     side - 1,
                     weapon.resourceMaxHp(),

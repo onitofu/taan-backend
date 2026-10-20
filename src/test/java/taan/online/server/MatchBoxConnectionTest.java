@@ -29,7 +29,7 @@ class MatchBoxConnectionTest {
     @Test
     void commitsAFragmentedNativeScenarioRelaysOriginalBytesAndDoesNotReapplyACoalescedDuplicate() throws Exception {
         try (var world = new RoomConnectionWorld(
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             MatchLootPolicy.disabled(),
             MatchBoxPolicy.ENABLED
         )) {

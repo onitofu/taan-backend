@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.MatchPowerTestPackets;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 
 class PowerGoldenTest {
@@ -58,12 +59,16 @@ class PowerGoldenTest {
     @Test
     void loadsTheDistinctNativePowerCraterWithItsOwnAnchorAndChecksum() throws Exception {
         var definitions = MatchFixtures.definitions();
-        var mask = definitions.missiles().get(1);
+        var mask = definitions.missiles().get(new WeaponMissileKey(0, 1));
         assertEquals(128, mask.centerX());
         assertEquals(153, mask.centerY());
         assertEquals(256, mask.mask().width());
         assertEquals(256, mask.mask().height());
-        assertFalse(hash(mask.mask().cells()).equals(hash(definitions.missiles().get(0).mask().cells())));
+        assertFalse(
+            hash(
+                mask.mask().cells()
+            ).equals(hash(definitions.missiles().get(new WeaponMissileKey(0, 0)).mask().cells()))
+        );
 
         try (var input = getClass().getResourceAsStream("/match/power-provenance.json")) {
             var provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);

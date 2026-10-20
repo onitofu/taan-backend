@@ -121,7 +121,7 @@ class MatchLoadingModelTest {
                     MatchFixtures.terrainLayers()
                 ),
                 source.definitions().weapons(),
-                MatchFixtures.cannonShots(),
+                MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             );
             var match = new Match(

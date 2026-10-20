@@ -87,7 +87,7 @@ class ScenarioWorldDraftTest {
         byte[] cells = {0, 1, 2, 17, 16, 1, 1, 1};
         var layer = new TerrainLayerDefinition(10, 20, 4, 2, cells);
         var mask = new TerrainLayerDefinition(0, 0, 4, 2, new byte[]{1, 1, 1, 1, 0, 1, 1, 1});
-        var missile = new MissileTerrainDefinition(0, 0, 0, mask);
+        var missile = new MissileTerrainDefinition(0, 0, 0, 0, mask);
         var draft = new ScenarioTerrainDraft(List.of(layer, layer));
         cells[1] = 0;
         draft.explode(missile, 10, 20, 1);
@@ -118,7 +118,7 @@ class ScenarioWorldDraftTest {
         Arrays.fill(cells, (byte) 1);
         var layer = new TerrainLayerDefinition(0, 0, 8, 8, cells);
         var mask = new TerrainLayerDefinition(0, 0, 4, 4, new byte[]{1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1});
-        var missile = new MissileTerrainDefinition(0, 2, 2, mask);
+        var missile = new MissileTerrainDefinition(0, 0, 2, 2, mask);
         var draft = new ScenarioTerrainDraft(List.of(layer));
         draft.explode(missile, 0, 0, 0);
         draft.explode(missile, 0, 0, Float.MIN_VALUE);
@@ -160,7 +160,7 @@ class ScenarioWorldDraftTest {
             assertTrue(finalState.actors().get(id).y() >= 850);
             draft.fall(id, 50, 10, 1, 660);
             assertEquals(4, draft.finish(receipt(f, 1), Set.of(), 1000).falls().get(id).size());
-            assertThrows(ScenarioWorldException.class, () -> draft.explode(65535, 1, 1, 1));
+            assertThrows(ScenarioWorldException.class, () -> draft.explode(new WeaponMissileKey(0, 65535), 1, 1, 1));
 
             for (long[] invalid : new long[][]{
                 {-1, 1, 0, 1}, {120001, 1, 0, 1}, {0, 0, 0, 1}, {120000, 1, 0, 1},
@@ -196,17 +196,17 @@ class ScenarioWorldDraftTest {
         for (int[] row : new int[][]{{-1, 0, 0}, {65536, 0, 0}, {0, -1, 0}, {0, 2, 0}, {0, 0, -1}, {0, 0, 2}}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MissileTerrainDefinition(row[0], row[1], row[2], mask)
+                () -> new MissileTerrainDefinition(0, row[0], row[1], row[2], mask)
             );
         }
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MissileTerrainDefinition(0, 0, 0, new TerrainLayerDefinition(1, 0, 1, 1, new byte[1]))
+            () -> new MissileTerrainDefinition(0, 0, 0, 0, new TerrainLayerDefinition(1, 0, 1, 1, new byte[1]))
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MissileTerrainDefinition(0, 0, 0, new TerrainLayerDefinition(0, 1, 1, 1, new byte[1]))
+            () -> new MissileTerrainDefinition(0, 0, 0, 0, new TerrainLayerDefinition(0, 1, 1, 1, new byte[1]))
         );
         var layers = new ArrayList<>(List.of(mask));
         var initial = MatchWorldState.initial(Map.of(), layers);

@@ -11,6 +11,7 @@ import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.service.model.ScenarioActorClaim;
+import taan.online.match.service.model.ScenarioAnimationClaim;
 import taan.online.match.service.model.ScenarioClaim;
 import taan.online.match.service.model.ScenarioClaims;
 import taan.online.match.service.model.ScenarioDamageClaim;
@@ -70,7 +71,11 @@ public final class ScenarioClaimsMapper {
             );
         }
 
-        if (command instanceof ScenarioNormalCommand && (value.kind() == 14 || value.kind() == 16)) {
+        if (command instanceof ScenarioNormalCommand normal && (value.kind() == 9 || value.kind() == 14)) {
+            return new ScenarioAnimationClaim(header, normal.scalar14());
+        }
+
+        if (command instanceof ScenarioNormalCommand && value.kind() == 16) {
             return new ScenarioActorClaim(header);
         }
 

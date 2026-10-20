@@ -64,7 +64,7 @@ class ReportMatchGhostActionTest {
                 assertSame(committed, f.snapshot());
             }
 
-            assertTrue(logs.text().contains("MATCH_ENDING"));
+            assertTrue(logs.text().contains("SPECTATOR"));
             assertTrue(f.owner.closed.isEmpty());
             assertTrue(f.guest.closed.isEmpty());
             f.ack(shooter);

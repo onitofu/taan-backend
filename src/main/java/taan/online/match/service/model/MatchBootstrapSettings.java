@@ -71,7 +71,7 @@ public record MatchBootstrapSettings(
     }
 
     public MatchBootstrapSettings forProfile(boolean eligible) {
-        return executionMode == MatchExecutionMode.CANNON_1V1 && !eligible
+        return executionMode == MatchExecutionMode.CLIENT_SCENARIO && !eligible
             ? new MatchBootstrapSettings(
                 loadingTimeoutNanos,
                 previewTimeoutNanos,

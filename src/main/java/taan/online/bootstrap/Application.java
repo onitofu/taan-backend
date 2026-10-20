@@ -53,6 +53,7 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.controller.MatchItemPacketHandler;
 import taan.online.match.controller.MatchPacketHandler;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
@@ -72,7 +73,6 @@ import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
-import taan.online.match.model.MatchBoxPolicy;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
@@ -176,7 +176,7 @@ public final class Application implements AutoCloseable {
             Application.class.getResourceAsStream("/match/maps.csv"),
             Application.class.getResourceAsStream("/match/map-spawns.csv"),
             Application.class.getResourceAsStream("/match/weapons.csv"),
-            Application.class.getResourceAsStream("/match/cannon-shots.csv")
+            Application.class.getResourceAsStream("/match/weapon-attacks.csv")
         );
         var roomDefinitions = new RoomDefinitionLoader();
         var maps = roomDefinitions.maps(matchDefinitions);
@@ -193,7 +193,7 @@ public final class Application implements AutoCloseable {
                 TimeUnit.SECONDS.toNanos(config.matchLoadingTimeoutSeconds()),
                 TimeUnit.SECONDS.toNanos(config.matchPreviewTimeoutSeconds()),
                 config.matchReportsPerSecond(),
-                MatchExecutionMode.CANNON_1V1,
+                MatchExecutionMode.CLIENT_SCENARIO,
                 TimeUnit.SECONDS.toNanos(config.matchActionTimeoutSeconds()),
                 TimeUnit.SECONDS.toNanos(config.matchCompletionGraceSeconds()),
                 MatchLootPolicy.minimalCannon(),

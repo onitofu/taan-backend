@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import taan.online.match.model.CannonShotDefinition;
+import taan.online.match.model.WeaponAttackDefinition;
+import taan.online.match.model.WeaponAttackKey;
+import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioGuidedClaim;
@@ -27,7 +29,10 @@ class ScenarioProjectileRulesTest {
         rules.fire(fire(2, 2700));
         rules.event(event(2, 2700, 2800, 2));
         assertTrue(rules.hasFire());
-        assertEquals(Map.of(0, 0, 1, 0, 2, 0), rules.missiles());
+        assertEquals(
+            Map.of(0, new WeaponMissileKey(0, 0), 1, new WeaponMissileKey(0, 0), 2, new WeaponMissileKey(0, 0)),
+            rules.missiles()
+        );
         assertThrows(UnsupportedOperationException.class, () -> rules.missiles().clear());
         assertEquals("DUPLICATE_FIRE", assertThrows(
             ScenarioRejectedException.class,
@@ -58,7 +63,7 @@ class ScenarioProjectileRulesTest {
             ScenarioRejectedException.class,
             () -> rules.event(event(0, 700, 699, 2))
         ).getMessage());
-        assertEquals(Map.of(0, 0), rules.missiles());
+        assertEquals(Map.of(0, new WeaponMissileKey(0, 0)), rules.missiles());
     }
 
     @Test
@@ -86,7 +91,7 @@ class ScenarioProjectileRulesTest {
     }
 
     private ScenarioProjectileRules rules() {
-        return new ScenarioProjectileRules(new CannonShotDefinition(0, 0, 0, 100, 0, 0), 3);
+        return new ScenarioProjectileRules(new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9), 3);
     }
 
     private ScenarioFireClaim fire(int sequence, int tick) {

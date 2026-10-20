@@ -33,6 +33,7 @@ import taan.online.match.service.ScenarioTestWorld;
 import taan.online.match.service.ValidateScenarioAction;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioAdmissionOutcome;
+import taan.online.match.service.model.ScenarioAnimationClaim;
 import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
@@ -63,7 +64,8 @@ class ScenarioClaimsMapperTest {
             new ScenarioTeamGaugeCommand(h(12), 0, 50, 0),
             new ScenarioUseBonusCommand(h(15), 5),
             new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200)),
-            new ScenarioEatItemBoxCommand(h(5), -1L, 5, -1)
+            new ScenarioEatItemBoxCommand(h(5), -1L, 5, -1),
+            new ScenarioNormalCommand(h(5), 0, 0)
         );
         var scene = new GameScenario(
             2,
@@ -107,7 +109,7 @@ class ScenarioClaimsMapperTest {
         assertEquals(123456, assertInstanceOf(ScenarioDamageClaim.class, mapped.get(4)).simulationHp());
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(5));
         assertEquals(200, assertInstanceOf(ScenarioFallClaim.class, mapped.get(6)).endY());
-        assertInstanceOf(ScenarioActorClaim.class, mapped.get(7));
+        assertInstanceOf(ScenarioAnimationClaim.class, mapped.get(7));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(8));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(9));
         var guided = assertInstanceOf(ScenarioGuidedClaim.class, mapped.get(10));
@@ -120,7 +122,7 @@ class ScenarioClaimsMapperTest {
         assertEquals(4, guided.targetY());
         assertEquals(0, guided.header().duration());
         assertEquals(700, mapped.get(11).header().duration());
-        assertInstanceOf(ScenarioActorClaim.class, mapped.get(11));
+        assertInstanceOf(ScenarioAnimationClaim.class, mapped.get(11));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(12));
         assertEquals(700, mapped.get(12).header().duration());
         assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(13));

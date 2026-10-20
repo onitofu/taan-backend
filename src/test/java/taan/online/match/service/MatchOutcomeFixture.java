@@ -35,7 +35,7 @@ final class MatchOutcomeFixture implements AutoCloseable {
     RoomMatchToken token;
 
     MatchOutcomeFixture() {
-        this(new RoomScenario(MatchExecutionMode.CANNON_1V1));
+        this(new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO));
     }
 
     MatchOutcomeFixture(RoomScenario scenario) {

@@ -11,13 +11,13 @@ class MatchBoxSettingsTest {
     @Test
     void keepsOrdinaryConstructorsDisabledAndDowngradesUnsupportedProfiles() {
         assertEquals(MatchBoxPolicy.DISABLED, new MatchBootstrapSettings(30, 20, 8).boxPolicy());
-        var defaults = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1);
+        var defaults = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO);
         assertEquals(MatchBoxPolicy.DISABLED, defaults.boxPolicy());
         var controlled = new MatchBootstrapSettings(
             30,
             20,
             8,
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             20,
             10,
             MatchLootPolicy.disabled(),
@@ -31,7 +31,7 @@ class MatchBoxSettingsTest {
             30,
             20,
             8,
-            MatchExecutionMode.CANNON_1V1,
+            MatchExecutionMode.CLIENT_SCENARIO,
             20,
             10,
             MatchLootPolicy.disabled(),

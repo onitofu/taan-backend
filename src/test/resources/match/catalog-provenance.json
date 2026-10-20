@@ -1,11 +1,6 @@
 {
   "fixtures": [
     {
-      "cannon-shots.csv": "abb6c7d7a43e87334baba35f167bf9c827366e77f8dda6f3aeca316e80234d41",
-      "original_file": "cannon-shots.csv",
-      "origin": "DERIVED"
-    },
-    {
       "catalog.properties": "3df5c7352e25a5ea41a3ec4464b020cd6120ac4c581b653be882327ceb937844",
       "original_file": "catalog.properties",
       "origin": "DERIVED"
@@ -21,7 +16,12 @@
       "origin": "DERIVED"
     },
     {
-      "weapons.csv": "f4f33f8646835b90340395e0076a20cc93f4fb11dca0a83785e5193696a3df0b",
+      "weapon-attacks.csv": "dc0a0508072dfc023394a372adc12a4bc754f76881f16e2a25c19543e8290779",
+      "original_file": "weapon-attacks.csv",
+      "origin": "DERIVED"
+    },
+    {
+      "weapons.csv": "84e22025a2d1590e520898e59dfa1792cadf66731934ac37535e59b4554507bd",
       "original_file": "weapons.csv",
       "origin": "DERIVED"
     }

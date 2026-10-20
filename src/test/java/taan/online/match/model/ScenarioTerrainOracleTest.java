@@ -23,7 +23,7 @@ class ScenarioTerrainOracleTest {
             String[] row = line.split(",");
             var draft = new ScenarioTerrainDraft(definitions.map().terrainLayers());
             draft.explode(
-                definitions.missiles().get(0),
+                definitions.missiles().get(new WeaponMissileKey(0, 0)),
                 Integer.parseInt(row[0]),
                 Integer.parseInt(row[1]),
                 Float.parseFloat(row[2])

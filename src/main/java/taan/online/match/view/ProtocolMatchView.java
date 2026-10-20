@@ -7,10 +7,12 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
+import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ForsakeItemCodec;
+import taan.online.match.protocol.codec.LeaveUserCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
@@ -24,6 +26,7 @@ import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
+import taan.online.match.protocol.packet.PcGamePlayLeaveUser;
 import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
@@ -134,7 +137,9 @@ public final class ProtocolMatchView implements MatchOutput {
         var codec = new SetPosCodec();
 
         for (var member : snapshot.participants()) {
-            if (!member.sessionId().equals(recipient)) {
+            if (snapshot.resolution().exits().get(member.sessionId()) == MatchExitKind.DEPARTED) {
+                roots.add(new LeaveUserCodec().encode(new PcGamePlayLeaveUser(member.slotIndex())));
+            } else if (!member.sessionId().equals(recipient)) {
                 var placement = snapshot.actors().get(member.sessionId());
                 roots.add(
                     codec.encode(

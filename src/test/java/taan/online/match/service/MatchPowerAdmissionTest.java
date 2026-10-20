@@ -139,7 +139,10 @@ class MatchPowerAdmissionTest {
                 } else {
                     assertTrue(p.energy.record(p.energy.spend(List.of())));
                     var shot = invalid == 2 ? p.energy.shot(false, 0) : p.shot(false);
-                    assertEquals(invalid == 2 ? "UNSUPPORTED_ATTACK_FEATURE" : "INVALID_FIRE", p.apply(shot).reason());
+                    assertEquals(
+                        invalid == 2 ? "UNSUPPORTED_ATTACK_FEATURE" : "INVALID_ATTACK_ANIMATION",
+                        p.apply(shot).reason()
+                    );
                 }
 
                 assertTrue(p.f.match.attacks().isEmpty());

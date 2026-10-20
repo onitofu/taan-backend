@@ -50,7 +50,7 @@ class MatchDamageUpConnectionTest {
         for (int item : MatchDamageUpTestPackets.ITEMS) {
             var policy = new MatchLootPolicy(Set.of(item));
 
-            try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, policy)) {
+            try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO, policy)) {
                 var owner = world.client(1);
                 var guest = world.client(2);
                 world.drainOutputs();

@@ -16,7 +16,7 @@ import taan.online.match.service.model.StartMatchCommand;
 class MatchInitialReadinessTest {
     @Test
     void requiresTheActionPhaseEvenWhenTheClientHasAlreadyReceivedItsFirstTurn() {
-        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CANNON_1V1)) {
+        try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             f.activate();
             f.runtime.submit(new StartMatchCommand(f.token));
             f.run();

@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
-import taan.online.match.model.MatchPhase;
 import taan.online.LogCapture;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchTurnToken;
@@ -242,14 +242,14 @@ class MatchTurnBoundaryTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                    new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CANNON_1V1, 0, 1)
+                    new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CLIENT_SCENARIO, 0, 1)
         );
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                    new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CANNON_1V1, 1, 0)
+                    new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CLIENT_SCENARIO, 1, 0)
         );
-        var settings = new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CANNON_1V1);
+        var settings = new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CLIENT_SCENARIO);
         assertSame(settings, settings.forProfile(true));
         assertEquals(MatchExecutionMode.PREVIEW, settings.forProfile(false).executionMode());
     }

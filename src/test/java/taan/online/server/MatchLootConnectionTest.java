@@ -23,17 +23,20 @@ import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
-import taan.online.match.service.model.MatchExecutionMode;
-import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
-import taan.online.protocol.BinaryWriter;
+import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.network.FrameDecoder;
+import taan.online.protocol.BinaryWriter;
 
 class MatchLootConnectionTest {
     @Test
     void grantsOnceAndProcessesCoalescedOwnerReceiptsAndDiscardAfterAFragmentedBonus() throws Exception {
-        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, new MatchLootPolicy(Set.of(5, 7)))) {
+        try (var world = new RoomConnectionWorld(
+            MatchExecutionMode.CLIENT_SCENARIO,
+            new MatchLootPolicy(Set.of(5, 7))
+        )) {
             var owner = world.client(1);
             var guest = world.client(2);
             world.drainOutputs();
@@ -108,7 +111,7 @@ class MatchLootConnectionTest {
 
     @Test
     void routesFragmentedAndCoalescedLootThroughFramingAndTheSharedDispatcherWithoutIssuance() throws Exception {
-        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1)) {
+        try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO)) {
             var owner = world.client(1);
             var guest = world.client(2);
             world.drainOutputs();

@@ -1,10 +1,11 @@
 package taan.online.match.controller;
 
 import java.util.UUID;
+import taan.online.CollectingPacketOutput;
+import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
 import taan.online.RoomScenario;
-import taan.online.MatchFixtures;
-import taan.online.CollectingPacketOutput;
+import taan.online.match.model.MatchParticipant;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.service.ConfirmMatchLoadingAction;
@@ -14,7 +15,6 @@ import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.model.MatchParticipant;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchToken;
 
@@ -26,7 +26,7 @@ final class MatchItemHandlerFixture implements AutoCloseable {
     final RoomMatchToken token;
 
     MatchItemHandlerFixture() {
-        room = new MatchRoomFixture(new RoomScenario(MatchExecutionMode.CANNON_1V1), 2, RoomMode.ITEM);
+        room = new MatchRoomFixture(new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO), 2, RoomMode.ITEM);
         var matches = room.scenario.matches;
         handler = new MatchPacketHandler(
             matches,

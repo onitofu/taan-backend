@@ -4,28 +4,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public record MatchDefinitions(
     String catalogVersion,
     MatchMapDefinition map,
     List<WeaponDefinition> weapons,
-    Map<Integer, CannonShotDefinition> cannonShots,
-    Map<Integer, MissileTerrainDefinition> missiles
+    Map<WeaponAttackKey, WeaponAttackDefinition> attacks,
+    Map<WeaponMissileKey, MissileTerrainDefinition> missiles
 ) {
     public MatchDefinitions {
         Objects.requireNonNull(catalogVersion);
         Objects.requireNonNull(map);
-        cannonShots = Map.copyOf(cannonShots);
+        attacks = Map.copyOf(attacks);
         weapons = List.copyOf(weapons);
         missiles = Map.copyOf(missiles);
 
         var terrain = missiles;
+        var supported = attacks.keySet().stream().map(WeaponAttackKey::weaponId).collect(Collectors.toSet());
 
-        if (!cannonShots.keySet().equals(Set.of(0, 1, 2))
-            || cannonShots.entrySet().stream().anyMatch(e -> e.getKey() != e.getValue().attackKind()
-                || !terrain.containsKey(e.getValue().missileTypeId()))
-            || missiles.entrySet().stream().anyMatch(entry -> entry.getKey() != entry.getValue().missileTypeId())) {
-            throw new IllegalArgumentException("Missing or inconsistent missile terrain definitions");
+        if (!supported.equals(Set.of(0, 8, 10)) || attacks.size() != 9 || missiles.size() != 9
+            || attacks.entrySet().stream().anyMatch(e -> !e.getKey().equals(e.getValue().key())
+                || !terrain.containsKey(e.getValue().missileKey()))
+            || missiles.entrySet().stream().anyMatch(e -> !e.getKey().equals(
+                new WeaponMissileKey(e.getValue().weaponId(), e.getValue().missileTypeId())))) {
+            throw new IllegalArgumentException("Missing or inconsistent weapon attack and terrain definitions");
         }
 
         if (!catalogVersion.matches("[0-9a-f]{64}") || weapons.size() != 12) {
