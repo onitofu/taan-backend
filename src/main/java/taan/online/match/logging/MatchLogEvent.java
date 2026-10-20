@@ -4,6 +4,15 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    GUIDED_ACTIVATED("match.guided.activated", Level.DEBUG, "Guided item activated"),
+    GUIDED_DUPLICATE("match.guided.duplicate", Level.DEBUG, "Duplicate guided activation ignored"),
+    GUIDED_REJECTED("match.guided.rejected", Level.DEBUG, "Guided activation rejected"),
+    SPREAD_ACTIVATED("match.spread.activated", Level.DEBUG, "Projectile spread item activated"),
+    SPREAD_DUPLICATE("match.spread.duplicate", Level.DEBUG, "Duplicate projectile spread activation ignored"),
+    SPREAD_REJECTED("match.spread.rejected", Level.DEBUG, "Projectile spread activation rejected"),
+    DAMAGE_UP_ACTIVATED("match.damageup.activated", Level.DEBUG, "Damage amplification item activated"),
+    DAMAGE_UP_DUPLICATE("match.damageup.duplicate", Level.DEBUG, "Duplicate damage amplification activation ignored"),
+    DAMAGE_UP_REJECTED("match.damageup.rejected", Level.DEBUG, "Damage amplification activation rejected"),
     REPEAT_ACTIVATED("match.repeat.activated", Level.DEBUG, "Additional shot item activated"),
     REPEAT_DUPLICATE("match.repeat.duplicate", Level.DEBUG, "Duplicate additional shot activation ignored"),
     REPEAT_REJECTED("match.repeat.rejected", Level.DEBUG, "Additional shot activation rejected"),

@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 
 final class ScenarioProjectileRules {
@@ -36,13 +37,7 @@ final class ScenarioProjectileRules {
     }
 
     void event(ScenarioProjectileClaim event) {
-        var fire = fires.get(event.sequence());
-        require(fire != null, "MISSING_PROJECTILE");
-        require(
-            event.variant() == fire.variant() && event.shotTick() == fire.shotTick()
-                && event.header().tick() >= fire.header().tick(),
-            "INVALID_PROJECTILE_REFERENCE"
-        );
+        reference(event.sequence(), event.variant(), event.shotTick(), event.header().tick());
         require(Float.isFinite(event.terrainFactor()) && event.terrainFactor() >= 0, "INVALID_TERRAIN");
 
         if (event.header().kind() == 2) {
@@ -52,6 +47,19 @@ final class ScenarioProjectileRules {
         if (event.header().kind() == 2 || event.header().kind() == 3) {
             require(terminated.add(event.sequence()), "DUPLICATE_PROJECTILE_TERMINAL");
         }
+    }
+
+    void guided(ScenarioGuidedClaim event) {
+        reference(event.sequence(), event.variant(), event.shotTick(), event.header().tick());
+    }
+
+    private void reference(int sequence, int variant, int shotTick, long tick) {
+        var fire = fires.get(sequence);
+        require(fire != null, "MISSING_PROJECTILE");
+        require(
+            variant == fire.variant() && shotTick == fire.shotTick() && tick >= fire.header().tick(),
+            "INVALID_PROJECTILE_REFERENCE"
+        );
     }
 
     boolean hasFire() {

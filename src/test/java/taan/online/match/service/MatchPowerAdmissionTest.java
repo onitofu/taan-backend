@@ -29,7 +29,7 @@ class MatchPowerAdmissionTest {
                 }
                 p.grant(2, 5, true);
                 var before = p.f.runtime.snapshot();
-                var base = p.use(index == 0 ? -1 : index == 1 ? 3 : index == 2 ? 255 : 0, index == 3 ? 7 : 5);
+                var base = p.use(index == 0 ? -1 : index == 1 ? 3 : index == 2 ? 255 : 0, index == 3 ? 4 : 5);
 
                 if (index == 8) {
                     assertTrue(p.energy.record(p.energy.spend(List.of())));

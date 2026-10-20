@@ -25,6 +25,7 @@ import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
@@ -127,7 +128,7 @@ final class MatchItemExecution {
         }
 
         var member = member(command.context());
-        boolean card = command.itemId() == 1 || command.itemId() == 2 || command.itemId() == 5;
+        boolean card = command.itemId() != 6 && MatchItemSelectionRules.supports(command.itemId());
         boolean route = command.flag12() == 0 && command.flag13() == 0 && command.team() == team(member)
             && pending == null;
 
@@ -178,7 +179,11 @@ final class MatchItemExecution {
 
         var event = switch (command.itemId()) {
             case 1, 2 -> duplicate ? MatchLogEvent.REPEAT_DUPLICATE : MatchLogEvent.REPEAT_ACTIVATED;
+            case 3 -> duplicate ? MatchLogEvent.SPREAD_DUPLICATE : MatchLogEvent.SPREAD_ACTIVATED;
             case 5 -> duplicate ? MatchLogEvent.POWER_DUPLICATE : MatchLogEvent.POWER_ACTIVATED;
+            case 7 -> duplicate ? MatchLogEvent.GUIDED_DUPLICATE : MatchLogEvent.GUIDED_ACTIVATED;
+            case 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050 ->
+                duplicate ? MatchLogEvent.DAMAGE_UP_DUPLICATE : MatchLogEvent.DAMAGE_UP_ACTIVATED;
             default -> duplicate ? MatchLogEvent.SPECIAL_DUPLICATE : MatchLogEvent.SPECIAL_ACTIVATED;
         };
         LOG.log(
@@ -301,7 +306,10 @@ final class MatchItemExecution {
     private boolean reject(String reason, int item) {
         var event = switch (item) {
             case 1, 2 -> MatchLogEvent.REPEAT_REJECTED;
+            case 3 -> MatchLogEvent.SPREAD_REJECTED;
             case 5 -> MatchLogEvent.POWER_REJECTED;
+            case 7 -> MatchLogEvent.GUIDED_REJECTED;
+            case 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050 -> MatchLogEvent.DAMAGE_UP_REJECTED;
             default -> MatchLogEvent.SPECIAL_REJECTED;
         };
         LOG.log(

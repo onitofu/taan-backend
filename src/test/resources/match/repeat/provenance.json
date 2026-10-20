@@ -1,6 +1,11 @@
 {
   "fixtures": [
     {
+      "00155-c2s-combat.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00175-s2c-PcGamePlay_SpendItem.hex",
+      "origin": "UNKNOWN"
+    },
+    {
       "00166-s2c-PcGamePlay_UseItem.hex": "cec806c4d6b36c9a550756998b4725b395f392d8408b6e50bab02474e00c8000",
       "original_file": "00166-s2c-PcGamePlay_UseItem.hex",
       "origin": "UNKNOWN"
@@ -18,6 +23,11 @@
     {
       "00186-s2c-PcGamePlay_Scenario.hex": "ec39e612398dc60fefd118b992ee722ff376f48bc6d9bb4fd674419bb9025829",
       "original_file": "00186-s2c-PcGamePlay_Scenario.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "00245-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00175-s2c-PcGamePlay_SpendItem.hex",
       "origin": "UNKNOWN"
     },
     {

@@ -12,6 +12,7 @@ import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioJournal;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
@@ -74,13 +75,17 @@ final class ScenarioRules {
                 finish = Math.max(finish, header.tick() + header.duration());
             }
 
-            if (Set.of(0, 1, 2, 3, 9, 10, 11).contains(header.kind())) {
+            if (Set.of(0, 1, 2, 3, 9, 10, 11, 13).contains(header.kind())) {
                 require(header.slot() == shooter.slotIndex(), "INVALID_COMMAND_OWNER");
             }
 
             switch (command) {
                 case ScenarioFireClaim value -> projectiles.fire(value);
                 case ScenarioProjectileClaim value -> projectiles.event(value);
+                case ScenarioGuidedClaim value -> {
+                    require(selection.selectedItems().contains(7), "UNAUTHORIZED_GUIDANCE");
+                    projectiles.guided(value);
+                }
                 case ScenarioDamageClaim value -> require(
                     value.damage() >= 0 && value.energy1c() >= 0 && value.energy1c() <= 5
                         && value.energy1e() >= 0 && value.energy1e() <= 30,

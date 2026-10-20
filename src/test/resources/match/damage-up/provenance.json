@@ -1,0 +1,109 @@
+{
+  "fixtures": [
+    {
+      "native-damage-up-definitions.tsv": "ceef7295550707dbd3be25c4c25be2b7c691f3ed9ff2672e570630a574c82885",
+      "original_file": "game-item-definitions.json",
+      "origin": "DERIVED"
+    },
+    {
+      "spend-item-1005-slot0.synthetic.root.hex": "dd7ec18bf5dce83fb54e9e8f011619e3b2b085887bf5f388549969312cdaca39",
+      "original_file": "spend-item-1005-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1010-slot0.synthetic.root.hex": "193b292e8162a8150456af2b7abb12cc4edae4a94736d1c9220b6d924dbc4ed7",
+      "original_file": "spend-item-1010-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1015-slot0.synthetic.root.hex": "4a898ec11ea97717e3c6c693af6c0e61cc24f71b1312a0ab9adef3a42a6c85eb",
+      "original_file": "spend-item-1015-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1020-slot0.synthetic.root.hex": "97d8f7632d45368081f831ef2c940593d669c6aeaacdf01ed6efca71e4762b93",
+      "original_file": "spend-item-1020-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1025-slot0.synthetic.root.hex": "a34917b103c9a91814e16ddb0ad7c639e3cddf02ea0f9311afe7e6e37a86cdbc",
+      "original_file": "spend-item-1025-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1030-slot0.synthetic.root.hex": "52c662c064a4186fca65b31ee55143d1a0226bd338753a989983f9550e32e024",
+      "original_file": "spend-item-1030-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1035-slot0.synthetic.root.hex": "5995a8de60ba9c73a78a6c8a1f430376ce8a7571fa6e2635907f04c55d4d09c8",
+      "original_file": "spend-item-1035-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1040-slot0.synthetic.root.hex": "c5e679ed9e26380cd448beeb57b9320357c5fde91db25b696ae8fc3c83166d7f",
+      "original_file": "spend-item-1040-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1045-slot0.synthetic.root.hex": "5eb2ad9deeedd2bf003d2f9e50e2c3f3e1788e5de85d267a607f14cc3280c11b",
+      "original_file": "spend-item-1045-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "spend-item-1050-slot0.synthetic.root.hex": "8a87d9fd5d9a9fc065176c6af801a65a820f056f806d02ac5f17fb068f770146",
+      "original_file": "spend-item-1050-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1005-slot0.synthetic.root.hex": "19c9213a1048ecd74c8d55aa20d0d23b07a86391dc1330a3b812950ad8e11f87",
+      "original_file": "use-item-1005-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1010-slot0.synthetic.root.hex": "07c42552a90712377489f1be4acc6a786decba2a3d04bb0dcfb196e7417a6734",
+      "original_file": "use-item-1010-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1015-slot0.synthetic.root.hex": "7002be7f77347967e0ab8efbd86301fb48013801cd2e48177d4ae7f487e8780f",
+      "original_file": "use-item-1015-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1020-slot0.synthetic.root.hex": "5ca74c7229f57d7193702df93a5888ac27c0422b3642ef8be4a827b24b6fb104",
+      "original_file": "use-item-1020-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1025-slot0.synthetic.root.hex": "015bc04caa76abbd76f664e554de720aba375139995929506f9b69079f9d78b7",
+      "original_file": "use-item-1025-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1030-slot0.synthetic.root.hex": "6d70d6643f3a31c7ae118c44ad7265890da9d2ce787c2d7857f0affc4d1cd7fc",
+      "original_file": "use-item-1030-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1035-slot0.synthetic.root.hex": "3d228ed688ae2f06e1c9cccebaf1ef14235fa1369190c63900dee1ca5f117a32",
+      "original_file": "use-item-1035-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1040-slot0.synthetic.root.hex": "78d60ef25c844f17617b09fce0f9f9c06f1c7d7ccfcb159c90ba78e1b37ab65f",
+      "original_file": "use-item-1040-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1045-slot0.synthetic.root.hex": "7fb8811a079fb7f03ec16d59ca16d1d31d729f843a98806aee3aef36423a8cc7",
+      "original_file": "use-item-1045-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "use-item-1050-slot0.synthetic.root.hex": "c8dfc59226b8e4d97d0423ca01ce9e72fe329d09fa9ea232add87797379e8283",
+      "original_file": "use-item-1050-slot0.synthetic.root.hex",
+      "origin": "SYNTHETIC"
+    }
+  ]
+}

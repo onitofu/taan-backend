@@ -18,6 +18,7 @@ import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
@@ -53,6 +54,20 @@ public final class ScenarioClaimsMapper {
 
         if (command instanceof ScenarioEatItemBoxCommand pickup && value.kind() == 11) {
             return new ScenarioEatItemBoxClaim(header, pickup.entityId(), pickup.itemId(), pickup.opaque24());
+        }
+
+        if (command instanceof ScenarioGuidedCommand guided && value.kind() == 13) {
+            var weapon = guided.weapon();
+            return new ScenarioGuidedClaim(
+                header,
+                weapon.sequence(),
+                weapon.variant(),
+                weapon.shotTick(),
+                weapon.position().x(),
+                weapon.position().y(),
+                guided.target().x(),
+                guided.target().y()
+            );
         }
 
         if (value.kind() >= 10) {

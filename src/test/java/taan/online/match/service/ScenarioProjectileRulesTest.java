@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 
 class ScenarioProjectileRulesTest {
@@ -57,6 +59,30 @@ class ScenarioProjectileRulesTest {
             () -> rules.event(event(0, 700, 699, 2))
         ).getMessage());
         assertEquals(Map.of(0, 0), rules.missiles());
+    }
+
+    @Test
+    void requiresGuidanceToReferenceAnAlreadyLaunchedProjectileWithoutInventingCoordinateBounds() {
+        var rules = rules();
+        var header = new ScenarioEventTime(0, 13, 800, 0);
+        var guided = new ScenarioGuidedClaim(header, 0, 0, 700, -1, -2, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        assertEquals("MISSING_PROJECTILE", assertThrows(
+            ScenarioRejectedException.class,
+            () -> rules.guided(guided)
+        ).getMessage());
+        rules.fire(fire(0, 700));
+        rules.guided(guided);
+
+        for (var invalid : List.of(
+            new ScenarioGuidedClaim(header, 0, 1, 700, 0, 0, 0, 0),
+            new ScenarioGuidedClaim(header, 0, 0, 701, 0, 0, 0, 0),
+            new ScenarioGuidedClaim(new ScenarioEventTime(0, 13, 699, 0), 0, 0, 700, 0, 0, 0, 0)
+        )) {
+            assertEquals("INVALID_PROJECTILE_REFERENCE", assertThrows(
+                ScenarioRejectedException.class,
+                () -> rules.guided(invalid)
+            ).getMessage());
+        }
     }
 
     private ScenarioProjectileRules rules() {

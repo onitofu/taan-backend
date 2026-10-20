@@ -35,7 +35,7 @@ class MatchItemSelectionRulesTest {
             assertEquals(2, selection.attackKind());
         }
 
-        assertThrows(IllegalArgumentException.class, () -> new MatchAttackSelection(List.of(7), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> new MatchAttackSelection(List.of(4), Map.of()));
     }
 
     @Test
@@ -70,7 +70,7 @@ class MatchItemSelectionRulesTest {
                 assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, index, 5).isEmpty());
             }
 
-            assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 0, 7).isEmpty());
+            assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 0, 4).isEmpty());
             assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 255, 6).isEmpty());
             var full = world.energy(member.sessionId(), member.maxEnergy());
             assertTrue(MatchItemSelectionRules.activate(member, full, loot, normal, 0, 6).isEmpty());

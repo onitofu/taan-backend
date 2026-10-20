@@ -1,0 +1,54 @@
+{
+  "fixtures": [
+    {
+      "00151-c2s-combat.hex": "e0a6661737e9bb862cbbdf0d6888844fff8e013dab27291e7097d8b1ce256106",
+      "original_file": "00151-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00155-c2s-combat.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00155-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00159-c2s-combat.hex": "e6c7df5eab81f94558918bfaf48894aeaa42741b168455549c48324a3c619694",
+      "original_file": "00159-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00175-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00155-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00245-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00155-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00249-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00155-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00287-c2s-combat.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00155-c2s-combat.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00318-s2c-PcGamePlay_Scenario.hex": "43249a073abbfa2da2130fe93ec6237529f81d1c557ecff1869637b4ba31aa4e",
+      "original_file": "00318-s2c-PcGamePlay_Scenario.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "00353-s2c-PcGamePlay_Scenario.hex": "09b2075ee49eb20382c543830c144d52973eabe38cc8fe277481f43802667815",
+      "original_file": "00353-s2c-PcGamePlay_Scenario.hex",
+      "origin": "CAPTURED"
+    },
+    {
+      "native-cannon-guided.root.hex": "e6c7df5eab81f94558918bfaf48894aeaa42741b168455549c48324a3c619694",
+      "original_file": "00159-c2s-combat.hex",
+      "origin": "CAPTURED"
+    }
+  ]
+}

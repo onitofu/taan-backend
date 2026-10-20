@@ -34,8 +34,8 @@ import taan.online.match.service.model.ScenarioAdmissionOutcome;
 import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
+import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
-import taan.online.match.service.model.ScenarioUnsupportedClaim;
 import taan.online.protocol.MalformedPacketException;
 
 class ScenarioClaimsMapperTest {
@@ -104,7 +104,15 @@ class ScenarioClaimsMapperTest {
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(7));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(8));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(9));
-        assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(10));
+        var guided = assertInstanceOf(ScenarioGuidedClaim.class, mapped.get(10));
+        assertEquals(7, guided.sequence());
+        assertEquals(3, guided.variant());
+        assertEquals(-1, guided.shotTick());
+        assertEquals(100, guided.x());
+        assertEquals(200, guided.y());
+        assertEquals(3, guided.targetX());
+        assertEquals(4, guided.targetY());
+        assertEquals(0, guided.header().duration());
         assertEquals(700, mapped.get(11).header().duration());
         assertInstanceOf(ScenarioActorClaim.class, mapped.getLast());
     }
