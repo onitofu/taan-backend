@@ -12,6 +12,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
+import taan.online.MatchStateTestAccess;
 import taan.online.TestFixtures;
 import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.model.MatchCompletion;
@@ -192,7 +193,8 @@ class MatchBoxScenarioTest {
                 0,
                 Long.MAX_VALUE
             );
-            assertTrue(boxes.f.match.commitScenario(
+            assertTrue(MatchStateTestAccess.commit(
+                boxes.f.match,
                 original.revision(),
                 snapshot.turn().revision(),
                 world,

@@ -1,11 +1,8 @@
 package taan.online.match.service;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import taan.online.match.model.CannonShotDefinition;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.service.model.MatchSnapshot;
@@ -31,9 +28,10 @@ final class ScenarioRules {
                 && claims.facing() == actor.facing(),
             "INVALID_SHOOTER"
         );
-        boolean special = match.attacks().get(shooter.sessionId()) == MatchAttackSelection.SPECIAL;
+        var selection = match.attacks().getOrDefault(shooter.sessionId(), MatchAttackSelection.NORMAL);
+        boolean special = selection.attackKind() == 2;
         require(
-            claims.selectedItems().equals(special ? List.of(6) : List.of()) && !claims.effectsPresent()
+            claims.selectedItems().equals(selection.selectedItems()) && !claims.effectsPresent()
                 && (claims.flags() & 1) == (special ? 1 : 0),
             "UNSUPPORTED_ATTACK_FEATURE"
         );
@@ -41,7 +39,7 @@ final class ScenarioRules {
             claims.headerEnergyGrant() >= 0 && claims.headerEnergyGrant() <= shooter.maxEnergy(),
             "INVALID_HEADER_ENERGY"
         );
-        var definition = match.definitions().cannonShots().get(special ? 2 : 0);
+        var definition = match.definitions().cannonShots().get(selection.attackKind());
         float power = claims.power();
         require(
             Float.isFinite(power) && power >= 0 && power <= 1
@@ -55,12 +53,11 @@ final class ScenarioRules {
             refitted.size() == claims.refittedSlots().size() && occupied.containsAll(refitted),
             "INVALID_REFITTED_SLOTS"
         );
-        ScenarioFireClaim fire = null;
+        var projectiles = new ScenarioProjectileRules(definition, selection.shotLimit());
         long previous = -1;
         long finish = 0;
         long endTick = -1;
         int ends = 0;
-        boolean terminated = false;
 
         for (var command : claims.commands()) {
             var header = command.header();
@@ -82,30 +79,8 @@ final class ScenarioRules {
             }
 
             switch (command) {
-                case ScenarioFireClaim value -> {
-                    require(fire == null, "DUPLICATE_FIRE");
-                    validateFire(value, definition);
-                    fire = value;
-                }
-                case ScenarioProjectileClaim value -> {
-                    require(fire != null, "MISSING_PROJECTILE");
-                    require(
-                        value.sequence() == fire.sequence() && value.variant() == fire.variant()
-                            && value.shotTick() == fire.shotTick(),
-                        "INVALID_PROJECTILE_REFERENCE"
-                    );
-
-                    require(Float.isFinite(value.terrainFactor()) && value.terrainFactor() >= 0, "INVALID_TERRAIN");
-
-                    if (header.kind() == 2) {
-                        require(value.terrainFactor() <= 1, "INVALID_TERRAIN");
-                    }
-
-                    if (header.kind() == 2 || header.kind() == 3) {
-                        require(!terminated, "DUPLICATE_PROJECTILE_TERMINAL");
-                        terminated = true;
-                    }
-                }
+                case ScenarioFireClaim value -> projectiles.fire(value);
+                case ScenarioProjectileClaim value -> projectiles.event(value);
                 case ScenarioDamageClaim value -> require(
                     value.damage() >= 0 && value.energy1c() >= 0 && value.energy1c() <= 5
                         && value.energy1e() >= 0 && value.energy1e() <= 30,
@@ -117,33 +92,20 @@ final class ScenarioRules {
                     "INVALID_FALL"
                 );
                 case ScenarioMakeItemBoxClaim ignored -> { }
-                case ScenarioEatItemBoxClaim ignored -> require(fire != null, "MISSING_PROJECTILE");
+                case ScenarioEatItemBoxClaim ignored -> require(projectiles.hasFire(), "MISSING_PROJECTILE");
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioRejectedException("UNSUPPORTED_FEATURE");
                 case ScenarioActorClaim ignored -> { }
             }
         }
 
-        require(fire != null, "MISSING_FIRE");
+        require(projectiles.hasFire(), "MISSING_FIRE");
         require(ends == 1 && endTick == finish + 1000, "INVALID_END");
         return new ScenarioJournal(
             claims.commands(),
-            Map.of(fire.sequence(), definition.missileTypeId()),
+            projectiles.missiles(),
             claims.refittedSlots(),
             claims.headerEnergyGrant(),
             endTick
-        );
-    }
-
-    private void validateFire(ScenarioFireClaim fire, CannonShotDefinition definition) {
-        require(
-            fire.weaponId() == definition.weaponId() && fire.attackKind() == definition.attackKind()
-                && fire.sequence() == 0 && fire.variant() == definition.missileVariant(),
-            "INVALID_FIRE"
-        );
-        require(
-            Float.isFinite(fire.velocityX()) && Float.isFinite(fire.velocityY())
-                && Float.isFinite(fire.accelerationX()) && Float.isFinite(fire.accelerationY()),
-            "NONFINITE_FIRE"
         );
     }
 

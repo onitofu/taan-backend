@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.Security;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -44,7 +45,7 @@ class MatchTerrainDefinitionLoaderTest {
             }
         }
 
-        assertEquals(Set.of(0, 2), catalog.missiles().keySet());
+        assertEquals(Set.of(0, 1, 2), catalog.missiles().keySet());
         assertTrue(provenance.contains(hash(cannon.mask().cells())));
     }
 
@@ -86,17 +87,19 @@ class MatchTerrainDefinitionLoaderTest {
     @Test
     void validatesMaskIdentityValuesAndClosesResourcesOnSuccessAndFailure() throws Exception {
         String row = "0,2,1,0,0,terrain/test.rle," + hash(new byte[]{1, 1}) + "\n";
-        var index = new TrackingDefinitionStream((MISSILES + row + row.replaceFirst(
-            "0,",
-            "2,"
-        )).getBytes(StandardCharsets.UTF_8));
+        var index = new TrackingDefinitionStream((MISSILES + row + row.replaceFirst("0,", "1,")
+            + row.replaceFirst("0,", "2,")).getBytes(StandardCharsets.UTF_8));
         var mask = new TrackingDefinitionStream("TAAN_RLE_V1,2,1\n2:1\n".getBytes(StandardCharsets.UTF_8));
         var secondMask = new TrackingDefinitionStream("TAAN_RLE_V1,2,1\n2:1\n".getBytes(StandardCharsets.UTF_8));
+        var thirdMask = new TrackingDefinitionStream("TAAN_RLE_V1,2,1\n2:1\n".getBytes(StandardCharsets.UTF_8));
+        var masks = List.of(mask, secondMask, thirdMask);
         var reads = new AtomicInteger();
 
-        assertEquals(2, loader.missiles(index, ignored -> reads.getAndIncrement() == 0 ? mask : secondMask).size());
+        assertEquals(3, loader.missiles(index, ignored -> masks.get(reads.getAndIncrement())).size());
         assertTrue(index.closed());
         assertTrue(mask.closed());
+        assertTrue(secondMask.closed());
+        assertTrue(thirdMask.closed());
 
         for (String invalid : new String[]{MISSILES, MISSILES + row + row, MISSILES + row.replace("0,2,", "1,2,")}) {
             assertThrows(
@@ -111,19 +114,21 @@ class MatchTerrainDefinitionLoaderTest {
             () -> loader.missiles(input(invalidCell), ignored -> input("TAAN_RLE_V1,2,1\n1:0 1:2\n"))
         );
         var zeroRow = row.replace(hash(new byte[]{1, 1}), hash(new byte[]{0, 1}));
-        var zeroOne = MISSILES + zeroRow + zeroRow.replaceFirst("0,", "2,");
-        assertEquals(2, loader.missiles(input(zeroOne), ignored -> input("TAAN_RLE_V1,2,1\n1:0 1:1\n")).size());
+        var zeroOne = MISSILES + zeroRow + zeroRow.replaceFirst("0,", "1,") + zeroRow.replaceFirst("0,", "2,");
+        assertEquals(3, loader.missiles(input(zeroOne), ignored -> input("TAAN_RLE_V1,2,1\n1:0 1:1\n")).size());
         assertThrows(
             IllegalArgumentException.class,
             () -> loader.missiles(input(MISSILES + row.replace("0,2,1,", "0,100000,100000,")), ignored -> null)
         );
+
+        String completeIndex = MISSILES + row + row.replaceFirst("0,", "1,") + row.replaceFirst("0,", "2,");
 
         for (boolean read : new boolean[]{true, false}) {
             assertThrows(
                 IllegalStateException.class,
                 () -> loader.missiles(
                     new BrokenDefinitionStream(
-                        (MISSILES + row + row.replaceFirst("0,", "2,")).getBytes(StandardCharsets.UTF_8),
+                        completeIndex.getBytes(StandardCharsets.UTF_8),
                         read
                     ),
                     ignored -> input("TAAN_RLE_V1,2,1\n2:1\n")

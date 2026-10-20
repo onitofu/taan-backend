@@ -7,17 +7,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.CommittedScenario;
-import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.DiscardMatchItemCommand;
+import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PendingMatchSpend;
+import taan.online.match.service.model.UseMatchItemCommand;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<MatchMovementNotice> movements = new ArrayList<>();
     public final List<MatchBonusDelivery> bonuses = new ArrayList<>();
     public final List<DiscardMatchItemCommand> discards = new ArrayList<>();
+    public final List<UseMatchItemCommand> uses = new ArrayList<>();
     public final List<Integer> specials = new ArrayList<>();
     public final List<PendingMatchSpend> spends = new ArrayList<>();
     public final List<Integer> stops = new ArrayList<>();
@@ -90,8 +92,12 @@ public final class TestMatchOutput implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> special(int slot, int team) {
-        specials.add(slot);
+    public CompletionStage<Void> useItem(UseMatchItemCommand command) {
+        uses.add(command);
+
+        if (command.itemId() == 6) {
+            specials.add(command.slot());
+        }
         onMovement.run();
 
         if (motionFailure != null) {

@@ -2,8 +2,8 @@ package taan.online.match.model;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Objects;
+import java.util.Set;
 
 public record MatchDefinitions(
     String catalogVersion,
@@ -21,7 +21,7 @@ public record MatchDefinitions(
 
         var terrain = missiles;
 
-        if (!cannonShots.keySet().equals(Set.of(0, 2))
+        if (!cannonShots.keySet().equals(Set.of(0, 1, 2))
             || cannonShots.entrySet().stream().anyMatch(e -> e.getKey() != e.getValue().attackKind()
                 || !terrain.containsKey(e.getValue().missileTypeId()))
             || missiles.entrySet().stream().anyMatch(entry -> entry.getKey() != entry.getValue().missileTypeId())) {

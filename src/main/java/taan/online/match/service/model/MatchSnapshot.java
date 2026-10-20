@@ -120,6 +120,7 @@ public record MatchSnapshot(
         var remaining = new HashMap<>(attacks);
         participants.stream().filter(p -> p.slotIndex() == turn.activeSlot())
             .forEach(p -> remaining.remove(p.sessionId()));
+        remaining.keySet().removeIf(session -> applied.actors().get(session).dead());
         return new MatchSnapshot(
             id,
             roomId,

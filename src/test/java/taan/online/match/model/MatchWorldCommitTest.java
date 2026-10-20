@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchStateTestAccess;
 import taan.online.match.service.ScenarioTestWorld;
 
 class MatchWorldCommitTest {
@@ -32,7 +33,7 @@ class MatchWorldCommitTest {
             );
             var initial = match.world();
             assertFalse(match.actionStarted(0, 20));
-            assertFalse(match.commitScenario(0, 1, initial));
+            assertFalse(MatchStateTestAccess.commit(match, 0, 1, initial));
             match.commit(0, 30);
 
             for (var member : match.participants()) {
@@ -70,9 +71,9 @@ class MatchWorldCommitTest {
                 s.participants()
             ).finish(receipt, Set.of(), 0);
 
-            assertFalse(match.commitScenario(revision - 1, 1, prepared));
-            assertFalse(match.commitScenario(revision, 2, prepared));
-            assertFalse(match.commitScenario(revision, 1, before));
+            assertFalse(MatchStateTestAccess.commit(match, revision - 1, 1, prepared));
+            assertFalse(MatchStateTestAccess.commit(match, revision, 2, prepared));
+            assertFalse(MatchStateTestAccess.commit(match, revision, 1, before));
 
             for (var invalid : new ScenarioCommitReceipt[]{
                 null,
@@ -101,15 +102,15 @@ class MatchWorldCommitTest {
                     prepared.processedDeaths(),
                     Optional.ofNullable(invalid)
                 );
-                assertFalse(match.commitScenario(revision, 1, rejected));
+                assertFalse(MatchStateTestAccess.commit(match, revision, 1, rejected));
                 assertSame(before, match.world());
             }
 
-            assertTrue(match.commitScenario(revision, 1, prepared));
+            assertTrue(MatchStateTestAccess.commit(match, revision, 1, prepared));
             assertSame(prepared, match.world());
             assertEquals(prepared.actors(), match.actors());
             assertEquals(MatchPhase.COMPLETION, match.phase());
-            assertFalse(match.commitScenario(revision, 1, prepared));
+            assertFalse(MatchStateTestAccess.commit(match, revision, 1, prepared));
         }
     }
 }

@@ -143,7 +143,7 @@ public final class MatchDefinitionLoader {
             )
         );
 
-        if (shots.size() != 2) {
+        if (shots.size() != 3) {
             throw new IllegalArgumentException("Incomplete ordinary cannon definitions");
         }
 

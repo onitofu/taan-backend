@@ -53,7 +53,6 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.controller.MatchItemPacketHandler;
 import taan.online.match.controller.MatchPacketHandler;
-import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
@@ -69,6 +68,7 @@ import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.TerminateMatchAction;
+import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.network.TcpServer;
@@ -222,7 +222,7 @@ public final class Application implements AutoCloseable {
                 new MoveMatchActorAction(matches),
                 new PassMatchTurnAction(matches),
                 new MatchItemPacketHandler(
-                    new ActivateSpecialAction(matches),
+                    new UseMatchItemAction(matches),
                     new RecordMatchSpendAction(matches),
                     new ReportMatchBonusAction(matches),
                     new ReportMatchPickupAction(matches),

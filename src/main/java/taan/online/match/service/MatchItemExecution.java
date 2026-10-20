@@ -4,6 +4,8 @@ import static taan.online.logging.LogField.admissionId;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.energyAfter;
 import static taan.online.logging.LogField.energyBefore;
+import static taan.online.logging.LogField.inventoryIndex;
+import static taan.online.logging.LogField.itemId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.sessionId;
@@ -11,20 +13,21 @@ import static taan.online.logging.LogField.slotIndex;
 import static taan.online.logging.LogField.turnRevision;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.LongSupplier;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
+import taan.online.logging.WarningEvent;
+import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
-import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -33,6 +36,7 @@ import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchEndReason;
 
@@ -42,6 +46,8 @@ final class MatchItemExecution {
     private final Match match;
     private final Object admission;
     private final LongSupplier clock;
+    private final MatchLootPolicy policy;
+    private final WarningLogLimiter warnings;
     final MatchLootExecution loot;
     private PendingMatchSpend pending;
     private boolean failed;
@@ -51,12 +57,15 @@ final class MatchItemExecution {
         Match match,
         Object admission,
         LongSupplier clock,
-        MatchLootPolicy policy
+        MatchLootPolicy policy,
+        WarningLogLimiter warnings
     ) {
         this.owner = owner;
         this.match = match;
         this.admission = admission;
         this.clock = clock;
+        this.policy = policy;
+        this.warnings = warnings;
         loot = new MatchLootExecution(owner, match, admission, policy);
     }
 
@@ -112,60 +121,84 @@ final class MatchItemExecution {
         return valid;
     }
 
-    boolean activate(ActivateSpecialCommand command) {
+    boolean activate(UseMatchItemCommand command) {
         if (!current(command.context(), command.turnRevision(), command.phaseRevision(), command.slot())) {
             return false;
         }
 
         var member = member(command.context());
-        int before = match.actors().get(member.sessionId()).energy();
-        boolean duplicate = match.attacks().get(member.sessionId()) == MatchAttackSelection.SPECIAL;
+        boolean card = command.itemId() == 1 || command.itemId() == 2 || command.itemId() == 5;
+        boolean route = command.flag12() == 0 && command.flag13() == 0 && command.team() == team(member)
+            && pending == null;
 
-        if (command.itemId() != 6 || command.inventoryIndex() != 255 || command.flag12() != 0
-            || command.flag13() != 0 || command.team() != team(member) || pending != null) {
-            return reject("INVALID_SPECIAL_ACTIVATION");
+        if (!route || (card ? !policy.allowsUse(command.itemId()) || command.inventoryIndex() < 0
+            || command.inventoryIndex() >= BattleInventory.CAPACITY
+            : command.itemId() != 6 || command.inventoryIndex() != 255)) {
+            return reject("INVALID_ITEM_ACTIVATION", command.itemId());
         }
 
-        if (duplicate) {
-            LOG.log(
-                MatchLogEvent.SPECIAL_DUPLICATE,
-                matchId(match.id().value()),
-                slotIndex(member.slotIndex()),
-                sessionId(member.sessionId()),
-                admissionId(member.admissionId()),
-                channelId(match.channelId()),
-                turnRevision(command.turnRevision())
-            );
-            return true;
-        }
-
-        boolean activated;
+        String refusal = null;
+        boolean duplicate;
+        int before;
+        int after;
 
         synchronized (admission) {
             if (!owner.admits(command.context())) {
                 return false;
             }
 
-            activated = match.activateSpecial(member.sessionId());
-            owner.refresh();
+            var selected = match.attacks().getOrDefault(member.sessionId(), MatchAttackSelection.NORMAL);
+            var inventory = match.loot().inventory(member.sessionId());
+            duplicate = card
+                ? inventory.slots().get(command.inventoryIndex()) == BattleInventory.EMPTY
+                    && selected.duplicate(command.inventoryIndex(), command.itemId())
+                : selected.activeItems().contains(6);
+            before = match.actors().get(member.sessionId()).energy();
+
+            if (!duplicate) {
+                if (selected.activeItems().size() >= MatchAttackSelection.MAX_ACTIVATIONS) {
+                    refusal = "ACTIVE_ITEM_LIMIT";
+                } else if (!match.useItem(member.sessionId(), command.inventoryIndex(), command.itemId())) {
+                    refusal = card ? "INVALID_INVENTORY_ITEM" : "INSUFFICIENT_SPECIAL_ENERGY";
+                } else {
+                    owner.refresh();
+                }
+            }
+
+            after = match.actors().get(member.sessionId()).energy();
         }
 
-        if (!activated) {
-            return reject("INSUFFICIENT_SPECIAL_ENERGY");
+        if (refusal != null) {
+            if (refusal.equals("ACTIVE_ITEM_LIMIT")) {
+                warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_ACTIVE_ITEM_LIMIT");
+            }
+
+            return reject(refusal, command.itemId());
         }
 
+        var event = switch (command.itemId()) {
+            case 1, 2 -> duplicate ? MatchLogEvent.REPEAT_DUPLICATE : MatchLogEvent.REPEAT_ACTIVATED;
+            case 5 -> duplicate ? MatchLogEvent.POWER_DUPLICATE : MatchLogEvent.POWER_ACTIVATED;
+            default -> duplicate ? MatchLogEvent.SPECIAL_DUPLICATE : MatchLogEvent.SPECIAL_ACTIVATED;
+        };
         LOG.log(
-            MatchLogEvent.SPECIAL_ACTIVATED,
+            event,
             matchId(match.id().value()),
-            slotIndex(member.slotIndex()),
-            sessionId(member.sessionId()),
-            admissionId(member.admissionId()),
+            slotIndex(command.slot()),
+            sessionId(command.context().sessionId()),
+            admissionId(command.context().admissionId()),
             channelId(match.channelId()),
             turnRevision(command.turnRevision()),
+            itemId(command.itemId()),
+            inventoryIndex(command.inventoryIndex()),
             energyBefore(before),
-            energyAfter(0)
+            energyAfter(after)
         );
-        deliverSpecial(member);
+
+        if (!duplicate) {
+            deliverUse(command);
+        }
+
         return true;
     }
 
@@ -176,15 +209,15 @@ final class MatchItemExecution {
 
         var member = member(command.context());
         int team = team(member);
-        boolean special = match.attacks().get(member.sessionId()) == MatchAttackSelection.SPECIAL;
-        var seen = new HashSet<Integer>();
+        var selection = match.attacks().getOrDefault(member.sessionId(), MatchAttackSelection.NORMAL);
+        var authorized = new ArrayList<>(selection.activeItems());
         boolean valid = (command.teamClear11() == team || command.teamClear11() == 255)
             && (command.teamClear12() == team || command.teamClear12() == 255)
             && command.items().size() <= 3;
 
         for (var item : command.items()) {
-            valid &= special && item.itemId() == 6 && item.scalar2() >= 0 && item.scalar2() <= 255
-                && seen.add(item.itemId());
+            valid &= item.scalar2() >= 0 && item.scalar2() <= 255
+                && authorized.remove(Integer.valueOf(item.itemId()));
         }
 
         var value = new PendingMatchSpend(
@@ -238,9 +271,11 @@ final class MatchItemExecution {
     }
 
     Optional<PendingMatchSpend> prepare() {
-        if (match.attacks().get(match.participants().stream()
-            .filter(p -> p.slotIndex() == match.turn().activeSlot()).findFirst().orElseThrow().sessionId())
-            == MatchAttackSelection.SPECIAL && pending == null) {
+        var actor = match.participants().stream().filter(p -> p.slotIndex() == match.turn().activeSlot())
+            .findFirst().orElseThrow();
+
+        if (!match.attacks().getOrDefault(actor.sessionId(), MatchAttackSelection.NORMAL).activeItems().isEmpty()
+            && pending == null) {
             throw new ScenarioWorldException("MISSING_SPEND");
         }
 
@@ -260,16 +295,30 @@ final class MatchItemExecution {
     }
 
     private boolean reject(String reason) {
-        LOG.log(MatchLogEvent.SPECIAL_REJECTED, matchId(match.id().value()), reason(reason));
+        return reject(reason, 6);
+    }
+
+    private boolean reject(String reason, int item) {
+        var event = switch (item) {
+            case 1, 2 -> MatchLogEvent.REPEAT_REJECTED;
+            case 5 -> MatchLogEvent.POWER_REJECTED;
+            default -> MatchLogEvent.SPECIAL_REJECTED;
+        };
+        LOG.log(
+            event,
+            matchId(match.id().value()),
+            itemId(item),
+            reason(reason)
+        );
         owner.terminate(RoomMatchEndReason.INVALID_SCENARIO);
         return false;
     }
 
-    private void deliverSpecial(MatchParticipant actor) {
+    private void deliverUse(UseMatchItemCommand command) {
         try {
             for (var recipient : owner.recipients()) {
                 if (recipientCurrent(recipient)) {
-                    observe(recipient.output().special(actor.slotIndex(), team(actor)));
+                    observe(recipient.output().useItem(command));
                 }
             }
         } catch (RuntimeException failure) {

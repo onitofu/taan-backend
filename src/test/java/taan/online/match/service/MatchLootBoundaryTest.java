@@ -4,20 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.OptionalInt;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
+import taan.online.MatchStateTestAccess;
 import taan.online.TestFixtures;
 import taan.online.match.model.MatchBonusOffer;
 import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchLootState;
 import taan.online.match.model.MatchWorldState;
 import taan.online.match.model.ScenarioCommitReceipt;
-import taan.online.room.model.RoomMode;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -25,6 +25,7 @@ import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.ReportMatchBonusCommand;
+import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchLootBoundaryTest {
@@ -272,7 +273,12 @@ class MatchLootBoundaryTest {
                     world.revision()
                 ))
             );
-            assertTrue(f.match.commitScenario(snapshot.world().revision(), snapshot.turn().revision(), prepared));
+            assertTrue(MatchStateTestAccess.commit(
+                f.match,
+                snapshot.world().revision(),
+                snapshot.turn().revision(),
+                prepared
+            ));
             f.runtime.refresh();
             f.runtime.items.loot.offerBonus();
             assertTrue(f.match.loot().offers().isEmpty());

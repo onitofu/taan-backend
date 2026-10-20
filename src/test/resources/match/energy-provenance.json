@@ -1,6 +1,16 @@
 {
   "fixtures": [
     {
+      "00175-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00287-c2s-combat.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "00249-s2c-PcGamePlay_SpendItem.hex": "a75e38badc22d606114c648f53691d037646ed58e2d3e5a573f0905af669de43",
+      "original_file": "00287-c2s-combat.hex",
+      "origin": "UNKNOWN"
+    },
+    {
       "00283-c2s-combat.hex": "a6bf8a043ade337fce789e9f5ce603f2eef6159a37de719f4a99aa2f63fdc0a1",
       "original_file": "00283-c2s-combat.hex",
       "origin": "UNKNOWN"

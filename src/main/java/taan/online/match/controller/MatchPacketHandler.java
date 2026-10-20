@@ -28,7 +28,6 @@ import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
-import taan.online.match.service.ActivateSpecialAction;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
@@ -44,6 +43,7 @@ import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.TerminateMatchAction;
+import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchMovementKind;
@@ -135,7 +135,7 @@ public final class MatchPacketHandler {
             movement,
             passing,
             new MatchItemPacketHandler(
-                new ActivateSpecialAction(matches),
+                new UseMatchItemAction(matches),
                 new RecordMatchSpendAction(matches),
                 new ReportMatchBonusAction(matches),
                 new ReportMatchPickupAction(matches),

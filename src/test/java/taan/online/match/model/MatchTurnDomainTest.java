@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchRoomFixture;
+import taan.online.MatchStateTestAccess;
 import taan.online.room.model.RoomMode;
 
 class MatchTurnDomainTest {
@@ -62,7 +63,7 @@ class MatchTurnDomainTest {
                 0,
                 40
             );
-            assertTrue(match.commitScenario(match.world().revision(), 1, prepared, Optional.of(pending)));
+            assertTrue(MatchStateTestAccess.commit(match, match.world().revision(), 1, prepared, Optional.of(pending)));
             assertTrue(match.acknowledgeScenario(shooter.sessionId()));
             assertTrue(match.nextTurn(1, 20));
             assertEquals(2, match.turn().activeSlot());

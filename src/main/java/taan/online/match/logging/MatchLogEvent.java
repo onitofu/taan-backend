@@ -4,6 +4,12 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    REPEAT_ACTIVATED("match.repeat.activated", Level.DEBUG, "Additional shot item activated"),
+    REPEAT_DUPLICATE("match.repeat.duplicate", Level.DEBUG, "Duplicate additional shot activation ignored"),
+    REPEAT_REJECTED("match.repeat.rejected", Level.DEBUG, "Additional shot activation rejected"),
+    POWER_ACTIVATED("match.power.activated", Level.DEBUG, "Power item activated"),
+    POWER_DUPLICATE("match.power.duplicate", Level.DEBUG, "Duplicate power activation ignored"),
+    POWER_REJECTED("match.power.rejected", Level.DEBUG, "Power activation rejected"),
     BOX_PICKED_UP("match.box.picked_up", Level.DEBUG, "Match item box picked up"),
     BOX_CREATED("match.box.created", Level.DEBUG, "Match item box created"),
     BONUS_GRANTED("match.bonus.granted", Level.DEBUG, "Match bonus grant authorized"),
