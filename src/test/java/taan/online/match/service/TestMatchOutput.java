@@ -7,6 +7,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
@@ -14,6 +16,8 @@ import taan.online.match.service.model.PendingMatchSpend;
 
 public final class TestMatchOutput implements MatchOutput {
     public final List<MatchMovementNotice> movements = new ArrayList<>();
+    public final List<MatchBonusDelivery> bonuses = new ArrayList<>();
+    public final List<DiscardMatchItemCommand> discards = new ArrayList<>();
     public final List<Integer> specials = new ArrayList<>();
     public final List<PendingMatchSpend> spends = new ArrayList<>();
     public final List<Integer> stops = new ArrayList<>();
@@ -101,6 +105,30 @@ public final class TestMatchOutput implements MatchOutput {
     public CompletionStage<Void> spend(PendingMatchSpend spend) {
         spends.add(spend);
         onSpend.run();
+
+        if (motionFailure != null) {
+            throw motionFailure;
+        }
+
+        return delivery;
+    }
+
+    @Override
+    public CompletionStage<Void> bonus(MatchBonusDelivery bonus) {
+        bonuses.add(bonus);
+        onMovement.run();
+
+        if (motionFailure != null) {
+            throw motionFailure;
+        }
+
+        return delivery;
+    }
+
+    @Override
+    public CompletionStage<Void> discard(DiscardMatchItemCommand discard) {
+        discards.add(discard);
+        onMovement.run();
 
         if (motionFailure != null) {
             throw motionFailure;

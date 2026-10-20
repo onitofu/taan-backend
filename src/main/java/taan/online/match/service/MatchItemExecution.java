@@ -28,6 +28,7 @@ import taan.online.match.service.model.ActivateSpecialCommand;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
@@ -41,41 +42,27 @@ final class MatchItemExecution {
     private final Match match;
     private final Object admission;
     private final LongSupplier clock;
+    final MatchLootExecution loot;
     private PendingMatchSpend pending;
     private boolean failed;
 
-    MatchItemExecution(MatchRuntime owner, Match match, Object admission, LongSupplier clock) {
+    MatchItemExecution(
+        MatchRuntime owner,
+        Match match,
+        Object admission,
+        LongSupplier clock,
+        MatchLootPolicy policy
+    ) {
         this.owner = owner;
         this.match = match;
         this.admission = admission;
         this.clock = clock;
+        loot = new MatchLootExecution(owner, match, admission, policy);
     }
 
     static CompletionStage<Boolean> reportBonus(MatchRuntime runtime, ReportMatchBonusCommand command) {
         return runtime == null ? CompletableFuture.completedFuture(false)
-            : runtime.turnWork(() -> runtime.items.reportBonus(command));
-    }
-
-    private boolean reportBonus(ReportMatchBonusCommand command) {
-        var context = command.context();
-
-        if (!reportCurrent(context)) {
-            return false;
-        }
-
-        var participant = member(context);
-        boolean valid = participant.slotIndex() == command.slotIndex() && command.slotIndex() == command.commandSlot()
-            && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
-            && command.entityId() == -1L;
-        LOG.log(
-            MatchLogEvent.BONUS_IGNORED,
-            matchId(match.id().value()),
-            sessionId(context.sessionId()),
-            admissionId(context.admissionId()),
-            slotIndex(command.slotIndex()),
-            reason(valid ? "BONUS_DISABLED" : "INVALID_BONUS_CONTEXT")
-        );
-        return valid;
+            : runtime.turnWork(() -> runtime.items.loot.reportBonus(command));
     }
 
     static CompletionStage<Boolean> reportPickup(MatchRuntime runtime, ReportMatchPickupCommand command) {
@@ -85,12 +72,12 @@ final class MatchItemExecution {
 
     static CompletionStage<Boolean> confirmItemReceipt(MatchRuntime runtime, ConfirmMatchItemReceiptCommand command) {
         return runtime == null ? CompletableFuture.completedFuture(false)
-            : runtime.turnWork(() -> runtime.items.confirmItemReceipt(command));
+            : runtime.turnWork(() -> runtime.items.loot.confirm(command));
     }
 
     static CompletionStage<Boolean> discardItem(MatchRuntime runtime, DiscardMatchItemCommand command) {
         return runtime == null ? CompletableFuture.completedFuture(false)
-            : runtime.turnWork(() -> runtime.items.discardItem(command));
+            : runtime.turnWork(() -> runtime.items.loot.discard(command));
     }
 
     boolean reportPickup(ReportMatchPickupCommand command) {
@@ -105,33 +92,6 @@ final class MatchItemExecution {
             && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
             && command.entityId() != -1L;
         return ignored(context, command.slotIndex(), MatchLogEvent.PICKUP_IGNORED, valid, "UNSUPPORTED_PICKUP");
-    }
-
-    boolean confirmItemReceipt(ConfirmMatchItemReceiptCommand command) {
-        return inventoryMessage(
-            command.context(),
-            command.slotIndex(),
-            command.inventoryIndex(),
-            MatchLogEvent.ITEM_RECEIPT_IGNORED
-        );
-    }
-
-    boolean discardItem(DiscardMatchItemCommand command) {
-        return inventoryMessage(
-            command.context(),
-            command.slotIndex(),
-            command.inventoryIndex(),
-            MatchLogEvent.ITEM_DISCARD_IGNORED
-        );
-    }
-
-    private boolean inventoryMessage(MatchCommandContext context, int slot, int index, MatchLogEvent event) {
-        if (!reportCurrent(context)) {
-            return false;
-        }
-
-        boolean valid = member(context).slotIndex() == slot && index >= 0 && index < 3;
-        return ignored(context, slot, event, valid, "FEATURE_DISABLED");
     }
 
     private boolean reportCurrent(MatchCommandContext context) {
@@ -343,7 +303,7 @@ final class MatchItemExecution {
         return CompletableFuture.allOf(deliveries.toArray(CompletableFuture[]::new));
     }
 
-    private boolean recipientCurrent(MatchSubscription recipient) {
+    boolean recipientCurrent(MatchSubscription recipient) {
         var member = match.participants().stream().filter(p -> p.sessionId().equals(recipient.sessionId()))
             .findFirst().orElseThrow();
         return owner.admits(new MatchCommandContext(
@@ -356,7 +316,7 @@ final class MatchItemExecution {
         ));
     }
 
-    private void observe(CompletionStage<Void> delivery) {
+    void observe(CompletionStage<Void> delivery) {
         delivery.handle(LogContext.propagate((ignored, failure) -> {
             if (failure != null) {
                 owner.turnWork(() -> deliveryFailed(failure), () -> deliveryFailed(failure));
@@ -366,7 +326,7 @@ final class MatchItemExecution {
         }));
     }
 
-    private boolean deliveryFailed(Throwable failure) {
+    boolean deliveryFailed(Throwable failure) {
         if (!owner.running() || failed) {
             return false;
         }

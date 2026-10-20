@@ -28,6 +28,7 @@ import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchToken;
 import taan.online.room.service.model.RoomMembership;
@@ -129,9 +130,30 @@ public final class MatchFixtures {
         int capacity,
         MatchExecutionMode mode
     ) {
+        return registry(catalog, scheduler, random, access, executor, capacity, mode, MatchLootPolicy.disabled());
+    }
+
+    public static MatchRegistry registry(
+        MatchDefinitionCatalog catalog,
+        TestMatchScheduler scheduler,
+        RandomGenerator random,
+        MatchAdmissionAccess access,
+        MatchCommandExecutor executor,
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy
+    ) {
         return new MatchRegistry(
             catalog,
-            new MatchBootstrapSettings(30_000_000_000L, 20_000_000_000L, 8, mode),
+            new MatchBootstrapSettings(
+                30_000_000_000L,
+                20_000_000_000L,
+                8,
+                mode,
+                20_000_000_000L,
+                10_000_000_000L,
+                policy
+            ),
             scheduler,
             () -> scheduler.now,
             random,

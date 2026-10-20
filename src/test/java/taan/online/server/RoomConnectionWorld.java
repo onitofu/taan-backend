@@ -21,6 +21,7 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
@@ -41,6 +42,10 @@ final class RoomConnectionWorld implements AutoCloseable {
     }
 
     RoomConnectionWorld(MatchExecutionMode mode) {
+        this(mode, MatchLootPolicy.disabled());
+    }
+
+    RoomConnectionWorld(MatchExecutionMode mode, MatchLootPolicy policy) {
         matches = MatchFixtures.registry(
             MatchFixtures.catalog(),
             matchTimers,
@@ -48,7 +53,8 @@ final class RoomConnectionWorld implements AutoCloseable {
             (context, participant) -> true,
             Runnable::run,
             64,
-            mode
+            mode,
+            policy
         );
         rooms = new RoomRegistry(
             channels,

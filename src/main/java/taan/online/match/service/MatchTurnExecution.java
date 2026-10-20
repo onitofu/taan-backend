@@ -282,6 +282,10 @@ final class MatchTurnExecution {
             int previous = match.turn().activeSlot();
 
             if (!terminal) {
+                if (turnEndRequired) {
+                    owner.items.loot.offerBonus();
+                }
+
                 var before = owner.snapshot();
                 match.nextTurn(clock.getAsLong(), settings.actionTimeoutNanos());
                 owner.refresh();

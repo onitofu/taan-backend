@@ -2,12 +2,15 @@ package taan.online.match.view;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.protocol.codec.EndGameCodec;
+import taan.online.match.protocol.codec.EatBonusItemCodec;
+import taan.online.match.protocol.codec.ForsakeItemCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
@@ -20,6 +23,10 @@ import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
 import taan.online.match.protocol.packet.PcGamePlayMove;
+import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
+import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
+import taan.online.match.protocol.packet.ScenarioCommandHeader;
+import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
@@ -32,6 +39,8 @@ import taan.online.match.protocol.packet.SpentItem;
 import taan.online.match.service.MatchOutput;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PendingMatchSpend;
@@ -211,6 +220,28 @@ public final class ProtocolMatchView implements MatchOutput {
             spend.teamClear12(),
             items
         ))));
+    }
+
+    @Override
+    public CompletionStage<Void> bonus(MatchBonusDelivery bonus) {
+        var command = new ScenarioEatItemBoxCommand(
+            new ScenarioCommandHeader(bonus.slotIndex(), 11, bonus.tick(), bonus.scalar10()),
+            -1L,
+            bonus.itemId(),
+            bonus.opaque24()
+        );
+        var packet = new PcGamePlayEatBonusItem(bonus.slotIndex(), command, Optional.empty());
+        return output.send(List.of(new EatBonusItemCodec().encode(packet)));
+    }
+
+    @Override
+    public CompletionStage<Void> discard(DiscardMatchItemCommand discard) {
+        var packet = new PcGamePlayForsakeItem(
+            discard.slotIndex(),
+            discard.inventoryIndex(),
+            discard.itemId()
+        );
+        return output.send(List.of(new ForsakeItemCodec().encode(packet)));
     }
 
     @Override

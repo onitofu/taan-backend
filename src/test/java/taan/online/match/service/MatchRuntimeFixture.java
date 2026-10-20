@@ -13,11 +13,13 @@ import taan.online.match.model.MatchId;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
+import java.util.concurrent.TimeUnit;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchToken;
 
 final class MatchRuntimeFixture implements AutoCloseable {
-    final MatchRoomFixture room = new MatchRoomFixture(2, RoomMode.ITEM);
+    final MatchRoomFixture room;
     final ArrayDeque<Runnable> tasks = new ArrayDeque<>();
     final TestMatchScheduler timers = new TestMatchScheduler();
     final TestMatchOutput owner = new TestMatchOutput();
@@ -35,6 +37,15 @@ final class MatchRuntimeFixture implements AutoCloseable {
     }
 
     MatchRuntimeFixture(int capacity, MatchExecutionMode mode) {
+        this(capacity, mode, MatchLootPolicy.disabled());
+    }
+
+    MatchRuntimeFixture(int capacity, MatchExecutionMode mode, MatchLootPolicy policy) {
+        this(capacity, mode, policy, RoomMode.ITEM);
+    }
+
+    MatchRuntimeFixture(int capacity, MatchExecutionMode mode, MatchLootPolicy policy, RoomMode roomMode) {
+        room = new MatchRoomFixture(2, roomMode);
         var definitions = MatchFixtures.definitions();
         var draft = room.draft();
         token = draft.token();
@@ -53,7 +64,15 @@ final class MatchRuntimeFixture implements AutoCloseable {
         );
         runtime = new MatchRuntime(
             match,
-            new MatchBootstrapSettings(30, 20, 8, mode),
+            new MatchBootstrapSettings(
+                30,
+                20,
+                8,
+                mode,
+                TimeUnit.SECONDS.toNanos(20),
+                TimeUnit.SECONDS.toNanos(10),
+                policy
+            ),
             timers,
             () -> {
                 onClock.run();

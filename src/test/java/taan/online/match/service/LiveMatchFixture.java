@@ -9,12 +9,19 @@ import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 
 final class LiveMatchFixture implements AutoCloseable {
-    final ScenarioRuntimeFixture scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CANNON_1V1);
-    final MatchRuntimeFixture f = scenario.f;
+    final ScenarioRuntimeFixture scenario;
+    final MatchRuntimeFixture f;
 
     LiveMatchFixture() throws IOException {
+        this(MatchLootPolicy.disabled());
+    }
+
+    LiveMatchFixture(MatchLootPolicy policy) throws IOException {
+        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CANNON_1V1, policy);
+        f = scenario.f;
     }
 
     ApplyScenarioCommand shot(boolean fall, boolean lethal) throws IOException {

@@ -9,8 +9,28 @@ public record MatchBootstrapSettings(
     int reportsPerSecond,
     MatchExecutionMode executionMode,
     long actionTimeoutNanos,
-    long completionGraceNanos
+    long completionGraceNanos,
+    MatchLootPolicy lootPolicy
 ) {
+    public MatchBootstrapSettings(
+        long loadingTimeoutNanos,
+        long previewTimeoutNanos,
+        int reportsPerSecond,
+        MatchExecutionMode executionMode,
+        long actionTimeoutNanos,
+        long completionGraceNanos
+    ) {
+        this(
+            loadingTimeoutNanos,
+            previewTimeoutNanos,
+            reportsPerSecond,
+            executionMode,
+            actionTimeoutNanos,
+            completionGraceNanos,
+            MatchLootPolicy.disabled()
+        );
+    }
+
     public MatchBootstrapSettings(
         long loadingTimeoutNanos,
         long previewTimeoutNanos,
@@ -35,7 +55,8 @@ public record MatchBootstrapSettings(
                 reportsPerSecond,
                 MatchExecutionMode.PREVIEW,
                 actionTimeoutNanos,
-                completionGraceNanos
+                completionGraceNanos,
+                MatchLootPolicy.disabled()
             ) : this;
     }
 
@@ -45,6 +66,7 @@ public record MatchBootstrapSettings(
 
     public MatchBootstrapSettings {
         Objects.requireNonNull(executionMode);
+        Objects.requireNonNull(lootPolicy);
         if (loadingTimeoutNanos <= 0 || previewTimeoutNanos <= 0 || reportsPerSecond <= 0
             || actionTimeoutNanos <= 0 || completionGraceNanos <= 0) {
             throw new IllegalArgumentException("Invalid match bootstrap settings");
