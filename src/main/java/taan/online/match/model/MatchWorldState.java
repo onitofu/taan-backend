@@ -16,8 +16,20 @@ public record MatchWorldState(
     List<TerrainLayerDefinition> terrain,
     Map<UUID, List<MatchFall>> falls,
     Set<UUID> processedDeaths,
-    Optional<ScenarioCommitReceipt> receipt
+    Optional<ScenarioCommitReceipt> receipt,
+    Map<Long, MatchItemBox> boxes
 ) {
+    public MatchWorldState(
+        long revision,
+        Map<UUID, MatchActorState> actors,
+        List<TerrainLayerDefinition> terrain,
+        Map<UUID, List<MatchFall>> falls,
+        Set<UUID> processedDeaths,
+        Optional<ScenarioCommitReceipt> receipt
+    ) {
+        this(revision, actors, terrain, falls, processedDeaths, receipt, Map.of());
+    }
+
     public MatchWorldState {
         actors = Map.copyOf(actors);
         terrain = List.copyOf(terrain);
@@ -26,6 +38,7 @@ public record MatchWorldState(
         );
         processedDeaths = Set.copyOf(processedDeaths);
         Objects.requireNonNull(receipt);
+        boxes = Map.copyOf(boxes);
     }
 
     public static MatchWorldState initial(Map<UUID, MatchActorState> actors, List<TerrainLayerDefinition> terrain) {
@@ -69,6 +82,13 @@ public record MatchWorldState(
             : placed(session, new MatchActorState(actor.x(), actor.y(), actor.facing(), actor.hp(), value));
     }
 
+    public MatchWorldState grantEnergy(MatchParticipant participant, int delta) {
+        return energy(
+            participant.sessionId(),
+            MatchEnergyRules.adjust(actors.get(participant.sessionId()).energy(), delta, participant.maxEnergy())
+        );
+    }
+
     public MatchWorldState placed(UUID session, MatchActorState actor) {
         var updated = new HashMap<>(actors);
         updated.put(session, actor);
@@ -78,6 +98,10 @@ public record MatchWorldState(
             deaths.add(session);
         }
 
-        return new MatchWorldState(Math.incrementExact(revision), updated, terrain, falls, deaths, receipt);
+        return new MatchWorldState(Math.incrementExact(revision), updated, terrain, falls, deaths, receipt, boxes);
+    }
+
+    public MatchWorldState withoutBoxes() {
+        return new MatchWorldState(revision, actors, terrain, falls, processedDeaths, receipt, Map.of());
     }
 }

@@ -1,13 +1,13 @@
 package taan.online.match.service;
 
 import java.util.HashSet;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.CannonShotDefinition;
-import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchParticipant;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioClaims;
@@ -15,6 +15,7 @@ import taan.online.match.service.model.ScenarioDamageClaim;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioJournal;
+import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
@@ -32,8 +33,7 @@ final class ScenarioRules {
         boolean special = match.attacks().get(shooter.sessionId()) == MatchAttackSelection.SPECIAL;
         require(
             claims.selectedItems().equals(special ? List.of(6) : List.of()) && !claims.effectsPresent()
-                && (claims.flags() & 1) == (special ? 1 : 0)
-                && match.turn().boxAttemptBudget() == 0,
+                && (claims.flags() & 1) == (special ? 1 : 0),
             "UNSUPPORTED_ATTACK_FEATURE"
         );
         require(
@@ -76,7 +76,7 @@ final class ScenarioRules {
                 finish = Math.max(finish, header.tick() + header.duration());
             }
 
-            if (Set.of(0, 1, 2, 3, 9).contains(header.kind())) {
+            if (Set.of(0, 1, 2, 3, 9, 10).contains(header.kind())) {
                 require(header.slot() == shooter.slotIndex(), "INVALID_COMMAND_OWNER");
             }
 
@@ -115,6 +115,7 @@ final class ScenarioRules {
                         && value.endY() <= (long) match.definitions().map().height() + 200,
                     "INVALID_FALL"
                 );
+                case ScenarioMakeItemBoxClaim ignored -> { }
                 case ScenarioUnsupportedClaim ignored -> throw new ScenarioRejectedException("UNSUPPORTED_FEATURE");
                 case ScenarioActorClaim ignored -> { }
             }

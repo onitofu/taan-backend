@@ -20,6 +20,7 @@ import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.GameScenario;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
@@ -213,7 +214,7 @@ class ValidateScenarioActionTest {
             }
 
             world.boxBudget = 1;
-            rejected(world, world.claims, "UNSUPPORTED_ATTACK_FEATURE");
+            assertEquals(ScenarioAdmissionOutcome.ACCEPTED, world.execute(world.claims).outcome());
             world.boxBudget = 0;
 
             for (float power : new float[]{Float.NaN, -.01f, 1.01f}) {
@@ -366,7 +367,7 @@ class ValidateScenarioActionTest {
     }
 
     @Test
-    void keepsNativeBoxClaimsUnsupportedAndAcceptsSyntheticNoBoxShotsInBothDirections() throws Exception {
+    void validatesNativeMakeStructureButRejectsDisabledCreationAndAcceptsNoBoxShotsInBothDirections() throws Exception {
         try (var world = new ScenarioTestWorld()) {
             for (String name : List.of("native-cannon-0-0", "native-cannon-2-1")) {
                 var packet = new ScenarioCodec().decode(MatchFixtures.root(name));
@@ -380,10 +381,12 @@ class ValidateScenarioActionTest {
                     Optional.empty()
                 );
 
-                assertEquals(
-                    "UNSUPPORTED_FEATURE",
-                    world.action.execute(context, claims, MatchFixtures.root(name)).reason()
-                );
+                var admission = world.action.execute(context, claims, MatchFixtures.root(name));
+                assertEquals(ScenarioAdmissionOutcome.ACCEPTED, admission.outcome());
+                assertEquals("BOX_BUDGET_EXCEEDED", assertThrows(
+                    ScenarioWorldException.class,
+                    () -> new PrepareScenarioAction().execute(world.snapshot(), admission.accepted().orElseThrow())
+                ).getMessage());
                 var scene = packet.scenario();
                 var noBoxes = new GameScenario(
                     scene.slot(),

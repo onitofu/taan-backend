@@ -19,8 +19,20 @@ public final class ScenarioWorldDraft {
     private final Set<UUID> deaths;
     private final Map<UUID, Integer> energyMaxima = new HashMap<>();
     private final ScenarioTerrainDraft terrain;
+    private final Map<Long, MatchItemBox> boxes;
+    private final int boxBudget;
+    private int creations;
 
     public ScenarioWorldDraft(MatchWorldState original, MatchDefinitions definitions, List<MatchParticipant> roster) {
+        this(original, definitions, roster, 0);
+    }
+
+    public ScenarioWorldDraft(
+        MatchWorldState original,
+        MatchDefinitions definitions,
+        List<MatchParticipant> roster,
+        int boxBudget
+    ) {
         this.original = original;
         this.definitions = definitions;
         participants = roster.stream().collect(Collectors.toUnmodifiableMap(
@@ -30,6 +42,14 @@ public final class ScenarioWorldDraft {
         actors = new HashMap<>(original.actors());
         deaths = new HashSet<>(original.processedDeaths());
         terrain = new ScenarioTerrainDraft(original.terrain());
+        boxes = new HashMap<>(original.boxes());
+        this.boxBudget = boxBudget;
+    }
+
+    public void createBox(long id, int x, int y) {
+        var box = MatchBoxRules.create(boxes, definitions.map(), boxBudget, creations, id, x, y);
+        boxes.put(id, box);
+        creations++;
     }
 
     public void grantEnergy(UUID session, int delta) {
@@ -121,7 +141,8 @@ public final class ScenarioWorldDraft {
             layers,
             falls,
             deaths,
-            Optional.of(receipt)
+            Optional.of(receipt),
+            boxes
         );
     }
 

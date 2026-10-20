@@ -27,7 +27,8 @@ class MatchTurnDomainTest {
                 s.definitions(),
                 s.participants(),
                 s.captains(),
-                0
+                0,
+                MatchBoxPolicy.DISABLED
             );
             match.commit(0, 30);
 

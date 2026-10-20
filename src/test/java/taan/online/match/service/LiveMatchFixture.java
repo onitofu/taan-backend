@@ -1,9 +1,10 @@
 package taan.online.match.service;
 
 import java.io.IOException;
-import taan.online.MatchScenarioTestPackets;
 import java.util.Optional;
+import taan.online.MatchScenarioTestPackets;
 import taan.online.match.controller.ScenarioClaimsMapper;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
@@ -20,7 +21,11 @@ final class LiveMatchFixture implements AutoCloseable {
     }
 
     LiveMatchFixture(MatchLootPolicy policy) throws IOException {
-        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CANNON_1V1, policy);
+        this(policy, MatchBoxPolicy.DISABLED);
+    }
+
+    LiveMatchFixture(MatchLootPolicy policy, MatchBoxPolicy boxes) throws IOException {
+        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CANNON_1V1, policy, boxes);
         f = scenario.f;
     }
 

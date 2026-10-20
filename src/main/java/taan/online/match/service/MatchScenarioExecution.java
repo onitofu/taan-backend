@@ -1,6 +1,9 @@
 package taan.online.match.service;
 
+import static taan.online.logging.LogField.activeBoxCount;
 import static taan.online.logging.LogField.admissionId;
+import static taan.online.logging.LogField.boxAttemptBudget;
+import static taan.online.logging.LogField.boxEntityId;
 import static taan.online.logging.LogField.changedCells;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.durationMs;
@@ -20,6 +23,7 @@ import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.model.MatchBoxRules;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ApplyScenarioCommand;
@@ -181,6 +185,20 @@ final class MatchScenarioExecution {
         }
 
         MatchOutcomeExecution.decided(before, publication);
+        publication.world().boxes().values().stream()
+            .filter(box -> !before.world().boxes().containsKey(box.entityId()))
+            .forEach(box -> LOG.log(
+                MatchLogEvent.BOX_CREATED,
+                matchId(command.context().matchId().value()),
+                sessionId(command.context().sessionId()),
+                admissionId(command.context().admissionId()),
+                turnRevision(command.turnRevision()),
+                worldRevision(publication.world().revision()),
+                scenarioHash(committed.scenario().hash()),
+                boxEntityId(box.entityId()),
+                activeBoxCount(MatchBoxRules.activeCount(publication.world().boxes())),
+                boxAttemptBudget(before.turn().boxAttemptBudget())
+            ));
         previous = committed;
         MatchEnergyLog.scenario(before, committed);
         var sender = command.context();

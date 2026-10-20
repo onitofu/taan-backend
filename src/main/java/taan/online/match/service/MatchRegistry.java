@@ -20,6 +20,7 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
@@ -137,7 +138,8 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 definitions.select(draft.settings().mapId()),
                 participants,
                 draft.captains(),
-                participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex()
+                participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex(),
+                MatchBoxPolicy.DISABLED
             );
             var profile = settings.forProfile(draft.settings().mode() == RoomMode.ITEM && participants.size() == 2);
 
@@ -154,7 +156,8 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                     match.definitions(),
                     participants,
                     match.captains(),
-                    initial
+                    initial,
+                    profile.boxPolicy()
                 );
             }
 

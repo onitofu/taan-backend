@@ -19,6 +19,18 @@ public final class LogField {
         return new LogField("energyBefore", value);
     }
 
+    public static LogField boxEntityId(long value) {
+        return new LogField("boxEntityId", Long.toUnsignedString(value));
+    }
+
+    public static LogField activeBoxCount(int value) {
+        return new LogField("activeBoxCount", value);
+    }
+
+    public static LogField boxAttemptBudget(int value) {
+        return new LogField("boxAttemptBudget", value);
+    }
+
     public static LogField energyAfter(int value) {
         return new LogField("energyAfter", value);
     }

@@ -20,6 +20,7 @@ import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioFloatPoint;
 import taan.online.match.protocol.packet.ScenarioGuidedCommand;
 import taan.online.match.protocol.packet.ScenarioIntPoint;
+import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioNormalCommand;
 import taan.online.match.protocol.packet.ScenarioTail;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
@@ -53,7 +54,8 @@ class ScenarioClaimsMapperTest {
             new ScenarioWeaponCommand(h(7), fields),
             new ScenarioFireCommand(h(8), fields, 0, 0, point, point, 0, 0),
             new ScenarioGuidedCommand(h(13), fields, new ScenarioIntPoint(3, 4)),
-            new ScenarioNormalCommand(h(14), 39, 8)
+            new ScenarioNormalCommand(h(14), 39, 8),
+            new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200))
         );
         var scene = new GameScenario(
             2,
@@ -102,6 +104,7 @@ class ScenarioClaimsMapperTest {
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(9));
         assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(10));
         assertEquals(700, mapped.get(11).header().duration());
+        assertInstanceOf(ScenarioActorClaim.class, mapped.getLast());
     }
 
     @Test
