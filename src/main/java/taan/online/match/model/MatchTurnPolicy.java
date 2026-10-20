@@ -7,24 +7,21 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import taan.online.room.model.CaptainSelectionResult;
-import taan.online.room.model.RoomMode;
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.model.RoomRule;
 
 public final class MatchTurnPolicy {
     private static final long MASK = 0xffffffffffffL;
 
-    static MatchTurn roster(
-        int channelId,
-        List<MatchParticipant> participants,
-        RoomMode mode,
-        RoomRule rule,
-        UUID ownerSessionId,
-        CaptainSelectionResult captains,
-        MatchDefinitions definitions,
-        int firstTurnSlot
-    ) {
+    static MatchTurn roster(Match match, int firstTurnSlot) {
+        int channelId = match.channelId();
+        var participants = match.participants();
+        var mode = match.mode();
+        var rule = match.rule();
+        var ownerSessionId = match.ownerSessionId();
+        var captains = match.captains();
+        var definitions = match.definitions();
+
         if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
             || mode.usesItems() != (rule == RoomRule.BONUS)) {
             throw new IllegalArgumentException("Invalid match setup");

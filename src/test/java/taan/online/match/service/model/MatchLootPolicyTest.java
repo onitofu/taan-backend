@@ -1,0 +1,48 @@
+package taan.online.match.service.model;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
+class MatchLootPolicyTest {
+    @Test
+    void restrictsControlledFixturesToTheThirteenScalarZeroCandidatesAndDisablesNormalMatches() {
+        var policy = new MatchLootPolicy(Set.of(1, 5, 7, 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050));
+        assertTrue(policy.enabled());
+
+        for (int item : policy.allowedItemIds()) {
+            assertTrue(policy.permits(item, 0));
+            assertFalse(policy.permits(item, 1));
+        }
+
+        assertFalse(policy.permits(2, 0));
+        assertFalse(MatchLootPolicy.disabled().enabled());
+        assertFalse(MatchLootPolicy.disabled().permits(5, 0));
+
+        for (int item : new int[]{0, 2, 3, 4, 6, 1000, 1006, 1055, 65535}) {
+            assertThrows(IllegalArgumentException.class, () -> new MatchLootPolicy(Set.of(item)));
+        }
+
+        var preview = new MatchBootstrapSettings(30, 20, 8);
+        assertEquals(MatchExecutionMode.PREVIEW, preview.executionMode());
+        assertFalse(preview.lootPolicy().enabled());
+        var normal = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1);
+        assertFalse(normal.lootPolicy().enabled());
+        var controlled = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CANNON_1V1, 20, 10, policy);
+        assertEquals(policy, controlled.forProfile(true).lootPolicy());
+        assertFalse(controlled.forProfile(false).lootPolicy().enabled());
+        assertThrows(NullPointerException.class, () -> new MatchBootstrapSettings(
+            30,
+            20,
+            8,
+            MatchExecutionMode.CANNON_1V1,
+            20,
+            10,
+            null
+        ));
+    }
+}

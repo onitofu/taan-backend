@@ -15,6 +15,7 @@ import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.StartMatchCommand;
 
 final class ScenarioRuntimeFixture implements AutoCloseable {
@@ -26,7 +27,11 @@ final class ScenarioRuntimeFixture implements AutoCloseable {
     }
 
     ScenarioRuntimeFixture(int capacity, MatchExecutionMode mode) throws IOException {
-        f = new MatchRuntimeFixture(capacity, mode);
+        this(capacity, mode, MatchLootPolicy.disabled());
+    }
+
+    ScenarioRuntimeFixture(int capacity, MatchExecutionMode mode, MatchLootPolicy policy) throws IOException {
+        f = new MatchRuntimeFixture(capacity, mode, policy);
         nativePacket = new ScenarioCodec().decode(MatchFixtures.root("native-cannon-0-0"));
         f.activate();
         f.runtime.submit(new StartMatchCommand(f.token));

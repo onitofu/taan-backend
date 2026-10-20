@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
@@ -23,9 +24,88 @@ import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLootPolicy;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.protocol.BinaryWriter;
 import taan.online.network.FrameDecoder;
 
 class MatchLootConnectionTest {
+    @Test
+    void grantsOnceAndProcessesCoalescedOwnerReceiptsAndDiscardAfterAFragmentedBonus() throws Exception {
+        try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1, new MatchLootPolicy(Set.of(5, 7)))) {
+            var owner = world.client(1);
+            var guest = world.client(2);
+            world.drainOutputs();
+            int room = world.create(owner);
+            world.drainOutputs();
+            world.join(guest, room);
+            world.request(guest, RoomScenario.ready(1));
+            world.request(owner, RoomFixtures.root("start-empty"));
+            var roomOwner = RuntimeRoomTestAccess.room(world.rooms, room).ownerSessionId();
+            var token = world.rooms.matchContext(roomOwner).token();
+            MatchFixtures.loaded(world.matches, token);
+            var snapshot = world.matches.current(token).orElseThrow();
+            int slot = snapshot.turn().activeSlot();
+            var member = snapshot.participants().stream().filter(p -> p.slotIndex() == slot).findFirst().orElseThrow();
+            var sender = slot == 0 ? owner : guest;
+            var observer = slot == 0 ? guest : owner;
+            var actor = snapshot.actors().get(member.sessionId());
+            world.request(sender, new PassTurnCodec().encode(new PcGamePlayPassTurn(
+                slot,
+                actor.x(),
+                actor.y(),
+                actor.facing(),
+                0
+            )));
+            world.drainOutputs();
+            assertTrue(world.matches.current(token).orElseThrow().loot().offers().containsKey(member.sessionId()));
+            sender.channel().pipeline().addFirst(new FrameDecoder(16384, 10));
+            byte[] bonus = MatchFixtures.root(slot == 0
+                ? "pending-03-PcGamePlay_EatBonusItem" : "pending-04-PcGamePlay_EatBonusItem");
+            int item = slot == 0 ? 5 : 7;
+            byte[] fragmented = frame(bonus);
+
+            for (int offset = 0; offset < fragmented.length; offset += 3) {
+                sender.channel().writeInbound(Unpooled.wrappedBuffer(
+                    fragmented,
+                    offset,
+                    Math.min(3, fragmented.length - offset)
+                ));
+            }
+
+            var coalesced = new ByteArrayOutputStream();
+            coalesced.write(frame(bonus));
+            coalesced.write(frame(new BinaryWriter().unsignedInt(0x715e0944).unsignedByte(slot)
+                .unsignedByte(0).unsignedShort(item).toByteArray()));
+            byte[] discard = new BinaryWriter().unsignedInt(0x5f23087c).unsignedByte(slot)
+                .unsignedByte(0).unsignedShort(item).toByteArray();
+            coalesced.write(frame(discard));
+            coalesced.write(frame(discard));
+            coalesced.write(frame(SelectionFixtures.cash(0, 0)));
+            sender.channel().writeInbound(Unpooled.wrappedBuffer(coalesced.toByteArray()));
+
+            while (!sender.jobs().isEmpty()) {
+                sender.run();
+                world.tick();
+            }
+
+            assertArrayEquals(bonus, read(sender));
+            assertArrayEquals(discard, read(sender));
+            assertArrayEquals(SelectionFixtures.cash(0, 0), read(sender));
+            assertArrayEquals(bonus, read(observer));
+            assertArrayEquals(discard, read(observer));
+            var inventory = world.matches.current(token).orElseThrow().loot().inventory(member.sessionId());
+            assertEquals(List.of(65535, 65535, 65535), inventory.slots());
+            assertTrue(inventory.receipts().isEmpty());
+            assertEquals(1, world.matches.current(token).orElseThrow().loot().grantSequence());
+            assertTrue(sender.channel().isActive());
+            assertTrue(observer.channel().isActive());
+            assertTrue(sender.channel().outboundMessages().isEmpty());
+            assertTrue(observer.channel().outboundMessages().isEmpty());
+        }
+    }
+
     @Test
     void routesFragmentedAndCoalescedLootThroughFramingAndTheSharedDispatcherWithoutIssuance() throws Exception {
         try (var world = new RoomConnectionWorld(MatchExecutionMode.CANNON_1V1)) {

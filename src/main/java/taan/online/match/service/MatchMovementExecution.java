@@ -181,6 +181,7 @@ final class MatchMovementExecution {
             }
 
             match.closeTurn(MatchTurnClosureReason.ACTION_TIMEOUT, clock.getAsLong());
+            owner.items.loot.offerBonus();
             owner.refresh();
         }
 

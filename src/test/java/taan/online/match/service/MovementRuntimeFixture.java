@@ -5,12 +5,19 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.match.service.model.MatchLootPolicy;
 
 final class MovementRuntimeFixture implements AutoCloseable {
-    final LiveMatchFixture live = new LiveMatchFixture();
-    final MatchRuntimeFixture f = live.f;
+    final LiveMatchFixture live;
+    final MatchRuntimeFixture f;
 
     MovementRuntimeFixture() throws IOException {
+        this(MatchLootPolicy.disabled());
+    }
+
+    MovementRuntimeFixture(MatchLootPolicy policy) throws IOException {
+        live = new LiveMatchFixture(policy);
+        f = live.f;
     }
 
     MoveMatchActorCommand move(int dx, int dy, int facing, MatchMovementKind kind) {

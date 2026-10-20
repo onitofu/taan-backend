@@ -12,6 +12,7 @@ import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.MatchId;
+import taan.online.match.model.MatchLootState;
 import taan.online.match.model.MatchMovementState;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
@@ -45,7 +46,8 @@ public record MatchSnapshot(
     Map<UUID, MatchMovementState> movements,
     Optional<MatchTurnClosure> closure,
     Map<UUID, MatchAttackSelection> attacks,
-    MatchResolutionState resolution
+    MatchResolutionState resolution,
+    MatchLootState loot
 ) {
     public MatchSnapshot(
         MatchId id,
@@ -86,7 +88,8 @@ public record MatchSnapshot(
             Map.of(),
             Optional.empty(),
             Map.of(),
-            MatchResolutionState.initial()
+            MatchResolutionState.initial(),
+            MatchLootState.empty()
         );
     }
 
@@ -130,7 +133,8 @@ public record MatchSnapshot(
             movements,
             closure,
             remaining,
-            resolution.evaluate(participants, applied, turn.activeSlot())
+            resolution.evaluate(participants, applied, turn.activeSlot()),
+            loot
         );
     }
 
@@ -164,7 +168,8 @@ public record MatchSnapshot(
             match.movements(),
             match.closure(),
             match.attacks(),
-            match.resolution()
+            match.resolution(),
+            match.loot()
         );
     }
 }

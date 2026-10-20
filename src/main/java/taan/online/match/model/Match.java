@@ -29,6 +29,7 @@ public final class Match {
     private MatchTurn turn;
     private MatchWorldState world;
     private MatchResolutionState resolution = MatchResolutionState.initial();
+    private MatchLootState loot = MatchLootState.empty();
     private final Map<UUID, MatchAttackSelection> attacks = new HashMap<>();
     private final Map<UUID, MatchMovementState> movements = new HashMap<>();
     private Optional<MatchTurnClosure> closure = Optional.empty();
@@ -62,16 +63,7 @@ public final class Match {
         this.definitions = Objects.requireNonNull(definitions);
         this.participants = List.copyOf(participants);
         this.captains = captains;
-        turn = MatchTurnPolicy.roster(
-            channelId,
-            participants,
-            mode,
-            rule,
-            ownerSessionId,
-            captains,
-            definitions,
-            firstTurnSlot
-        );
+        turn = MatchTurnPolicy.roster(this, firstTurnSlot);
         world = MatchWorldState.initial(participants, definitions.map().terrainLayers());
     }
 
@@ -134,6 +126,7 @@ public final class Match {
         var next = new MatchTurnPolicy().next(turn, alive, now);
         turn = next;
         var member = participants.stream().filter(p -> p.slotIndex() == next.activeSlot()).findFirst().orElseThrow();
+        loot = loot.expired(member.sessionId());
         int energy = MatchEnergyRules.adjust(
             actors().get(member.sessionId()).energy(),
             next.energyGrant(),
@@ -153,12 +146,22 @@ public final class Match {
         return resolution;
     }
 
+    public MatchLootState loot() {
+        return loot;
+    }
+
+    public void updateLoot(MatchLootState value) {
+        loot = Objects.requireNonNull(value);
+    }
+
     public void withdraw(UUID session, MatchExitKind kind) {
+        loot = loot.without(session);
         resolution = resolution.exit(session, kind, participants, world, turn.activeSlot());
         completion = completion.map(value -> value.acknowledged(session));
     }
 
     public void exclude(Set<UUID> sessions) {
+        sessions.forEach(session -> loot = loot.without(session));
         resolution = resolution.exclude(sessions, participants, world, turn.activeSlot());
         sessions.forEach(session -> completion = completion.map(value -> value.acknowledged(session)));
     }
@@ -478,6 +481,7 @@ public final class Match {
             return false;
         }
 
+        loot = MatchLootState.empty();
         phase = MatchPhase.TERMINATING;
         return true;
     }
@@ -488,6 +492,7 @@ public final class Match {
         }
 
         attacks.clear();
+        loot = MatchLootState.empty();
         resolution = MatchResolutionState.initial();
         phase = MatchPhase.CANCELLED;
         return true;

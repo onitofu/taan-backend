@@ -72,7 +72,11 @@ public final class MatchItemPacketHandler {
                 packet.slotIndex(),
                 packet.command().header().slot(),
                 packet.gauge().map(value -> OptionalInt.of(value.header().slot())).orElse(OptionalInt.empty()),
-                packet.command().entityId()
+                packet.command().entityId(),
+                packet.command().itemId(),
+                packet.command().header().tick(),
+                packet.command().header().scalar10(),
+                packet.command().opaque24()
             );
 
             return bonuses.execute(command).thenApply(ignored -> null);

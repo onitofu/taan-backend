@@ -5,6 +5,8 @@ import taan.online.match.service.model.PendingMatchSpend;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.MatchTurnTransition;
@@ -23,6 +25,10 @@ public interface MatchOutput {
     CompletionStage<Void> special(int slot, int team);
 
     CompletionStage<Void> spend(PendingMatchSpend spend);
+
+    CompletionStage<Void> bonus(MatchBonusDelivery bonus);
+
+    CompletionStage<Void> discard(DiscardMatchItemCommand discard);
 
     CompletionStage<Void> scenario(CommittedScenario scenario);
 

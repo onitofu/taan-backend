@@ -12,6 +12,7 @@ import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.ReportMatchBonusCommand;
+import taan.online.match.service.model.ReportMatchPickupCommand;
 
 class MatchBonusCompatibilityTest {
     @Test
@@ -20,12 +21,12 @@ class MatchBonusCompatibilityTest {
             var f = live.f;
             var before = f.runtime.snapshot();
             var c = f.context();
-            assertTrue(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.empty(), -1L)));
-            assertTrue(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.of(0), -1L)));
-            assertFalse(report(f, new ReportMatchBonusCommand(c, 2, 2, OptionalInt.empty(), -1L)));
-            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 2, OptionalInt.empty(), -1L)));
-            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.of(2), -1L)));
-            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.empty(), 123)));
+            assertTrue(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.empty(), -1L, 5, 0, 0, 0)));
+            assertTrue(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.of(0), -1L, 5, 0, 0, 0)));
+            assertFalse(report(f, new ReportMatchBonusCommand(c, 2, 2, OptionalInt.empty(), -1L, 5, 0, 0, 0)));
+            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 2, OptionalInt.empty(), -1L, 5, 0, 0, 0)));
+            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.of(2), -1L, 5, 0, 0, 0)));
+            assertFalse(report(f, new ReportMatchBonusCommand(c, 0, 0, OptionalInt.empty(), 123, 5, 0, 0, 0)));
             assertEquals(before, f.runtime.snapshot());
             assertTrue(f.owner.specials.isEmpty());
             assertTrue(f.owner.spends.isEmpty());
@@ -61,6 +62,12 @@ class MatchBonusCompatibilityTest {
             assertTrue(m.move(m.move(0, -20, 0, MatchMovementKind.MOVE)));
             assertTrue(m.pass(m.pass()));
             assertTrue(report(f, command(f.context())));
+            var pickup = MatchItemExecution.reportPickup(
+                f.runtime,
+                new ReportMatchPickupCommand(f.context(), 0, 0, OptionalInt.empty(), 123, 5)
+            );
+            f.run();
+            assertTrue(pickup.toCompletableFuture().join());
         }
 
         try (var live = new LiveMatchFixture()) {
@@ -68,11 +75,17 @@ class MatchBonusCompatibilityTest {
             f.runtime.applyScenario(live.shot(false, false));
             f.run();
             assertTrue(report(f, command(f.context())));
+            var pickup = MatchItemExecution.reportPickup(
+                f.runtime,
+                new ReportMatchPickupCommand(f.context(), 0, 0, OptionalInt.empty(), 123, 5)
+            );
+            f.run();
+            assertTrue(pickup.toCompletableFuture().join());
         }
     }
 
     private ReportMatchBonusCommand command(MatchCommandContext context) {
-        return new ReportMatchBonusCommand(context, 0, 0, OptionalInt.empty(), -1L);
+        return new ReportMatchBonusCommand(context, 0, 0, OptionalInt.empty(), -1L, 5, 0, 0, 0);
     }
 
     private boolean report(MatchRuntimeFixture f, ReportMatchBonusCommand command) {
