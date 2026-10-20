@@ -94,8 +94,8 @@ final class MatchLootExecution {
 
             var offer = match.loot().offers().get(context.sessionId());
 
-            if (offer == null || offer.consumed() || !offer.admissionId().equals(context.admissionId())
-                || match.actors().get(context.sessionId()).dead() || command.gaugeSlot().isPresent()
+            if (match.actors().get(context.sessionId()).dead() || offer == null || offer.consumed()
+                || !offer.admissionId().equals(context.admissionId()) || command.gaugeSlot().isPresent()
                 || !policy.permits(command.itemId(), offer.pickerScalar())) {
                 return ignored(context, command.slotIndex(), MatchLogEvent.BONUS_IGNORED, "INVALID_BONUS_OFFER", false);
             }
@@ -143,7 +143,16 @@ final class MatchLootExecution {
                 );
             }
 
-            var next = match.loot().confirmed(context.sessionId(), command.inventoryIndex(), command.itemId());
+            if (match.actors().get(context.sessionId()).dead()) {
+                return ignored(context, command.slotIndex(), MatchLogEvent.ITEM_RECEIPT_IGNORED, "DEAD_ACTOR", true);
+            }
+
+            var next = match.loot().confirmed(
+                context.sessionId(),
+                context.admissionId(),
+                command.inventoryIndex(),
+                command.itemId()
+            );
 
             if (next == match.loot()) {
                 return ignored(

@@ -7,6 +7,7 @@ public sealed interface ScenarioClaim permits
     ScenarioFallClaim,
     ScenarioActorClaim,
     ScenarioMakeItemBoxClaim,
+    ScenarioEatItemBoxClaim,
     ScenarioUnsupportedClaim {
     ScenarioEventTime header();
 }

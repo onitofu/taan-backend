@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 
@@ -70,4 +71,31 @@ class MatchBoxRulesTest {
             ).getMessage());
         }
     }
+
+    @Test
+    void boundsTheRetainedHistoryAndBindsRewardsOnlyWhenAnActiveBoxIsPickedUp() {
+        var boxes = new HashMap<Long, MatchItemBox>();
+
+        for (int index = 1; index < MatchBoxRules.MAX_CREATED; index++) {
+            long id = 0x0500000000000000L | index;
+            boxes.put(id, new MatchItemBox(id, 0, 0, false));
+        }
+
+        assertEquals(1, MatchBoxRules.budget(MatchBoxPolicy.ENABLED, boxes));
+        long id = 0x0500000000000000L | MatchBoxRules.MAX_CREATED;
+        var last = MatchBoxRules.create(boxes, MatchFixtures.definitions().map(), 1, 0, id, 0, 0);
+        boxes.put(id, last.pickedUp(5));
+        assertEquals(0, MatchBoxRules.activeCount(boxes));
+        assertEquals(0, MatchBoxRules.budget(MatchBoxPolicy.ENABLED, boxes));
+        assertEquals(5, boxes.get(id).boundItemId().orElseThrow());
+        assertEquals("BOX_HISTORY_LIMIT_EXCEEDED", assertThrows(
+            ScenarioWorldException.class,
+            () -> MatchBoxRules.create(boxes, MatchFixtures.definitions().map(), 1, 0, id + 1, 0, 0)
+        ).getMessage());
+        assertThrows(IllegalArgumentException.class, () -> new MatchItemBox(id + 1, 0, 0, true, OptionalInt.of(5)));
+        assertEquals("INACTIVE_BOX", assertThrows(
+            ScenarioWorldException.class, () -> boxes.get(id).pickedUp(7)
+        ).getMessage());
+    }
+
 }

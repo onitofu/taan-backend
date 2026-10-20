@@ -19,6 +19,18 @@ public final class LogField {
         return new LogField("energyBefore", value);
     }
 
+    public static LogField itemId(int value) {
+        return new LogField("itemId", value);
+    }
+
+    public static LogField inventoryIndex(Integer value) {
+        return new LogField("inventoryIndex", value);
+    }
+
+    public static LogField grantSequence(Long value) {
+        return new LogField("grantSequence", value);
+    }
+
     public static LogField boxEntityId(long value) {
         return new LogField("boxEntityId", Long.toUnsignedString(value));
     }

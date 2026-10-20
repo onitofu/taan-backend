@@ -251,29 +251,29 @@ public final class Match {
         MatchWorldState prepared,
         Optional<MatchCompletion> pending
     ) {
-        if (phase != MatchPhase.ACTION || world.revision() != expectedWorldRevision
-            || turn.revision() != expectedTurnRevision || prepared.revision() != expectedWorldRevision + 1
-            || prepared.receipt().filter(
-                value -> value.worldRevision() == prepared.revision() && value.turnRevision() == turn.revision()
-                    && participants.stream().anyMatch(
-                        member -> member.sessionId().equals(value.sessionId())
-                            && member.admissionId().equals(value.admissionId())
-                    )
-            ).isEmpty()) {
+        var appliedLoot = new ScenarioLootDraft(loot).finish(prepared);
+
+        return commitScenario(expectedWorldRevision, expectedTurnRevision, prepared, pending, loot, appliedLoot);
+    }
+
+    public boolean commitScenario(
+        long expectedWorldRevision,
+        long expectedTurnRevision,
+        MatchWorldState prepared,
+        Optional<MatchCompletion> pending,
+        MatchLootState expectedLoot,
+        MatchLootState preparedLoot
+    ) {
+        if (loot != expectedLoot || world.revision() != expectedWorldRevision || turn.revision() != expectedTurnRevision
+            || !MatchScenarioCommitRules.permits(phase, world, turn, prepared, participants)) {
             return false;
         }
 
-        var moving = movements.get(activeSession());
-        var actor = world.actors().get(activeSession());
-        var applied = prepared.actors().get(activeSession());
-
-        if (prepared.falls().containsKey(activeSession()) || actor.y() != applied.y()
-            || applied.dead()) {
-            movements.put(activeSession(), new MatchMovementState(moving.allowance(), Optional.empty()));
-        }
-
+        var active = activeSession();
+        movements.put(active, MatchScenarioCommitRules.movement(world, prepared, active, movements.get(active)));
         attacks.remove(activeSession());
         world = prepared;
+        loot = preparedLoot;
         resolution = resolution.evaluate(participants, world, turn.activeSlot());
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
@@ -467,6 +467,7 @@ public final class Match {
         }
 
         world = world.settled(session, movement.fall().orElseThrow().endY(), definitions.map().height());
+        loot = new ScenarioLootDraft(loot).finish(world);
         resolution = resolution.settled(participants, world, turn.activeSlot());
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }

@@ -4,6 +4,7 @@ import java.util.Set;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.ScenarioCommand;
 import taan.online.match.protocol.packet.ScenarioDamageCommand;
+import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioGuidedCommand;
 import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
@@ -13,6 +14,7 @@ import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioClaim;
 import taan.online.match.service.model.ScenarioClaims;
 import taan.online.match.service.model.ScenarioDamageClaim;
+import taan.online.match.service.model.ScenarioEatItemBoxClaim;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFallClaim;
 import taan.online.match.service.model.ScenarioFireClaim;
@@ -47,6 +49,10 @@ public final class ScenarioClaimsMapper {
 
         if (command instanceof ScenarioMakeItemBoxCommand box && value.kind() == 10) {
             return new ScenarioMakeItemBoxClaim(header, box.entityId(), box.position().x(), box.position().y());
+        }
+
+        if (command instanceof ScenarioEatItemBoxCommand pickup && value.kind() == 11) {
+            return new ScenarioEatItemBoxClaim(header, pickup.entityId(), pickup.itemId(), pickup.opaque24());
         }
 
         if (value.kind() >= 10) {

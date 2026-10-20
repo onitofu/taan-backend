@@ -16,6 +16,7 @@ import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.ScenarioCommand;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
 import taan.online.match.protocol.packet.ScenarioDamageCommand;
+import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioFloatPoint;
 import taan.online.match.protocol.packet.ScenarioGuidedCommand;
@@ -55,7 +56,8 @@ class ScenarioClaimsMapperTest {
             new ScenarioFireCommand(h(8), fields, 0, 0, point, point, 0, 0),
             new ScenarioGuidedCommand(h(13), fields, new ScenarioIntPoint(3, 4)),
             new ScenarioNormalCommand(h(14), 39, 8),
-            new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200))
+            new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200)),
+            new ScenarioEatItemBoxCommand(h(5), -1L, 5, -1)
         );
         var scene = new GameScenario(
             2,

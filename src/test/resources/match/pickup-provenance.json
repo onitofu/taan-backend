@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "native-cannon-0-0.root.hex": "938c5bea8997504408f5a41909e3fc462aa4b2b4d1e4d2a303cbf1624ccadbc0",
+      "original_file": "native-cannon-0-0.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "native-cannon-2-1.root.hex": "552c7df2b7d8411c8543ba2f8860751c1c25458e324879b2133268eeee75c5b8",
+      "original_file": "native-cannon-2-1.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "projectile-pickup-power-slot0.synthetic.root.hex": "f69a50bd78ed3d8e630a1a6d5934d0eedfebf2b0aad57a8b78639022351b42e6",
+      "original_file": "native-cannon-0-0.root.hex",
+      "origin": "SYNTHETIC"
+    },
+    {
+      "projectile-pickup-power-slot2.synthetic.root.hex": "72fecf9fc057ace9bf97766d7dc324d360e0c5dc2a109e595ae8e5f4f26437fb",
+      "original_file": "native-cannon-2-1.root.hex",
+      "origin": "SYNTHETIC"
+    }
+  ]
+}
