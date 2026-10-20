@@ -11,8 +11,8 @@ import taan.online.MatchFixtures;
 class WeaponTerrainTest {
     @Test
     void appliesTheIndependentSourceRedChannelAreasInsteadOfReusingTheCannonsMask() {
-        int[][] areas = {{16520, 18377, 20006}, {6900, 8024, 14004}, {5687, 7848, 9871}};
-        int[] weapons = {0, 8, 10};
+        int[][] areas = {{16520, 18377, 20006}, {6900, 8024, 14004}, {5687, 7848, 9871}, {5436, 9483, 12791}};
+        int[] weapons = {0, 8, 10, 3};
         var definitions = MatchFixtures.definitions();
 
         for (int index = 0; index < weapons.length; index++) {

@@ -8,3 +8,6 @@ weapon_id,missile_type_id,width,height,center_x,center_y,resource,sha256
 10,0,256,256,128,135,terrain/thunder-0-mask.rle,9910e1308636020982dca815c85a95a4c3befe712a585e35d292aebef898d29c
 10,1,256,256,128,137,terrain/thunder-1-mask.rle,0e5f36201bd66301916646cb26f9532d9140d55bacc66dd4d2515cc3caf9fddf
 10,2,256,256,128,139,terrain/thunder-2-mask.rle,c1ac7e577327b6b3bd40952ca41f8413f48038a2e819d1786ef0edde115c5fef
+3,0,256,256,128,139,terrain/crossbow-0-mask.rle,58a2583083065e4257cf1f1c302ff1de4e5b67de3e827a78744c812e59e319ad
+3,1,256,256,128,143,terrain/crossbow-1-mask.rle,8dd770623f0c52bf8ead9958e59c571ffbd3c2dc3b90595db472441fd84050dd
+3,2,256,256,128,146,terrain/crossbow-2-mask.rle,4c11d1f72440ec4ee34981f55aa6df9d19cf31e76eb6ce080031b357edd42052

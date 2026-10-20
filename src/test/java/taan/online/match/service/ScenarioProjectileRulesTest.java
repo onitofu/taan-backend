@@ -91,7 +91,10 @@ class ScenarioProjectileRulesTest {
     }
 
     private ScenarioProjectileRules rules() {
-        return new ScenarioProjectileRules(new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9), 3);
+        return new ScenarioProjectileRules(
+            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9, false),
+            3
+        );
     }
 
     private ScenarioFireClaim fire(int sequence, int tick) {

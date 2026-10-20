@@ -61,7 +61,7 @@ class RoomWeaponTest {
             );
             room.enter(scenario.owner(guest), "");
 
-            for (int value : new int[]{-1, 1, 2, 3, 11, 12, 100, 199, 200, 201, 300, 65535, 65536}) {
+            for (int value : new int[]{-1, 1, 2, 4, 11, 12, 100, 199, 200, 201, 300, 65535, 65536}) {
                 assertFalse(Room.isSelectableWeapon(value));
                 assertThrows(IllegalArgumentException.class, () -> room.changeWeapon(guest, value));
                 assertThrows(IllegalArgumentException.class, () -> new RoomBootstrapDefinition(1, value));

@@ -24,7 +24,7 @@ import taan.online.protocol.BinaryWriter;
 
 class TeamCombatConnectionTest {
     @Test
-    void relaysAllThreeWeaponsToEveryPeerAndKeepsDeadParticipantsConnectedAcrossPhysicalSlots() throws Exception {
+    void relaysAllFourWeaponsToEveryPeerAndKeepsDeadParticipantsConnectedAcrossPhysicalSlots() throws Exception {
         for (int[] sizes : new int[][]{{2, 2}, {1, 4}, {4, 1}, {4, 4}}) {
             for (boolean captain : new boolean[]{false, true}) {
                 try (var f = new TeamConnectionFixture(sizes[0], sizes[1], captain)) {
@@ -90,7 +90,7 @@ class TeamCombatConnectionTest {
                         }
                     }
 
-                    assertEquals(Set.of(0, 8, 10), seen);
+                    assertEquals(Set.of(0, 3, 8, 10), seen);
                 }
             }
         }

@@ -37,7 +37,6 @@ final class ScenarioRules {
         var selected = MatchItemSelectionRules.selected(selection.activeItems(), match.captain(shooter.slotIndex()));
         int attackKind = MatchItemSelectionRules.attackKind(selected);
         int shotLimit = MatchItemSelectionRules.shotLimit(selected);
-        boolean guided = selected.contains(7);
         boolean special = attackKind == 2;
         require(
             claims.selectedItems().equals(selected) && !claims.effectsPresent()
@@ -49,6 +48,7 @@ final class ScenarioRules {
             "INVALID_HEADER_ENERGY"
         );
         var definition = match.definitions().attacks().get(new WeaponAttackKey(shooter.weaponId(), attackKind));
+        boolean guided = definition.intrinsicGuidance() || selected.contains(7);
         int energy = match.definitions().weapons().get(shooter.weaponId()).hitEnergy();
         float power = claims.power();
         require(

@@ -20,6 +20,9 @@ import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
+import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
+import taan.online.match.service.model.RecordMatchSpendCommand;
+import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -40,6 +43,10 @@ final class TeamMatchFixture implements AutoCloseable {
     RoomMatchToken token;
 
     TeamMatchFixture(int blue, int red, RoomMode mode) {
+        this(blue, red, mode, 0, 3, 8, 10);
+    }
+
+    TeamMatchFixture(int blue, int red, RoomMode mode, int... weapons) {
         this.mode = mode;
 
         for (int index = 0; index < blue + red; index++) {
@@ -56,7 +63,7 @@ final class TeamMatchFixture implements AutoCloseable {
             assertEquals(index < blue ? RoomTeam.BLUE : RoomTeam.RED, scenario.rooms.current(id).orElseThrow()
                 .slots().stream().filter(s -> s.participant() != null && s.participant().sessionId().equals(id))
                 .findFirst().orElseThrow().team());
-            var change = scenario.rooms.changeWeapon(id, index + 1, new int[]{0, 8, 10}[index % 3]);
+            var change = scenario.rooms.changeWeapon(id, index + 1, weapons[index % weapons.length]);
             assertTrue(change.reason().equals("CHANGED") || change.reason().equals("UNCHANGED"), change.reason());
             var output = new TestMatchOutput();
             outputs.put(id, output);
@@ -166,6 +173,50 @@ final class TeamMatchFixture implements AutoCloseable {
             actor.y(),
             actor.facing(),
             0
+        )).toCompletableFuture().join());
+    }
+
+    void activate(int item) throws Exception {
+        var member = active();
+        var context = context(member.sessionId());
+        int index = 255;
+
+        if (item != 6) {
+            index = snapshot().loot().inventory(member.sessionId()).firstEmpty();
+            MatchInventoryTestAccess.grantControlled(scenario.matches, token, member.slotIndex(), item);
+            assertTrue(scenario.matches.confirmItemReceipt(new ConfirmMatchItemReceiptCommand(
+                context,
+                member.slotIndex(),
+                index,
+                item
+            )).toCompletableFuture().join());
+        }
+
+        var snapshot = snapshot();
+        assertTrue(scenario.matches.useItem(new UseMatchItemCommand(
+            context,
+            snapshot.turn().revision(),
+            snapshot.phaseRevision(),
+            member.slotIndex(),
+            member.team() == RoomTeam.BLUE ? 1 : 2,
+            0,
+            0,
+            index,
+            item
+        )).toCompletableFuture().join());
+    }
+
+    void spend() {
+        var member = active();
+        var snapshot = snapshot();
+        assertTrue(scenario.matches.recordSpend(new RecordMatchSpendCommand(
+            context(member.sessionId()),
+            snapshot.turn().revision(),
+            snapshot.phaseRevision(),
+            member.slotIndex(),
+            member.team() == RoomTeam.BLUE ? 1 : 2,
+            255,
+            List.of()
         )).toCompletableFuture().join());
     }
 

@@ -23,7 +23,7 @@ public record MatchDefinitions(
         var terrain = missiles;
         var supported = attacks.keySet().stream().map(WeaponAttackKey::weaponId).collect(Collectors.toSet());
 
-        if (!supported.equals(Set.of(0, 8, 10)) || attacks.size() != 9 || missiles.size() != 9
+        if (!supported.equals(Set.of(0, 3, 8, 10)) || attacks.size() != 12 || missiles.size() != 12
             || attacks.entrySet().stream().anyMatch(e -> !e.getKey().equals(e.getValue().key())
                 || !terrain.containsKey(e.getValue().missileKey()))
             || missiles.entrySet().stream().anyMatch(e -> !e.getKey().equals(

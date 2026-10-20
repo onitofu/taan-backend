@@ -134,18 +134,20 @@ public final class MatchDefinitionLoader {
         );
         var shots = csv(
             attacks,
-            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id,animation_type",
+            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id,animation_type,"
+                + "intrinsic_guidance",
             row -> new WeaponAttackDefinition(
                 new WeaponAttackKey(Integer.parseInt(row[0]), Integer.parseInt(row[1])),
                 Integer.parseInt(row[2]),
                 Integer.parseInt(row[3]),
                 Integer.parseInt(row[4]),
                 Integer.parseInt(row[5]),
-                Integer.parseInt(row[6])
+                Integer.parseInt(row[6]),
+                valid(row[7])
             )
         );
 
-        if (shots.size() != 9) {
+        if (shots.size() != 12) {
             throw new IllegalArgumentException("Incomplete ordinary attacks definitions");
         }
 

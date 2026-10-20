@@ -27,7 +27,9 @@ public final class TeamScenarioPackets {
         int kind = MatchItemSelectionRules.attackKind(selected);
         int launches = 1 + selected.stream().filter(id -> id == 1 || id == 2).mapToInt(Integer::intValue).sum();
         int facing = snapshot.actors().get(member.sessionId()).facing();
-        var source = selected.contains(7) ? MatchGuidedTestPackets.shot(slot, facing, selected, kind, launches)
+        boolean intrinsic = member.weaponId() == 3 && kind == 2;
+        var source = intrinsic || selected.contains(7)
+            ? MatchGuidedTestPackets.shot(slot, facing, selected, kind, launches)
             : selected.contains(3) ? MatchSpreadTestPackets.shot(slot, facing, selected, kind, launches, .5f)
                 : MatchRepeatTestPackets.shot(slot, facing, selected, kind, launches);
         return weapon(snapshot, source, target, damage);
@@ -39,6 +41,7 @@ public final class TeamScenarioPackets {
         int kind = MatchItemSelectionRules.attackKind(source.scenario().selectedItems());
         int animation = (member.weaponId() == 0 ? 9 : member.weaponId() == 8 ? 6 : 12) + kind;
         int delay = kind == 2 ? 2500 : 0;
+        int variant = member.weaponId() == 3 && kind == 2 ? 4 : kind;
         var commands = new ArrayList<ScenarioCommand>();
 
         if (kind == 2) {
@@ -59,7 +62,7 @@ public final class TeamScenarioPackets {
                 var w = fire.weapon();
                 var fields = new ScenarioWeaponFields(
                     w.sequence(),
-                    w.variant(),
+                    variant,
                     w.position(),
                     w.shotTick() + delay,
                     w.scalar24Bits(),
@@ -89,7 +92,7 @@ public final class TeamScenarioPackets {
                     header,
                     new ScenarioWeaponFields(
                         w.sequence(),
-                        w.variant(),
+                        variant,
                         w.position(),
                         w.shotTick() + delay,
                         w.scalar24Bits(),
@@ -102,7 +105,7 @@ public final class TeamScenarioPackets {
                     header,
                     new ScenarioWeaponFields(
                         w.sequence(),
-                        w.variant(),
+                        variant,
                         w.position(),
                         w.shotTick() + delay,
                         w.scalar24Bits(),

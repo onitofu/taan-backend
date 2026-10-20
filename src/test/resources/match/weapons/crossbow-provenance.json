@@ -1,0 +1,19 @@
+{
+  "fixtures": [
+    {
+      "user-crossbow-a.root.hex": "e201314fce16b319ab6f17c84c9223563d24b8294f68b4b5d438258090f4f8e9",
+      "original_file": "user-crossbow-a.root.hex",
+      "origin": "DERIVED"
+    },
+    {
+      "user-crossbow-b.root.hex": "80b69a31050177251bf3751f46758ada5295ee5de43c0c7bfaa6881962416b1c",
+      "original_file": "user-crossbow-b.root.hex",
+      "origin": "DERIVED"
+    },
+    {
+      "user-crossbow-special.root.hex": "74e091a9377a5971a8f2d692a58fb2ab4c48fa958a58b0a67e26a9bcbd5e4e20",
+      "original_file": "user-crossbow-special.root.hex",
+      "origin": "DERIVED"
+    }
+  ]
+}

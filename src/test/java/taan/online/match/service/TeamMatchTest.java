@@ -27,7 +27,7 @@ class TeamMatchTest {
                     room.scenario.rooms.changeWeapon(
                         room.players.get(index),
                         index + 1,
-                        (new int[]{0, 8, 10})[index % 3]
+                        (new int[]{0, 3, 8, 10})[index % 4]
                     );
                     room.scenario.matches.subscribe(room.players.get(index), new TestMatchOutput());
                 }

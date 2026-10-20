@@ -18,7 +18,7 @@ class ScenarioPowerAdmissionTest {
             var original = world.definitions;
             var attacks = new HashMap<>(original.attacks());
             var key = new WeaponAttackKey(0, 0);
-            attacks.put(key, new WeaponAttackDefinition(key, 25, 75, 0, 0, 9));
+            attacks.put(key, new WeaponAttackDefinition(key, 25, 75, 0, 0, 9, false));
             world.definitions = new MatchDefinitions(
                 original.catalogVersion(),
                 original.map(),
