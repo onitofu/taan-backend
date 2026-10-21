@@ -18,7 +18,7 @@ public record MatchWorldState(
     Set<UUID> processedDeaths,
     Optional<ScenarioCommitReceipt> receipt,
     Map<Long, MatchItemBox> boxes,
-    MatchDamageStatistics damageStatistics
+    MatchCombatStatistics combatStatistics
 ) {
     public MatchWorldState(
         long revision,
@@ -29,7 +29,7 @@ public record MatchWorldState(
         Optional<ScenarioCommitReceipt> receipt,
         Map<Long, MatchItemBox> boxes
     ) {
-        this(revision, actors, terrain, falls, processedDeaths, receipt, boxes, MatchDamageStatistics.empty());
+        this(revision, actors, terrain, falls, processedDeaths, receipt, boxes, MatchCombatStatistics.empty());
     }
 
     public MatchWorldState(
@@ -52,7 +52,7 @@ public record MatchWorldState(
         processedDeaths = Set.copyOf(processedDeaths);
         Objects.requireNonNull(receipt);
         boxes = Map.copyOf(boxes);
-        Objects.requireNonNull(damageStatistics);
+        Objects.requireNonNull(combatStatistics);
     }
 
     public static MatchWorldState initial(Map<UUID, MatchActorState> actors, List<TerrainLayerDefinition> terrain) {
@@ -120,7 +120,7 @@ public record MatchWorldState(
             deaths,
             receipt,
             boxes,
-            damageStatistics
+            combatStatistics
         );
     }
 
@@ -133,7 +133,7 @@ public record MatchWorldState(
             processedDeaths,
             receipt,
             Map.of(),
-            damageStatistics
+            combatStatistics
         );
     }
 }

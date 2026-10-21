@@ -180,6 +180,7 @@ class RoomTeamIntegrationTest {
                     new NoticeMessageCodec().decode(guest.read()).message()
                 );
                 assertArrayEquals(SelectionFixtures.cash(0, 0), guest.read());
+                assertArrayEquals(SelectionFixtures.money(0), guest.read());
                 cash(owner);
                 owner.send(integer(root("PqGameSession_OpenCloseSlot-open"), 5, 7, 1));
                 wire.slotAvailability(owner.read());
@@ -236,5 +237,6 @@ class RoomTeamIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

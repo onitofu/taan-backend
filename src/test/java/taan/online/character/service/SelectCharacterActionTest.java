@@ -12,6 +12,7 @@ import taan.online.CharacterFixtures;
 import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.SelectionFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.controller.SelectCharacterHandlingOutcome;
@@ -165,7 +166,8 @@ class SelectCharacterActionTest {
                 repository,
                 InventoryFixtures.catalog()
             ),
-            access
+            access,
+            TestLevels.table()
         );
     }
 }

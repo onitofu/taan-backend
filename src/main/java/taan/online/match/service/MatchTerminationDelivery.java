@@ -15,10 +15,10 @@ import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchParticipant;
-import taan.online.match.model.MatchResult;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.model.MatchResult;
 import taan.online.match.service.model.MatchEndResult;
+import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
@@ -83,7 +83,7 @@ final class MatchTerminationDelivery {
 
         for (var recipient : recipients) {
             if (terminal.mode() == RoomMatchTerminationMode.RETURN_TO_ROOM) {
-                var delivery = deliver(recipient, new MatchEndResult(stored, participants));
+                var delivery = deliver(recipient, new MatchEndResult(stored, participants, recipient.sessionId()));
 
                 if (recipient.sessionId().equals(requester)) {
                     result = delivery;

@@ -36,6 +36,7 @@ class MatchSettlementDeliveryTest {
         try (var fixture = new MatchOutcomeFixture(scenario)) {
             var shooter = fixture.active();
             var other = fixture.room.players.stream().filter(id -> !id.equals(shooter)).findFirst().orElseThrow();
+            scenario.matchTimers.advanceSeconds(1);
             fixture.shot(77, false, false);
             fixture.ack(shooter);
             fixture.ack(other);

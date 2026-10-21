@@ -16,8 +16,20 @@ public record MatchResult(
     Optional<RoomTeam> winningTeam,
     MatchOutcomeCause cause,
     String policyVersion,
-    List<MatchParticipantResult> participants
+    List<MatchParticipantResult> participants,
+    Long rewardDurationMillis
 ) {
+    public MatchResult(
+        MatchId matchId,
+        Instant finishedAt,
+        Optional<RoomTeam> winningTeam,
+        MatchOutcomeCause cause,
+        String policyVersion,
+        List<MatchParticipantResult> participants
+    ) {
+        this(matchId, finishedAt, winningTeam, cause, policyVersion, participants, null);
+    }
+
     public MatchResult {
         Objects.requireNonNull(matchId);
         finishedAt = Objects.requireNonNull(finishedAt).truncatedTo(ChronoUnit.MICROS);
@@ -26,11 +38,12 @@ public record MatchResult(
         Objects.requireNonNull(policyVersion);
         participants = List.copyOf(participants);
 
-        if (winningTeam.isEmpty() != (cause == MatchOutcomeCause.TECHNICAL_CANCELLATION)
+        if (rewardDurationMillis != null && (rewardDurationMillis < 0 || rewardDurationMillis > 1800000)
+            || winningTeam.isEmpty() != (cause == MatchOutcomeCause.TECHNICAL_CANCELLATION)
             || policyVersion.isBlank() || policyVersion.length() > 32 || participants.size() > 8
             || participants.stream().map(MatchParticipantResult::characterId).distinct().count() != participants.size()
             || participants.stream().map(MatchParticipantResult::slotIndex).distinct().count() != participants.size()
-            || winningTeam.isEmpty() && participants.stream().anyMatch(MatchParticipantResult::forceMedal)) {
+            || winningTeam.isEmpty() && participants.stream().anyMatch(p -> p.forceMedal() || p.killMedal())) {
             throw new IllegalArgumentException("Inconsistent match result");
         }
     }
@@ -40,40 +53,78 @@ public record MatchResult(
         Instant finishedAt,
         MatchOutcome outcome,
         List<MatchParticipant> roster,
-        MatchDamageStatistics statistics,
+        MatchCombatStatistics statistics,
         Map<UUID, MatchExitKind> exits
     ) {
-        long maximum = roster.stream().filter(member -> !exits.containsKey(member.sessionId()))
-            .mapToLong(member -> statistics.damage(member.sessionId())).max().orElse(0);
-        boolean completed = !outcome.winningTeams().isEmpty();
-        var results = roster.stream().map(
-            member -> {
-                long damage = statistics.damage(member.sessionId());
-                boolean eligible = completed && !exits.containsKey(member.sessionId());
-                return new MatchParticipantResult(
-                    member.character().id(),
-                    member.slotIndex(),
-                    member.team(),
-                    damage,
-                    eligible,
-                    eligible && maximum > 0 && damage == maximum
-                );
-            }
-        ).toList();
+        return finish(id, finishedAt, outcome, roster, statistics, exits, MatchParticipationState.initial());
+    }
+
+    public static MatchResult finish(
+        MatchId id,
+        Instant finishedAt,
+        MatchOutcome outcome,
+        List<MatchParticipant> roster,
+        MatchCombatStatistics statistics,
+        Map<UUID, MatchExitKind> exits,
+        MatchParticipationState participation
+    ) {
+        boolean completed = !outcome.winningTeams().isEmpty() && participation.durationMillis() > 0;
+        var drafts = roster.stream().map(member -> {
+            var session = member.sessionId();
+            return new MatchParticipantResult(
+                member.character().id(),
+                member.slotIndex(),
+                member.team(),
+                statistics.damage(session),
+                completed && !exits.containsKey(session),
+                false,
+                statistics.kills(session),
+                false,
+                new MatchParticipantStatistics(
+                    member.maxHp(),
+                    statistics.acceptedShots(session),
+                    participation.longestTurnMillis().getOrDefault(session, 0L),
+                    participation.voluntarilyPassed().contains(session)
+                ),
+                null
+            );
+        }).toList();
+        long maximum = drafts.stream().filter(p -> p.awardEligible() && !p.passive())
+            .mapToLong(MatchParticipantResult::damage).max().orElse(0);
+        var results = drafts.stream().map(p -> new MatchParticipantResult(
+            p.characterId(),
+            p.slotIndex(),
+            p.team(),
+            p.damage(),
+            p.awardEligible(),
+            p.awardEligible() && !p.passive() && maximum > 0 && p.damage() == maximum,
+            p.kills(),
+            p.awardEligible() && !p.passive() && p.kills() >= 2,
+            p.statistics(),
+            null
+        )).toList();
         return new MatchResult(
             id,
             finishedAt,
             outcome.winningTeams().stream().findFirst(),
             outcome.cause(),
-            "damage-medal-v1",
-            results
+            "pvp-exp-1.1.0",
+            results,
+            participation.durationMillis()
         );
+    }
+
+    public MatchResult rewarded(List<MatchParticipantResult> rewards) {
+        return new MatchResult(matchId, finishedAt, winningTeam, cause, policyVersion, rewards, rewardDurationMillis);
     }
 
     public MatchOutcome outcome() {
         return new MatchOutcome(
             winningTeam.map(Set::of).orElseGet(Set::of),
-            participants.stream().anyMatch(MatchParticipantResult::forceMedal),
+            participants.stream().anyMatch(
+                p -> p.forceMedal() || p.killMedal()
+                    || p.experienceReward() != null && p.experienceReward().delta() > 0
+            ),
             cause
         );
     }

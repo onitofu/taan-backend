@@ -79,6 +79,7 @@ class MatchBoxConnectionTest {
                 assertEquals(before.world().revision() + 1, committed.world().revision());
                 assertArrayEquals(root, read(observer));
                 assertArrayEquals(SelectionFixtures.cash(0, 0), read(sender));
+                assertArrayEquals(SelectionFixtures.money(0), read(sender));
                 assertTrue(sender.channel().outboundMessages().isEmpty());
                 assertTrue(observer.channel().outboundMessages().isEmpty());
                 assertEquals(1, logs.text().split("event=\"match.box.created\"", -1).length - 1);

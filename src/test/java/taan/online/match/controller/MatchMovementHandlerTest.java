@@ -11,6 +11,7 @@ import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
 import taan.online.MatchScenarioTestPackets;
 import taan.online.RoomScenario;
+import taan.online.TestLevels;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
@@ -47,7 +48,8 @@ class MatchMovementHandlerTest {
                 new ConsumeMatchResultAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
-                new ReportMatchEnemiesAction(matches)
+                new ReportMatchEnemiesAction(matches),
+                TestLevels.table()
             );
             var ownerOutput = new CollectingPacketOutput();
             var guestOutput = new CollectingPacketOutput();

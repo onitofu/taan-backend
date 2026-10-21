@@ -5,6 +5,7 @@ import taan.online.CollectingPacketOutput;
 import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
 import taan.online.RoomScenario;
+import taan.online.TestLevels;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
@@ -34,7 +35,8 @@ final class MatchItemHandlerFixture implements AutoCloseable {
             new ConsumeMatchResultAction(matches),
             new ConfirmMatchLoadingAction(matches),
             new ConfirmMatchPositionAction(matches),
-            new ReportMatchEnemiesAction(matches)
+            new ReportMatchEnemiesAction(matches),
+            TestLevels.table()
         );
         handler.open(room.owner, owner);
         handler.open(room.players.get(1), guest);

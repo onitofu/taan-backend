@@ -20,6 +20,7 @@ class MatchOutcomeTest {
             var team = before.participants().stream().filter(p -> p.sessionId().equals(shooter))
                 .findFirst().orElseThrow().team();
             var timer = f.room.scenario.matchTimers.commands.getFirst();
+            f.room.scenario.matchTimers.advanceSeconds(1);
             var result = f.shot(10000, false, false);
             assertEquals(ScenarioApplicationOutcome.APPLIED, result.outcome());
             assertEquals(Set.of(team), f.snapshot().resolution().pendingOutcome().orElseThrow().winningTeams());

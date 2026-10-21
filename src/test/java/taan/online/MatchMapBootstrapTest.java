@@ -60,7 +60,7 @@ class MatchMapBootstrapTest {
             assertEquals(RoomState.MATCH, scenario.rooms.current(f.owner).orElseThrow().state());
 
             var wire = new CollectingPacketOutput();
-            new ProtocolMatchView(wire).start(loading);
+            new ProtocolMatchView(wire, TestLevels.table()).start(loading);
             var start = wire.batches.getFirst().getLast();
             assertEquals(mapId, Short.toUnsignedInt(ByteBuffer.wrap(start).order(ByteOrder.LITTLE_ENDIAN).getShort(4)));
 
@@ -101,11 +101,14 @@ class MatchMapBootstrapTest {
 
             assertEquals(RoomStartOutcome.ALREADY_STARTED, scenario.start.execute(f.owner).outcome());
             assertTrue(outputs.stream().allMatch(output -> output.starts.size() == 1 && output.turns.size() == 1));
-            assertEquals(1, logs.events().stream().filter(
-                event -> event.getKeyValuePairs().stream().anyMatch(
-                    pair -> pair.value.equals("match.first_turn.issued")
-                )
-            ).count());
+            assertEquals(
+                1,
+                logs.events().stream().filter(
+                    event -> event.getKeyValuePairs().stream().anyMatch(
+                        pair -> pair.value.equals("match.first_turn.issued")
+                    )
+                ).count()
+            );
             assertFalse(logs.text().contains("credential"));
             assertFalse(logs.text().contains("Hero"));
 

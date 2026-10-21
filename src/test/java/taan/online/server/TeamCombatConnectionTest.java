@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import taan.online.room.model.RoomTeam;
 import taan.online.MatchResultAssertions;
 import taan.online.SelectionFixtures;
 import taan.online.TeamScenarioPackets;
@@ -22,6 +21,7 @@ import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PqGamePlayMakeGhost;
 import taan.online.network.FrameDecoder;
 import taan.online.protocol.BinaryWriter;
+import taan.online.room.model.RoomTeam;
 
 class TeamCombatConnectionTest {
     @Test
@@ -110,6 +110,7 @@ class TeamCombatConnectionTest {
             f.world.request(observer, new MakeGhostRequestCodec().encode(new PqGamePlayMakeGhost(victim.slotIndex())));
             f.world.request(observer, SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(observer));
+            assertArrayEquals(SelectionFixtures.money(0), read(observer));
             assertTrue(observer.channel().isActive());
             assertEquals(0, f.snapshot().actors().get(victim.sessionId()).hp());
 

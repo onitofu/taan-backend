@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import taan.online.match.model.MatchCombatStatistics;
 import taan.online.match.model.MatchId;
-import taan.online.match.model.MatchResult;
 import taan.online.match.model.MatchOutcome;
-import taan.online.match.model.MatchDamageStatistics;
+import taan.online.match.model.MatchResult;
 import taan.online.match.repository.MatchSettlement;
 import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.model.MatchEndResult;
@@ -36,7 +36,7 @@ public final class TestMatchResults {
             Instant.EPOCH,
             outcome,
             List.of(),
-            MatchDamageStatistics.empty(),
+            MatchCombatStatistics.empty(),
             Map.of()
         );
         return new MatchEndResult(result, List.of());

@@ -121,8 +121,11 @@ class RoomInventoryIntegrationTest {
 
                 assertEquals(guestEquipment, InventoryFixtures.update(guest.read()).id());
                 assertEquals(guestBag, InventoryFixtures.update(guest.read()).id());
-                assertEquals(guestEquipment, database.scalar("SELECT inventory_id FROM inventory_items WHERE id = "
-                    + guestHair));
+                assertEquals(
+                    guestEquipment,
+                    database.scalar("SELECT inventory_id FROM inventory_items WHERE id = "
+                    + guestHair)
+                );
                 cash(owner);
                 cash(guest);
                 guest.send(InventoryFixtures.move(b.id().value(), guestBag, spare, 0, 1039, guestBag, 79, 0));
@@ -203,8 +206,11 @@ class RoomInventoryIntegrationTest {
 
                 assertEquals(expected, init.slots().getFirst().occupant().appearance().parts().get(1));
                 assertEquals(saved, inventories(a));
-                assertEquals(uid, database.scalar("SELECT id FROM inventory_items WHERE inventory_id = " + equipment
-                    + " AND slot = 1"));
+                assertEquals(
+                    uid,
+                    database.scalar("SELECT id FROM inventory_items WHERE inventory_id = " + equipment
+                    + " AND slot = 1")
+                );
             }
         }
     }
@@ -305,5 +311,6 @@ class RoomInventoryIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

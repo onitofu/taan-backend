@@ -13,7 +13,8 @@ public record GameCharacter(
     AccountGender gender,
     CharacterAppearance appearance,
     Instant createdAt,
-    CharacterProgress progress
+    CharacterProgress progress,
+    long gold
 ) {
     public GameCharacter(
         CharacterId id,
@@ -27,6 +28,19 @@ public record GameCharacter(
         this(id, accountId, name, level, gender, appearance, createdAt, CharacterProgress.initial());
     }
 
+    public GameCharacter(
+        CharacterId id,
+        AccountId accountId,
+        CharacterName name,
+        int level,
+        AccountGender gender,
+        CharacterAppearance appearance,
+        Instant createdAt,
+        CharacterProgress progress
+    ) {
+        this(id, accountId, name, level, gender, appearance, createdAt, progress, 0);
+    }
+
     public GameCharacter {
         Objects.requireNonNull(id);
         Objects.requireNonNull(accountId);
@@ -36,8 +50,12 @@ public record GameCharacter(
         Objects.requireNonNull(createdAt);
         Objects.requireNonNull(progress);
 
-        if (level < 1 || level > 0xffff) {
-            throw new IllegalArgumentException("Character level is outside the wire range");
+        if (gold < 0 || gold > 0xffff_ffffL) {
+            throw new IllegalArgumentException("Character gold is outside the unsigned integer range");
+        }
+
+        if (level < 1 || level > 109) {
+            throw new IllegalArgumentException("Character level is outside the progression range");
         }
     }
 

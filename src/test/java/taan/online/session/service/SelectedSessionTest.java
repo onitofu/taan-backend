@@ -11,6 +11,7 @@ import taan.online.CharacterFixtures;
 import taan.online.SelectionFixtures;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.character.repository.TestCharacterRepository;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
@@ -105,7 +106,9 @@ class SelectedSessionTest {
     void ignoresClosedBackgroundRequestsAndRejectsUntrustedSlotsAndCharacterIds() {
         var registry = new SessionRegistry();
         var id = registry.open();
-        var cash = new CashRefreshPacketHandler(registry);
+        var characters = new TestCharacterRepository();
+        characters.stored.add(CharacterFixtures.character(1001, new AccountId(1), AccountGender.MALE, "MaleHero"));
+        var cash = new CashRefreshPacketHandler(registry, new RefreshBalancesAction(registry, characters));
         var logging = new ClientLoggingPacketHandler(registry);
 
         assertTrue(cash.handle(id.value(), new byte[0]).isEmpty());
@@ -115,8 +118,8 @@ class SelectedSessionTest {
         registry.trySelect(id, CharacterFixtures.character(1001, new AccountId(1), AccountGender.MALE, "MaleHero"));
         var response = cash.handle(id.value(), SelectionFixtures.cash(123456, 0)).orElseThrow();
 
-        assertEquals(0, response.balance());
-        assertEquals(0, response.localSlot());
+        assertEquals(0, response.cash().balance());
+        assertEquals(0, response.cash().localSlot());
         assertTrue(logging.handle(id.value(), SelectionFixtures.logging(1001)));
         assertThrows(MalformedPacketException.class, () -> cash.handle(id.value(), SelectionFixtures.cash(0, 1)));
         assertThrows(MalformedPacketException.class, () -> logging.handle(id.value(), SelectionFixtures.logging(1002)));

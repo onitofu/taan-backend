@@ -29,6 +29,7 @@ public final class Match {
     private MatchTurn turn;
     private MatchWorldState world;
     private MatchResolutionState resolution = MatchResolutionState.initial();
+    private MatchParticipationState participation = MatchParticipationState.initial();
     private MatchLootState loot = MatchLootState.empty();
     private final Map<UUID, MatchAttackSelection> attacks = new HashMap<>();
     private final Map<UUID, MatchMovementState> movements = new HashMap<>();
@@ -410,6 +411,7 @@ public final class Match {
     }
 
     private void startMovement(long now) {
+        participation = participation.start(activeSession(), now);
         int weapon = participants.stream().filter(p -> p.sessionId().equals(activeSession()))
             .findFirst().orElseThrow().weaponId();
         int budget = definitions.weapons().get(weapon).resourceMove();
@@ -418,21 +420,7 @@ public final class Match {
 
     public void move(UUID session, int x, int y, int facing, long now) {
         var actor = world.actors().get(session);
-        var next = MatchMovementRules.admit(
-            movements.get(session),
-            actor,
-            x,
-            y,
-            facing,
-            definitions.map(),
-            world.terrain(),
-            now
-        );
-
-        if (closure.isPresent() && next.fall().isPresent()
-            && next.fall().orElseThrow().endsAtNanos() - closure.orElseThrow().landingDeadlineNanos() > 0) {
-            throw new ScenarioWorldException("MOVEMENT_LANDING_DEADLINE_EXCEEDED");
-        }
+        var next = MatchMovementRules.admit(this, session, x, y, facing, now);
 
         if (actor.x() != x || actor.y() != y || actor.facing() != facing) {
             world = world.placed(session, new MatchActorState(x, y, facing, actor.hp(), actor.energy()));
@@ -441,7 +429,16 @@ public final class Match {
         movements.put(session, next);
     }
 
+    public MatchParticipationState participation() {
+        return participation;
+    }
+
+    public void updateParticipation(MatchParticipationState value) {
+        participation = Objects.requireNonNull(value);
+    }
+
     public void closeTurn(MatchTurnClosureReason reason, long now) {
+        participation = participation.finish(now, reason == MatchTurnClosureReason.PASS_TURN);
         long drain = reason == MatchTurnClosureReason.ACTION_TIMEOUT ? now + 500000000L : now;
         long landing = reason == MatchTurnClosureReason.ACTION_TIMEOUT
             ? drain + (3L * (definitions.map().height() + 200) + 3) * 1000000L

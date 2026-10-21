@@ -51,6 +51,7 @@ class QuickJoinConnectionTest {
             world.request(guest, SelectionFixtures.cash(0, 0));
 
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(guest));
+            assertArrayEquals(SelectionFixtures.money(0), read(guest));
             assertTrue(guest.channel().isActive());
             assertNull(guest.channel().readOutbound());
             guest.disconnect(false);
@@ -87,6 +88,7 @@ class QuickJoinConnectionTest {
             world.request(owner, SelectionFixtures.cash(0, 0));
 
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+            assertArrayEquals(SelectionFixtures.money(0), read(owner));
         }
     }
 

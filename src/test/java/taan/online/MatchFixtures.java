@@ -27,8 +27,8 @@ import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchAdmissionAccess;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
-import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -52,7 +52,8 @@ public final class MatchFixtures {
                 new ConsumeMatchResultAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
-                new ReportMatchEnemiesAction(matches)
+                new ReportMatchEnemiesAction(matches),
+                TestLevels.table()
             )
         );
     }

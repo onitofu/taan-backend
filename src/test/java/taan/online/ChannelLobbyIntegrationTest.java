@@ -76,7 +76,9 @@ class ChannelLobbyIntegrationTest {
                 clientB.send(SelectionFixtures.cash(0, 0));
 
                 assertArrayEquals(SelectionFixtures.cash(0, 0), clientA.read());
+                assertArrayEquals(SelectionFixtures.money(0), clientA.read());
                 assertArrayEquals(SelectionFixtures.cash(0, 0), clientB.read());
+                assertArrayEquals(SelectionFixtures.money(0), clientB.read());
 
                 assertEquals(List.of(first, second), enter(clientB, 1, 1));
                 assertEquals(List.of(second), users(clientA.read()));
@@ -112,6 +114,7 @@ class ChannelLobbyIntegrationTest {
                 clientA.send(SelectionFixtures.cash(12345, 0));
 
                 assertArrayEquals(SelectionFixtures.cash(0, 0), clientA.read());
+                assertArrayEquals(SelectionFixtures.money(0), clientA.read());
 
                 clientA.send(SelectionFixtures.logging(first));
                 clientA.disconnect();

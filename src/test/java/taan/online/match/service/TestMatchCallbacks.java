@@ -3,6 +3,7 @@ package taan.online.match.service;
 import java.util.List;
 import java.util.UUID;
 import taan.online.room.service.RoomMatchCallbacks;
+import taan.online.room.service.model.RoomMatchCharacterProgress;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
@@ -17,6 +18,10 @@ final class TestMatchCallbacks implements RoomMatchCallbacks {
 
     TestMatchCallbacks(MatchRuntime runtime) {
         this.runtime = runtime;
+    }
+
+    @Override
+    public void progressCommitted(RoomMatchToken token, List<RoomMatchCharacterProgress> progress) {
     }
 
     @Override

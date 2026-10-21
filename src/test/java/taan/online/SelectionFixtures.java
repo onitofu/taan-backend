@@ -34,11 +34,13 @@ import taan.online.lobby.controller.LobbyPacketHandler;
 import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
 import taan.online.lobby.service.ListLobbyRoomsAction;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.service.RoomListingAccess;
 import taan.online.server.LobbyRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
+import taan.online.session.service.RefreshBalancesAction;
 import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
@@ -194,13 +196,14 @@ public final class SelectionFixtures {
         return new SelectedCharacterRequestDispatcher(
             new SelectCharacterPacketHandler(
                 new SelectCharacterAction(access, characters, InventoryFixtures.catalog()),
-                access
+                access,
+                TestLevels.table()
             ),
             new GetChannelListPacketHandler(
                 new GetChannelListAction(channelAccess, registry(channelAccess)),
                 channelAccess
             ),
-            new CashRefreshPacketHandler(sessions),
+            new CashRefreshPacketHandler(sessions, new RefreshBalancesAction(sessions, characters)),
             new ClientLoggingPacketHandler(sessions),
             3600
         );
@@ -262,6 +265,11 @@ public final class SelectionFixtures {
 
     public static byte[] channels() {
         return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0x331d0636).array();
+    }
+
+    public static byte[] money(long balance) {
+        return new BinaryWriter().unsignedInt(0x229b051e).unsignedByte(0).unsignedByte(0)
+            .unsignedInt(balance).unsignedInt(0).unsignedByte(0).toByteArray();
     }
 
     public static byte[] cash(long value, int slot) {

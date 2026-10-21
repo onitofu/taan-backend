@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import taan.online.character.model.AppearancePart;
 import taan.online.character.model.CharacterAppearance;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.protocol.codec.CreateCharacterRequestCodec;
 import taan.online.character.protocol.packet.PrNewCharacter;
 import taan.online.character.service.AuthenticatedAccountAccess;
@@ -14,10 +15,17 @@ import taan.online.character.service.model.CreateCharacterOutcome;
 import taan.online.protocol.MalformedPacketException;
 
 public final class CreateCharacterPacketHandler {
+    private final CharacterLevelTable levels;
+
     private final CreateCharacterAction action;
     private final AuthenticatedAccountAccess sessions;
 
-    public CreateCharacterPacketHandler(CreateCharacterAction action, AuthenticatedAccountAccess sessions) {
+    public CreateCharacterPacketHandler(
+        CreateCharacterAction action,
+        AuthenticatedAccountAccess sessions,
+        CharacterLevelTable levels
+    ) {
+        this.levels = levels;
         this.action = action;
         this.sessions = sessions;
     }
@@ -55,7 +63,7 @@ public final class CreateCharacterPacketHandler {
             case NAME_TAKEN -> 1;
             default -> 2;
         };
-        var catalog = status == 0 ? new CharacterCatalogMapper().map(result.catalog()) : null;
+        var catalog = status == 0 ? new CharacterCatalogMapper(levels).map(result.catalog()) : null;
         return Optional.of(new PrNewCharacter(status, 0, catalog));
     }
 }

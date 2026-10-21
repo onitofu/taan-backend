@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.MatchFixtures;
+import taan.online.TestLevels;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
 
@@ -13,7 +14,7 @@ class ProtocolMatchLootViewTest {
     @Test
     void reproducesCapturedBonusBytesWithoutNormalizingOpaqueHeaderValuesAndEncodesSafeDiscard() throws Exception {
         var output = new CollectingPacketOutput();
-        var view = new ProtocolMatchView(output);
+        var view = new ProtocolMatchView(output, TestLevels.table());
         view.bonus(new MatchBonusDelivery(0, 5, 0, 5, 0x00676e70)).toCompletableFuture().join();
         assertArrayEquals(
             MatchFixtures.root("pending-03-PcGamePlay_EatBonusItem"),

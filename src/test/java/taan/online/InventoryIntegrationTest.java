@@ -133,6 +133,7 @@ class InventoryIntegrationTest {
                 assertEquals(changedBag, InventoryFixtures.update(client.read()));
                 assertEquals(changedEquipment, InventoryFixtures.update(client.read()));
                 assertEquals(0x1d380495, ChannelFixtures.type(client.read()));
+                assertEquals(0x229b051e, ChannelFixtures.type(client.read()));
                 client.disconnect();
             }
 
@@ -205,6 +206,7 @@ class InventoryIntegrationTest {
                     assertTrue(List.of(bag, equipment).contains(second.id()));
                     assertEquals(initial.get(1), first.id() == equipment ? first : second);
                     assertEquals(0x1d380495, ChannelFixtures.type(client.read()));
+                    assertEquals(0x229b051e, ChannelFixtures.type(client.read()));
                 }
 
                 client.disconnect();

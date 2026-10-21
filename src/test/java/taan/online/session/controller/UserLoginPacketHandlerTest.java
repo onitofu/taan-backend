@@ -15,6 +15,7 @@ import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.account.service.model.ClientCredential;
@@ -162,7 +163,8 @@ class UserLoginPacketHandlerTest {
         return new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog())
+            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog()),
+            TestLevels.table()
         );
     }
 
@@ -175,7 +177,8 @@ class UserLoginPacketHandlerTest {
         var handler = new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(characters, InventoryFixtures.catalog())
+            new ListCharactersAction(characters, InventoryFixtures.catalog()),
+            TestLevels.table()
         );
         var id = new SessionId(handler.open(UUID.randomUUID()));
         characters.onRead = () -> handler.close("CATALOG_READ_DISCONNECTED");
@@ -203,7 +206,8 @@ class UserLoginPacketHandlerTest {
         return new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog())
+            new ListCharactersAction(new TestCharacterRepository(), InventoryFixtures.catalog()),
+            TestLevels.table()
         );
     }
 

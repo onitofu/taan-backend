@@ -1,6 +1,6 @@
 package taan.online.room.view;
 
-import taan.online.character.controller.CharacterCatalogMapper;
+import taan.online.character.controller.CharacterAppearanceMapper;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomState;
@@ -56,7 +56,7 @@ public final class RoomSnapshotMapper {
                 "",
                 character.level(),
                 source.team() == RoomTeam.BLUE ? 1 : 2,
-                new CharacterCatalogMapper().appearance(character),
+                new CharacterAppearanceMapper().appearance(character),
                 participant.weaponId()
             );
         }

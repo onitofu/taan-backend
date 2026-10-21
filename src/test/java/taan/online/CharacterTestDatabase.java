@@ -3,10 +3,10 @@ package taan.online;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.sql.SQLException;
-import java.util.Optional;
+import java.util.HexFormat;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -60,7 +60,8 @@ public final class CharacterTestDatabase implements AutoCloseable {
         for (String table : new String[]{"accounts", "characters", "inventories", "inventory_items"}) {
             try (var connection = source.getConnection(); var query = connection.createStatement();
                 var rows = query.executeQuery(
-                    "SELECT (to_jsonb(t) - 'force_medals')::text FROM " + table + " t ORDER BY id"
+                    "SELECT (to_jsonb(t) - 'force_medals' - 'kill_medals' - 'experience' - 'level')::text "
+                        + "FROM " + table + " t ORDER BY id"
                 )) {
                 while (rows.next()) {
                     digest.update(rows.getString(1).getBytes(StandardCharsets.UTF_8));

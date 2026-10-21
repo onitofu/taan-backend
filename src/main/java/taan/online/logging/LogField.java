@@ -15,6 +15,30 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField experienceBefore(Long value) {
+        return new LogField("experienceBefore", value);
+    }
+
+    public static LogField experienceAfter(Long value) {
+        return new LogField("experienceAfter", value);
+    }
+
+    public static LogField experienceDelta(Long value) {
+        return new LogField("experienceDelta", value);
+    }
+
+    public static LogField levelBefore(Integer value) {
+        return new LogField("levelBefore", value);
+    }
+
+    public static LogField levelAfter(Integer value) {
+        return new LogField("levelAfter", value);
+    }
+
+    public static LogField killMedal(boolean value) {
+        return new LogField("killMedal", value);
+    }
+
     public static LogField damage(long value) {
         return new LogField("damage", value);
     }

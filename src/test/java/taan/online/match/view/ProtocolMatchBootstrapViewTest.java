@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
 import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
+import taan.online.TestLevels;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.room.model.RoomMode;
@@ -21,7 +22,7 @@ class ProtocolMatchBootstrapViewTest {
             f.scenario.rooms.commitMatch(token).toCompletableFuture().join();
             var snapshot = f.scenario.matches.current(token).orElseThrow();
             var output = new CollectingPacketOutput();
-            var view = new ProtocolMatchView(output);
+            var view = new ProtocolMatchView(output, TestLevels.table());
             view.start(snapshot);
 
             assertEquals(3, output.batches.getFirst().size());
@@ -58,7 +59,7 @@ class ProtocolMatchBootstrapViewTest {
                 var token = f.scenario.rooms.reserveMatch(f.owner).token();
                 var snapshot = f.scenario.matches.current(token).orElseThrow();
                 var output = new CollectingPacketOutput();
-                new ProtocolMatchView(output).start(snapshot);
+                new ProtocolMatchView(output, TestLevels.table()).start(snapshot);
                 var start = new StartGameCodec().decode(output.batches.getLast().getLast());
 
                 assertEquals(255, start.teamLeaderSlots().getFirst());

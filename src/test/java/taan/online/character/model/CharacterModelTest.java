@@ -90,11 +90,11 @@ class CharacterModelTest {
 
         assertThrows(IllegalArgumentException.class, () -> new CharacterAppearance(duplicate));
 
-        for (int level : new int[]{0, 65536}) {
+        for (int level : new int[]{0, 110, 65536}) {
             assertThrows(IllegalArgumentException.class, () -> character(level, appearance));
         }
 
-        assertEquals(65535, character(65535, appearance).level());
+        assertEquals(109, character(109, appearance).level());
         assertFalse(character(1, appearance).toString().contains("MaleHero"));
         assertFalse(new CreateCharacterCommand("MaleHero", appearance).toString().contains("MaleHero"));
     }

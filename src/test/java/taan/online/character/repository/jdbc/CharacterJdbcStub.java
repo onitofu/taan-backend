@@ -23,6 +23,9 @@ final class CharacterJdbcStub {
     boolean nameConflict;
     boolean nullSlot;
     boolean missingEquipment;
+    boolean missingBalance;
+    long cash = 123;
+    long gold = 456;
     short gender = 2;
 
     DataSource source() {
@@ -76,7 +79,9 @@ final class CharacterJdbcStub {
     private ResultSet rows(String sql) {
         int count = 1;
 
-        if (sql.contains("SELECT i.id")) {
+        if (sql.startsWith("SELECT a.cash") && missingBalance) {
+            count = 0;
+        } else if (sql.contains("SELECT i.id")) {
             count = incompleteInventories ? 2 : 3;
         } else if (sql.startsWith("SELECT c.id")) {
             count = 16;
@@ -95,7 +100,12 @@ final class CharacterJdbcStub {
                     case "next" -> index.incrementAndGet() <= rowCount;
                     case "getBoolean" -> false;
                     case "getShort" -> gender;
-                    case "getLong" -> arguments[0].equals("item_id") && !sql.contains("FROM inventory_items") ? 0L : 1L;
+                    case "getLong" -> switch (arguments[0].toString()) {
+                        case "cash" -> cash;
+                        case "gold" -> gold;
+                        case "item_id" -> sql.contains("FROM inventory_items") ? 1L : 0L;
+                        default -> 1L;
+                    };
                     case "getInt" -> switch (arguments[0].toString()) {
                         case "slot" -> index.get() - 1;
                         case "level", "quantity" -> 1;

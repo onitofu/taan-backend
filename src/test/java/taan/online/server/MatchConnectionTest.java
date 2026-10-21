@@ -10,19 +10,20 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import taan.online.MatchResultAssertions;
-import taan.online.MatchFixtures;
 import taan.online.LogCapture;
-import taan.online.match.controller.MatchPacketHandler;
-import taan.online.match.service.TerminateMatchAction;
-import taan.online.match.service.ConsumeMatchResultAction;
-import taan.online.match.service.ConfirmMatchLoadingAction;
-import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.MatchFixtures;
+import taan.online.MatchResultAssertions;
 import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
+import taan.online.TestLevels;
+import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.service.ConfirmMatchLoadingAction;
+import taan.online.match.service.ConfirmMatchPositionAction;
+import taan.online.match.service.ConsumeMatchResultAction;
+import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.TerminateMatchAction;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.model.RoomMatchToken;
 
@@ -51,6 +52,7 @@ class MatchConnectionTest {
             assertNull(owner.channel().readOutbound());
             world.request(owner, SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+            assertArrayEquals(SelectionFixtures.money(0), read(owner));
             owner.channel().writeInbound(MatchFixtures.root("give-up-empty"));
             world.request(guest, RoomScenario.ready(1));
             drain(owner);
@@ -180,7 +182,8 @@ class MatchConnectionTest {
                     new ConsumeMatchResultAction(matches),
                     new ConfirmMatchLoadingAction(matches),
                     new ConfirmMatchPositionAction(matches),
-                    new ReportMatchEnemiesAction(matches)
+                    new ReportMatchEnemiesAction(matches),
+                    TestLevels.table()
                 )
             );
             var owner = world.client(1, dispatcher);

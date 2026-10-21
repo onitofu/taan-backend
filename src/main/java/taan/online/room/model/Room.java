@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import taan.online.account.model.AccountId;
 import taan.online.character.model.CharacterAppearance;
+import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.character.model.GameCharacter;
 
 public final class Room {
@@ -178,6 +179,38 @@ public final class Room {
                 slots.set(destination.index(), destination);
                 return change;
             }
+        );
+    }
+
+    public void refreshProgress(UUID sessionId, CharacterProgressSnapshot progress) {
+        var slot = slots.stream().filter(value -> value.participant() != null
+            && value.participant().sessionId().equals(sessionId)
+            && value.participant().character().id().equals(progress.characterId())).findFirst();
+
+        if (slot.isEmpty()) {
+            return;
+        }
+
+        var current = slot.orElseThrow();
+        var participant = current.participant();
+        var old = participant.character();
+        var changed = new GameCharacter(
+            old.id(),
+            old.accountId(),
+            old.name(),
+            progress.level(),
+            old.gender(),
+            old.appearance(),
+            old.createdAt(),
+            progress.progress()
+        );
+        slots.set(
+            current.index(),
+            new RoomSlot(
+                current.index(),
+                current.state(),
+                new RoomParticipant(sessionId, changed, participant.weaponId())
+            )
         );
     }
 

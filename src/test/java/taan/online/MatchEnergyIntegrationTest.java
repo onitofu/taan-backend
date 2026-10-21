@@ -12,8 +12,8 @@ import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
-import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
+import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.NotifyEatItemCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
@@ -25,8 +25,8 @@ import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.LoadingPosition;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
-import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
+import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
@@ -113,6 +113,7 @@ class MatchEnergyIntegrationTest {
                         rooms.ready(client.read());
                         client.send(SelectionFixtures.cash(0, 0));
                         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+                        assertArrayEquals(SelectionFixtures.money(0), client.read());
                     }
                     assertTrue(matches.current(token).isEmpty());
                 }
@@ -132,6 +133,7 @@ class MatchEnergyIntegrationTest {
         client.sendFragmented(pickup);
         client.sendTogether(receipt, discard, SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
         assertEquals(before, matches.current(token).orElseThrow());
     }
 
@@ -160,6 +162,7 @@ class MatchEnergyIntegrationTest {
         active.sendTogether(bonus, SelectionFixtures.cash(0, 0));
         assertArrayEquals(bonus, active.read());
         assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+        assertArrayEquals(SelectionFixtures.money(0), active.read());
         assertArrayEquals(bonus, observer.read());
         var after = matches.current(token).orElseThrow();
         assertEquals(before.world(), after.world());
@@ -169,6 +172,7 @@ class MatchEnergyIntegrationTest {
             var receipt = new PcGamePlayNotifyEatItem(member.slotIndex(), index, item);
             active.sendTogether(new NotifyEatItemCodec().encode(receipt), SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+            assertArrayEquals(SelectionFixtures.money(0), active.read());
             assertTrue(matches.current(token).orElseThrow().loot().inventory(member.sessionId()).receipts().stream()
                 .anyMatch(value -> value.inventoryIndex() == index && value.itemId() == item && value.confirmed()));
         }
@@ -176,6 +180,7 @@ class MatchEnergyIntegrationTest {
         var confirmed = matches.current(token).orElseThrow();
         active.sendTogether(bonus, SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+        assertArrayEquals(SelectionFixtures.money(0), active.read());
         assertEquals(confirmed, matches.current(token).orElseThrow());
     }
 

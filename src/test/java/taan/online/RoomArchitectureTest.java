@@ -88,6 +88,7 @@ class RoomArchitectureTest {
         "taan.online.room.service.model.."
     ).should().onlyDependOnClassesThat().resideInAnyPackage(
         "java..",
+        "taan.online.character.model..",
         "taan.online.room.service.model..",
         "taan.online.room.model.."
     );

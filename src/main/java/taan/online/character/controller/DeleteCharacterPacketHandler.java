@@ -2,6 +2,7 @@ package taan.online.character.controller;
 
 import java.util.Optional;
 import java.util.UUID;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.protocol.codec.DeleteCharacterRequestCodec;
 import taan.online.character.protocol.packet.PrDelCharacter;
 import taan.online.character.service.AuthenticatedAccountAccess;
@@ -10,10 +11,17 @@ import taan.online.character.service.model.DeleteCharacterOutcome;
 import taan.online.protocol.MalformedPacketException;
 
 public final class DeleteCharacterPacketHandler {
+    private final CharacterLevelTable levels;
+
     private final DeleteCharacterAction action;
     private final AuthenticatedAccountAccess sessions;
 
-    public DeleteCharacterPacketHandler(DeleteCharacterAction action, AuthenticatedAccountAccess sessions) {
+    public DeleteCharacterPacketHandler(
+        DeleteCharacterAction action,
+        AuthenticatedAccountAccess sessions,
+        CharacterLevelTable levels
+    ) {
+        this.levels = levels;
         this.action = action;
         this.sessions = sessions;
     }
@@ -37,7 +45,7 @@ public final class DeleteCharacterPacketHandler {
         }
 
         int status = result.outcome() == DeleteCharacterOutcome.DELETED ? 0 : 1;
-        var catalog = status == 0 ? new CharacterCatalogMapper().map(result.catalog()) : null;
+        var catalog = status == 0 ? new CharacterCatalogMapper(levels).map(result.catalog()) : null;
         return Optional.of(new PrDelCharacter(status, 0, catalog));
     }
 }

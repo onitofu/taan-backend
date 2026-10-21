@@ -88,6 +88,7 @@ class RoomSlotIntegrationTest {
                 guest.sendTogether(root("PqGameSession_OpenCloseSlot-open"), SelectionFixtures.cash(0, 0));
 
                 assertArrayEquals(SelectionFixtures.cash(0, 0), guest.read());
+                assertArrayEquals(SelectionFixtures.money(0), guest.read());
                 owner.sendTogether(
                     integer(root("PqGameSession_OpenCloseSlot-open"), 4, 255, 1),
                     integer(root("PqGameSession_OpenCloseSlot-open"), 5, 255, 1)
@@ -202,5 +203,6 @@ class RoomSlotIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

@@ -8,9 +8,10 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
-import taan.online.TestMatchResults;
 import taan.online.MatchBootstrapFixture;
 import taan.online.MatchFixtures;
+import taan.online.TestLevels;
+import taan.online.TestMatchResults;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
@@ -27,7 +28,7 @@ class ProtocolMatchViewTest {
     @Test
     void refusesRewardedAndInconsistentOutcomes() {
         var output = new CollectingPacketOutput();
-        var view = new ProtocolMatchView(output);
+        var view = new ProtocolMatchView(output, TestLevels.table());
 
         assertThrows(
             IllegalArgumentException.class,
@@ -43,7 +44,7 @@ class ProtocolMatchViewTest {
     @Test
     void sendsTheIndependentFullNoAwardGoldenAndKeepsItsTemplateImmutable() throws Exception {
         var output = new CollectingPacketOutput();
-        var view = new ProtocolMatchView(output);
+        var view = new ProtocolMatchView(output, TestLevels.table());
         byte[] expected = MatchFixtures.root("end-game-result0-no-awards");
         view.end(TestMatchResults.end(MatchOutcome.previewAborted())).toCompletableFuture().join();
 
@@ -65,7 +66,7 @@ class ProtocolMatchViewTest {
             fixture.start().delivery().toCompletableFuture().join();
             var snapshot = fixture.snapshot();
             var output = new CollectingPacketOutput();
-            var view = new ProtocolMatchView(output);
+            var view = new ProtocolMatchView(output, TestLevels.table());
             view.nextTurn(new MatchTurnTransition(0, snapshot, true));
             assertEquals(0, new TurnEndCodec().decode(output.batches.getLast().getFirst()).slotIndex());
             view.nextTurn(new MatchTurnTransition(0, snapshot, false));

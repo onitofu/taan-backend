@@ -9,8 +9,8 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import taan.online.MatchResultAssertions;
 import taan.online.MatchFixtures;
+import taan.online.MatchResultAssertions;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
@@ -78,10 +78,11 @@ class MatchBootstrapConnectionTest {
             assertEquals(
                 MatchPhase.PREVIEW,
                 world.matches.current(world.rooms.matchContext(room.ownerSessionId()).token())
-                    .orElseThrow().phase()
+                .orElseThrow().phase()
             );
             world.request(owner, SelectionFixtures.cash(0, 0));
             assertEquals(SelectionFixtures.cash(0, 0).length, read(owner).length);
+            assertEquals(SelectionFixtures.money(0).length, read(owner).length);
         }
     }
 

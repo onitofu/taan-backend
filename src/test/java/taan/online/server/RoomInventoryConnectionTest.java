@@ -52,6 +52,7 @@ class RoomInventoryConnectionTest {
             assertNull(guest.channel().readOutbound());
             world.request(owner, SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+            assertArrayEquals(SelectionFixtures.money(0), read(owner));
             world.request(owner, ChannelFixtures.enter(0));
             drain(owner);
 

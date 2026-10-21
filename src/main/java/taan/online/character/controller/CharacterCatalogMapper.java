@@ -2,13 +2,18 @@ package taan.online.character.controller;
 
 import java.util.List;
 import taan.online.account.model.AccountGender;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.model.GameCharacter;
-import taan.online.character.protocol.packet.CharacterAppear;
 import taan.online.character.protocol.packet.CharacterCatalog;
 import taan.online.character.protocol.packet.CharacterInfo;
-import taan.online.character.protocol.packet.CharacterPart;
 
 public final class CharacterCatalogMapper {
+    private final CharacterLevelTable levels;
+
+    public CharacterCatalogMapper(CharacterLevelTable levels) {
+        this.levels = levels;
+    }
+
     public CharacterCatalog map(List<GameCharacter> characters) {
         var snapshots = List.copyOf(characters);
         var info = snapshots.stream().map(
@@ -16,22 +21,18 @@ public final class CharacterCatalogMapper {
                 character.id().value(),
                 character.name().value(),
                 character.level(),
-                0,
+                character.gold(),
                 gender(character.gender()),
                 character.progress().forceMedals(),
                 character.progress().killMedals(),
-                character.progress().supplyMedals()
+                character.progress().supplyMedals(),
+                character.progress().experience(),
+                levels.displayStart(character.level()),
+                levels.displayNext(character.level())
             )
         ).toList();
-        var appearances = snapshots.stream().map(this::appearance).toList();
+        var appearances = snapshots.stream().map(new CharacterAppearanceMapper()::appearance).toList();
         return new CharacterCatalog(info, appearances);
-    }
-
-    public CharacterAppear appearance(GameCharacter character) {
-        var parts = character.appearance().parts().stream().map(
-            part -> new CharacterPart(part.itemId(), part.palette1Id(), part.palette2Id(), part.palette3Id())
-        ).toList();
-        return new CharacterAppear(gender(character.gender()), 0, 0, parts);
     }
 
     private int gender(AccountGender gender) {

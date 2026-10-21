@@ -16,9 +16,10 @@ import org.slf4j.LoggerFactory;
 import taan.online.CollectingPacketOutput;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
-import taan.online.TestMatchResults;
 import taan.online.MatchRoomFixture;
 import taan.online.MatchTerminalFixture;
+import taan.online.TestLevels;
+import taan.online.TestMatchResults;
 import taan.online.TestMatchScheduler;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.model.MatchPhase;
@@ -131,7 +132,8 @@ class MatchPacketHandlerTest {
                 new ConsumeMatchResultAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
-                new ReportMatchEnemiesAction(matches)
+                new ReportMatchEnemiesAction(matches),
+                TestLevels.table()
             );
             byte[] ack = {0x6d, 0x08, 0x0b, 0x5e, 0, 0};
             handler.handle(room.owner, PcGamePlayEndScenario.TYPE_ID, ack, null).toCompletableFuture().join();
