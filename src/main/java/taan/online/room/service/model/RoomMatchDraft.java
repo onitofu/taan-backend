@@ -12,12 +12,17 @@ public record RoomMatchDraft(
     UUID ownerSessionId,
     RoomSettings settings,
     List<RoomMatchParticipant> participants,
-    CaptainSelectionResult captains
+    CaptainSelectionResult captains,
+    int lootPickerScalar
 ) {
     public RoomMatchDraft {
         Objects.requireNonNull(token);
         Objects.requireNonNull(ownerSessionId);
         Objects.requireNonNull(settings);
         participants = List.copyOf(participants);
+
+        if (lootPickerScalar < 0 || lootPickerScalar > 100) {
+            throw new IllegalArgumentException("Invalid channel loot picker scalar");
+        }
     }
 }

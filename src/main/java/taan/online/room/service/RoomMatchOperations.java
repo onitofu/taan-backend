@@ -132,7 +132,8 @@ final class RoomMatchOperations {
             room.ownerSessionId(),
             room.settings(),
             roster,
-            captains
+            captains,
+            channels.lootPickerScalar(room.channelId())
         );
 
         try {

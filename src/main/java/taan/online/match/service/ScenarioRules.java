@@ -47,9 +47,11 @@ final class ScenarioRules {
             claims.headerEnergyGrant() >= 0 && claims.headerEnergyGrant() <= shooter.maxEnergy(),
             "INVALID_HEADER_ENERGY"
         );
-        var definition = match.definitions().attacks().get(new WeaponAttackKey(shooter.weaponId(), attackKind));
+        int effectiveWeapon = MatchItemSelectionRules.effectiveWeaponId(shooter.weaponId(), selected);
+        var definition = match.definitions().attacks().get(new WeaponAttackKey(effectiveWeapon, attackKind));
+        var baseDefinition = match.definitions().attacks().get(new WeaponAttackKey(shooter.weaponId(), attackKind));
         boolean guided = definition.intrinsicGuidance() || selected.contains(7);
-        int energy = match.definitions().weapons().get(shooter.weaponId()).hitEnergy();
+        int energy = match.definitions().weapons().get(effectiveWeapon).hitEnergy();
         float power = claims.power();
         require(
             Float.isFinite(power) && power >= 0 && power <= 1
@@ -110,7 +112,7 @@ final class ScenarioRules {
                 case ScenarioAnimationClaim animation -> {
                     boolean prelude = header.kind() == 14;
                     require(!prelude || special, "UNAUTHORIZED_SPECIAL_ANIMATION");
-                    int expected = prelude ? definition.specialAnimation() : definition.animationType();
+                    int expected = prelude ? baseDefinition.specialAnimation() : baseDefinition.animationType();
                     require(animation.animationId() == expected, "INVALID_ATTACK_ANIMATION");
                     require(header.duration() == 0, "INVALID_ANIMATION_DURATION");
                 }

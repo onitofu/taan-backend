@@ -196,7 +196,7 @@ public final class Application implements AutoCloseable {
                 MatchExecutionMode.CLIENT_SCENARIO,
                 TimeUnit.SECONDS.toNanos(config.matchActionTimeoutSeconds()),
                 TimeUnit.SECONDS.toNanos(config.matchCompletionGraceSeconds()),
-                MatchLootPolicy.minimalCannon(),
+                MatchLootPolicy.nativeItems(),
                 MatchBoxPolicy.ENABLED
             ),
             matchScheduler,

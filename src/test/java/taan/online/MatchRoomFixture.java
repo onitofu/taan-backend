@@ -63,7 +63,8 @@ public final class MatchRoomFixture implements AutoCloseable {
             owner,
             room.settings(),
             participants,
-            null
+            null,
+            0
         );
     }
 

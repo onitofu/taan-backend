@@ -28,7 +28,7 @@ class MatchTurnPolicyTest {
 
             for (String line : oracle.lines().skip(1).toList()) {
                 var values = line.split(";");
-                var turn = policy.initial(snapshot.participants(), Long.parseLong(values[0]));
+                var turn = policy.initial(snapshot.participants(), Long.parseLong(values[0]), 0);
                 assertEquals(integers(values[1]), turn.order());
                 assertEquals(Integer.parseInt(values[2]), turn.windRaw());
                 assertEquals(1, turn.round());
@@ -66,7 +66,7 @@ class MatchTurnPolicyTest {
             var policy = new MatchTurnPolicy();
 
             for (long seed = 0; seed < 30; seed++) {
-                var three = policy.initial(members.subList(0, 3), seed);
+                var three = policy.initial(members.subList(0, 3), seed, 0);
                 assertEquals(Set.of(0, 1, 2), Set.copyOf(three.order()));
                 three = policy.next(three, Set.of(2), 1);
                 assertEquals(2, three.activeSlot());
@@ -75,7 +75,7 @@ class MatchTurnPolicyTest {
                 assertThrows(UnsupportedOperationException.class, () -> next.remainingThisRound().clear());
                 assertThrows(IllegalStateException.class, () -> policy.next(next, Set.of(), 3));
 
-                var redLarger = policy.initial(members.subList(1, 4), seed);
+                var redLarger = policy.initial(members.subList(1, 4), seed, 0);
                 assertEquals(Set.of(1, 2, 3), Set.copyOf(redLarger.order()));
             }
         }

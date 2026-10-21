@@ -51,7 +51,7 @@ class MatchLootBoundaryTest {
                 f.room.owner,
                 offer.admissionId(),
                 offer.turnRevision(),
-                1,
+                101,
                 false
             )));
             f.runtime.refresh();

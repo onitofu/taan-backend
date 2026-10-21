@@ -16,8 +16,8 @@ class CrossbowDefinitionTest {
         assertEquals(100, weapon.maxEnergy());
         assertEquals(10, weapon.hitEnergy());
         assertEquals(4000, weapon.resourceMove());
-        assertEquals(12, catalog.attacks().size());
-        assertEquals(12, catalog.missiles().size());
+        assertEquals(14, catalog.attacks().size());
+        assertEquals(14, catalog.missiles().size());
 
         for (int kind = 0; kind < 3; kind++) {
             var attack = catalog.attacks().get(new WeaponAttackKey(3, kind));

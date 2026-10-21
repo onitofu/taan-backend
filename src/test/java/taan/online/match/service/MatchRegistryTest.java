@@ -48,7 +48,8 @@ class MatchRegistryTest {
                         f.owner,
                         draft.settings(),
                         draft.participants(),
-                        null
+                        null,
+                        0
                     )
                 ).reason()
             );
@@ -95,7 +96,8 @@ class MatchRegistryTest {
                             f.owner,
                             draft.settings(),
                             List.of(invalid, draft.participants().get(1)),
-                            null
+                            null,
+                            0
                         )
                     ).reason()
                 );
@@ -119,7 +121,8 @@ class MatchRegistryTest {
                         f.owner,
                         draft.settings(),
                         List.of(invalid, draft.participants().get(1)),
-                        null
+                        null,
+                        0
                     )
                 ).reason()
             );
@@ -134,13 +137,14 @@ class MatchRegistryTest {
                         f.owner,
                         new RoomSettings(settings.title(), settings.mode(), settings.rule(), 2, 8),
                         draft.participants(),
-                        null
+                        null,
+                        0
                     )
                 ).reason()
             );
             assertEquals(
                 "INVALID_SETUP",
-                registry.reserve(new RoomMatchDraft(token, 1, f.owner, settings, List.of(), null)).reason()
+                registry.reserve(new RoomMatchDraft(token, 1, f.owner, settings, List.of(), null, 0)).reason()
             );
             assertTrue(registry.current(token).isEmpty());
             assertTrue(logs.text().contains("match.reservation.rejected"));
@@ -192,7 +196,7 @@ class MatchRegistryTest {
                 assertEquals(
                     "PARTICIPANT_IN_MATCH",
                     registry.reserve(
-                        new RoomMatchDraft(token, 1, session, draft.settings(), List.of(first, second), null)
+                        new RoomMatchDraft(token, 1, session, draft.settings(), List.of(first, second), null, 0)
                     ).reason()
                 );
                 assertTrue(registry.current(token).isEmpty());
@@ -211,7 +215,7 @@ class MatchRegistryTest {
             assertEquals(
                 RESERVED,
                 registry.reserve(
-                    new RoomMatchDraft(token, 1, session, draft.settings(), List.of(separate, separateOther), null)
+                    new RoomMatchDraft(token, 1, session, draft.settings(), List.of(separate, separateOther), null, 0)
                 ).outcome()
             );
             assertTrue(registry.current(draft.token()).isPresent());

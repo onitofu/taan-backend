@@ -35,7 +35,7 @@ class MatchItemSelectionRulesTest {
             assertEquals(2, selection.attackKind());
         }
 
-        assertThrows(IllegalArgumentException.class, () -> new MatchAttackSelection(List.of(4), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> new MatchAttackSelection(List.of(8), Map.of()));
     }
 
     @Test

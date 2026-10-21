@@ -71,7 +71,7 @@ public final class TeamScenarioPackets {
                 commands.add(new ScenarioFireCommand(
                     header,
                     fields,
-                    member.weaponId(),
+                    MatchItemSelectionRules.effectiveWeaponId(member.weaponId(), source.scenario().selectedItems()),
                     kind,
                     fire.velocity(),
                     fire.acceleration(),

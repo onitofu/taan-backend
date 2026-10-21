@@ -11,3 +11,4 @@ weapon_id,asset,resource_max_hp,max_energy,resource_move,hit_energy
 9,fish,1000,100,3500,10
 10,thunder,1000,100,6000,10
 11,budu,1000,100,4500,10
+100,nuclear,1000,100,5000,10

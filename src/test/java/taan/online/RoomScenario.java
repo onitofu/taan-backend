@@ -139,8 +139,8 @@ public final class RoomScenario implements AutoCloseable {
                 "Solar",
                 0,
                 List.of(
-                    new ChannelDefinition(1, "Moon", true, 1, 109, 100, kind),
-                    new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0)
+                    new ChannelDefinition(1, "Moon", true, 1, 109, 100, kind, 0),
+                    new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0, 0)
                 )
             )
         ));

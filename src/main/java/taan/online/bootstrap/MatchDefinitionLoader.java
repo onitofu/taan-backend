@@ -147,14 +147,16 @@ public final class MatchDefinitionLoader {
             )
         );
 
-        if (shots.size() != 12) {
-            throw new IllegalArgumentException("Incomplete ordinary attacks definitions");
+        if (shots.size() != 14) {
+            throw new IllegalArgumentException("Incomplete match attack definitions");
         }
 
         return new MatchDefinitionCatalog(
             values.getProperty("catalog.version"),
             definitions,
-            weaponDefinitions,
+            weaponDefinitions.stream().collect(
+                Collectors.toUnmodifiableMap(WeaponDefinition::weaponId, weapon -> weapon)
+            ),
             shots.stream().collect(Collectors.toUnmodifiableMap(WeaponAttackDefinition::key, shot -> shot)),
             missiles
         );

@@ -24,7 +24,7 @@ import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.model.RoomMatchToken;
 
 final class TeamConnectionFixture implements AutoCloseable {
-    final RoomConnectionWorld world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO);
+    final RoomConnectionWorld world;
     final List<ConnectionContextTestHarness> clients = new ArrayList<>();
     final Map<UUID, ConnectionContextTestHarness> sessions = new HashMap<>();
     final RoomMatchToken token;
@@ -34,6 +34,17 @@ final class TeamConnectionFixture implements AutoCloseable {
     }
 
     TeamConnectionFixture(int blue, int red, boolean captain, int... weapons) throws Exception {
+        this(new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO), blue, red, captain, weapons);
+    }
+
+    TeamConnectionFixture(
+        RoomConnectionWorld world,
+        int blue,
+        int red,
+        boolean captain,
+        int... weapons
+    ) throws Exception {
+        this.world = world;
         int room = 0;
 
         for (int i = 0; i < blue + red; i++) {

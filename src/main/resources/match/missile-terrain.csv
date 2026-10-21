@@ -11,3 +11,5 @@ weapon_id,missile_type_id,width,height,center_x,center_y,resource,sha256
 3,0,256,256,128,139,terrain/crossbow-0-mask.rle,58a2583083065e4257cf1f1c302ff1de4e5b67de3e827a78744c812e59e319ad
 3,1,256,256,128,143,terrain/crossbow-1-mask.rle,8dd770623f0c52bf8ead9958e59c571ffbd3c2dc3b90595db472441fd84050dd
 3,2,256,256,128,146,terrain/crossbow-2-mask.rle,4c11d1f72440ec4ee34981f55aa6df9d19cf31e76eb6ce080031b357edd42052
+100,0,512,512,256,276,terrain/nuclear-0-mask.rle,3db7c48c236cff594a659ad5774c8b8b17a42313a2db4590cf6d977dae568552
+100,1,512,512,256,278,terrain/nuclear-1-mask.rle,c70957372caf119044ce3816a3da8e9818f3dd9ba0c48e37671c831bb361df68

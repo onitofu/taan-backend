@@ -22,7 +22,7 @@ class ApplicationLootConfigurationTest {
             var settings = (MatchBootstrapSettings) field.get(matches);
 
             assertEquals(MatchExecutionMode.CLIENT_SCENARIO, settings.executionMode());
-            assertEquals(MatchLootPolicy.minimalCannon(), settings.lootPolicy());
+            assertEquals(MatchLootPolicy.nativeItems(), settings.lootPolicy());
             assertEquals(MatchBoxPolicy.ENABLED, settings.boxPolicy());
             assertEquals(MatchExecutionMode.PREVIEW, settings.forProfile(false).executionMode());
             assertEquals(MatchBoxPolicy.DISABLED, settings.forProfile(false).boxPolicy());

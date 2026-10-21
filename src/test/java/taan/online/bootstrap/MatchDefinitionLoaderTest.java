@@ -20,7 +20,7 @@ class MatchDefinitionLoaderTest {
         var definitions = load(resource("catalog.properties"), resource("map-spawns.csv"), resource("weapons.csv"));
 
         assertEquals(
-            "d7d54a39d0e5d75819894c812acd34b39e803fa1f0e7fe87d519f4a211e4b67f",
+            "d478cdd432ea7ea72a0aa0399309d6c26a48499b66588eef8d4e48ba3db309fb",
             definitions.catalogVersion()
         );
         assertEquals(1, definitions.map().mapId());
@@ -28,7 +28,7 @@ class MatchDefinitionLoaderTest {
         assertEquals(1300, definitions.map().width());
         assertEquals(950, definitions.map().height());
         assertEquals(14, definitions.map().spawns().size());
-        assertEquals(12, definitions.weapons().size());
+        assertEquals(13, definitions.weapons().size());
 
         int[][] expected = {
             {97, 686, 97, 685, 1, 0},

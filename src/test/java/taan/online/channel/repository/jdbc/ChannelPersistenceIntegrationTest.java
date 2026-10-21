@@ -154,6 +154,74 @@ class ChannelPersistenceIntegrationTest {
     }
 
     @Test
+    void upgradesV8WithScalarZeroAndLoadsIndependentCommittedChannelLootSettings() throws Exception {
+        database.execute("CREATE SCHEMA channel_loot_upgrade");
+        var source = new PGSimpleDataSource();
+        source.setURL(database.source().getURL());
+        source.setUser(database.source().getUser());
+        source.setPassword(database.source().getPassword());
+        source.setCurrentSchema("channel_loot_upgrade");
+        Flyway.configure().dataSource(source).defaultSchema("channel_loot_upgrade").target("8").load().migrate();
+        new DatabaseMigrator().migrate(source);
+        var original = new JdbcChannelRepository(source, 5).load();
+        assertTrue(original.getFirst().channels().stream().allMatch(channel -> channel.lootPickerScalar() == 0));
+
+        for (int scalar : new int[]{0, 49, 50, 69, 70, 89}) {
+            try (var connection = source.getConnection(); var statement = connection.prepareStatement(
+                "UPDATE channels SET loot_picker_scalar = ? WHERE id = 2"
+            )) {
+                statement.setInt(1, scalar);
+                statement.executeUpdate();
+            }
+
+            var reloaded = new JdbcChannelRepository(source, 5).load().getFirst().channels();
+            assertEquals(0, reloaded.getFirst().lootPickerScalar());
+            assertEquals(scalar, reloaded.get(1).lootPickerScalar());
+            assertEquals(0, original.getFirst().channels().get(1).lootPickerScalar());
+        }
+
+        new DatabaseMigrator().migrate(source);
+        assertEquals(89, new JdbcChannelRepository(source, 5).load().getFirst().channels().get(1).lootPickerScalar());
+    }
+
+    @Test
+    void expandsV9WithoutChangingExistingChannelsAndReloadsNuclearSettings() throws Exception {
+        database.execute("CREATE SCHEMA channel_nuclear_upgrade");
+        var source = new PGSimpleDataSource();
+        source.setURL(database.source().getURL());
+        source.setUser(database.source().getUser());
+        source.setPassword(database.source().getPassword());
+        source.setCurrentSchema("channel_nuclear_upgrade");
+        Flyway.configure().dataSource(source).defaultSchema("channel_nuclear_upgrade").target("9").load().migrate();
+
+        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("UPDATE channels SET loot_picker_scalar = CASE WHEN id = 1 THEN 70 ELSE 89 END");
+            assertThrows(SQLException.class, () -> statement.execute("UPDATE channels SET loot_picker_scalar = 90"));
+        }
+
+        var before = new JdbcChannelRepository(source, 5).load();
+        new DatabaseMigrator().migrate(source);
+        assertEquals(before, new JdbcChannelRepository(source, 5).load());
+
+        for (int scalar : new int[]{90, 99, 100}) {
+            try (var connection = source.getConnection(); var statement = connection.prepareStatement(
+                "UPDATE channels SET loot_picker_scalar = ? WHERE id = 2"
+            )) {
+                statement.setInt(1, scalar);
+                assertEquals(1, statement.executeUpdate());
+            }
+
+            var reloaded = new JdbcChannelRepository(source, 5).load().getFirst().channels();
+            assertEquals(70, reloaded.getFirst().lootPickerScalar());
+            assertEquals(scalar, reloaded.get(1).lootPickerScalar());
+        }
+
+        new DatabaseMigrator().migrate(source);
+        assertEquals(100, new JdbcChannelRepository(source, 5).load().getFirst().channels().get(1).lootPickerScalar());
+        assertEquals(89, before.getFirst().channels().get(1).lootPickerScalar());
+    }
+
+    @Test
     void enforcesKeysNamesBoundsOwnershipAndRejectsInvalidConfigurationWithoutLeakingValues() throws Exception {
         database.execute("INSERT INTO channel_groups (name) VALUES ('Solar')");
         database.execute("INSERT INTO channels (id, group_id, name) SELECT 1, id, 'Moon' FROM channel_groups");
@@ -166,6 +234,10 @@ class ChannelPersistenceIntegrationTest {
             "UPDATE channels SET kind = 3",
             "UPDATE channels SET kind = 5",
             "UPDATE channels SET kind = 7",
+            "UPDATE channels SET loot_picker_scalar = NULL",
+            "UPDATE channels SET loot_picker_scalar = -1",
+            "UPDATE channels SET loot_picker_scalar = 101",
+            "UPDATE channels SET loot_picker_scalar = 32768",
             "UPDATE channels SET id = 65535",
             "UPDATE channels SET group_id = -1",
             "UPDATE channels SET capacity = 0",

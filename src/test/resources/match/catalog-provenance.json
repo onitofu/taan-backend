@@ -1,7 +1,7 @@
 {
   "fixtures": [
     {
-      "catalog.properties": "3df5c7352e25a5ea41a3ec4464b020cd6120ac4c581b653be882327ceb937844",
+      "catalog.properties": "c3ceec595b12dba78c73d7c21e286f7bef9425b8d783e7ae6d9d25455d4005ee",
       "original_file": "catalog.properties",
       "origin": "DERIVED"
     },
@@ -16,12 +16,12 @@
       "origin": "DERIVED"
     },
     {
-      "weapon-attacks.csv": "b2c21c8afb4e34472e3c05ec31a49b6c01c64de3c2549a5ee09b6473470a2f44",
+      "weapon-attacks.csv": "3088408aff15431f7853ca64f8bd978ee6bfa16f86d0ed90cee4352cde711852",
       "original_file": "weapon-attacks.csv",
       "origin": "DERIVED"
     },
     {
-      "weapons.csv": "84e22025a2d1590e520898e59dfa1792cadf66731934ac37535e59b4554507bd",
+      "weapons.csv": "3f2d91e7047de2dae17ccb5b8e70471f4dc443d8b8fe5d782cbde57ae80a7b0c",
       "original_file": "weapons.csv",
       "origin": "DERIVED"
     }

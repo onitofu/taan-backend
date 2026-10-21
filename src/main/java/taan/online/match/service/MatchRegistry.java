@@ -143,7 +143,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             var profile = settings.forProfile(draft.settings().mode().usesItems());
 
             if (profile.executionMode() == MatchExecutionMode.CLIENT_SCENARIO) {
-                var initial = new MatchTurnPolicy().initial(participants, random.nextLong());
+                var initial = new MatchTurnPolicy().initial(participants, random.nextLong(), draft.lootPickerScalar());
                 match = new Match(
                     match.id(),
                     match.roomId(),

@@ -11,6 +11,7 @@ public final class MatchItemSelectionRules {
         Map.entry(1, 301),
         Map.entry(2, 300),
         Map.entry(3, 400),
+        Map.entry(4, 200),
         Map.entry(5, 150),
         Map.entry(6, 100),
         Map.entry(7, 600),
@@ -45,12 +46,19 @@ public final class MatchItemSelectionRules {
         boolean attack = false;
         boolean spread = false;
         boolean guided = false;
+        boolean nuclear = false;
+        boolean ownSpecial = active.contains(6);
 
         for (int item : sorted) {
             if (item == 1 || item == 2) {
                 if (repeats < 3) {
                     selected.add(item);
                     repeats++;
+                }
+            } else if (item == 4) {
+                if (!nuclear && !ownSpecial) {
+                    selected.add(item);
+                    nuclear = true;
                 }
             } else if (item == 3) {
                 if (!spread) {
@@ -96,6 +104,10 @@ public final class MatchItemSelectionRules {
 
     public static int attackKind(List<Integer> selected) {
         return selected.contains(6) ? 2 : selected.contains(5) ? 1 : 0;
+    }
+
+    public static int effectiveWeaponId(int baseWeaponId, List<Integer> selected) {
+        return selected.contains(4) ? 100 : baseWeaponId;
     }
 
     public static Optional<MatchItemActivation> activate(

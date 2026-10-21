@@ -175,6 +175,7 @@ final class MatchItemExecution {
         var event = switch (command.itemId()) {
             case 1, 2 -> duplicate ? MatchLogEvent.REPEAT_DUPLICATE : MatchLogEvent.REPEAT_ACTIVATED;
             case 3 -> duplicate ? MatchLogEvent.SPREAD_DUPLICATE : MatchLogEvent.SPREAD_ACTIVATED;
+            case 4 -> duplicate ? MatchLogEvent.NUCLEAR_DUPLICATE : MatchLogEvent.NUCLEAR_ACTIVATED;
             case 5 -> duplicate ? MatchLogEvent.POWER_DUPLICATE : MatchLogEvent.POWER_ACTIVATED;
             case 7 -> duplicate ? MatchLogEvent.GUIDED_DUPLICATE : MatchLogEvent.GUIDED_ACTIVATED;
             case 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050 ->
@@ -302,6 +303,7 @@ final class MatchItemExecution {
         var event = switch (item) {
             case 1, 2 -> MatchLogEvent.REPEAT_REJECTED;
             case 3 -> MatchLogEvent.SPREAD_REJECTED;
+            case 4 -> MatchLogEvent.NUCLEAR_REJECTED;
             case 5 -> MatchLogEvent.POWER_REJECTED;
             case 7 -> MatchLogEvent.GUIDED_REJECTED;
             case 1005, 1010, 1015, 1020, 1025, 1030, 1035, 1040, 1045, 1050 -> MatchLogEvent.DAMAGE_UP_REJECTED;

@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.lootPickerScalar;
 import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
@@ -28,6 +29,7 @@ final class MatchReservationLog {
             roomGeneration(draft.token().generation()),
             sessionId(draft.ownerSessionId()),
             channelId(draft.channelId()),
+            lootPickerScalar(draft.lootPickerScalar()),
             mapId(draft.settings().mapId()),
             roomMode(draft.settings().mode().name()),
             reason(result)

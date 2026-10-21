@@ -7,12 +7,14 @@ public record ChannelDefinition(
     int minLevel,
     int maxLevel,
     int capacity,
-    int kind
+    int kind,
+    int lootPickerScalar
 ) {
     public ChannelDefinition {
         if (id < 1 || id > 65534 || name.isBlank() || name.codePointCount(0, name.length()) > 64
             || (kind != 0 && kind != 1 && kind != 4 && kind != 6)
-            || minLevel < 1 || maxLevel > 109 || minLevel > maxLevel || capacity < 1) {
+            || minLevel < 1 || maxLevel > 109 || minLevel > maxLevel || capacity < 1
+            || lootPickerScalar < 0 || lootPickerScalar > 100) {
             throw new IllegalArgumentException("Invalid channel definition");
         }
     }

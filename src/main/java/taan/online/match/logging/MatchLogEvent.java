@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    NUCLEAR_ACTIVATED("match.nuclear.activated", Level.DEBUG, "Nuclear item activated"),
+    NUCLEAR_DUPLICATE("match.nuclear.duplicate", Level.DEBUG, "Duplicate nuclear activation ignored"),
+    NUCLEAR_REJECTED("match.nuclear.rejected", Level.DEBUG, "Nuclear activation rejected"),
     GHOST_REQUEST_IGNORED("match.ghost.request.ignored", Level.DEBUG, "Ghost request ignored"),
     GUIDED_ACTIVATED("match.guided.activated", Level.DEBUG, "Guided item activated"),
     GUIDED_DUPLICATE("match.guided.duplicate", Level.DEBUG, "Duplicate guided activation ignored"),

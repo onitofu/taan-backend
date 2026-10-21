@@ -91,7 +91,11 @@ public final class PrepareScenarioAction {
                         throw new ScenarioWorldException("PICKUP_NOT_PERMITTED");
                     }
 
-                    MatchNativeLootRules.requirePickup(pickup.itemId(), pickup.opaque24());
+                    MatchNativeLootRules.requirePickup(
+                        pickup.itemId(),
+                        pickup.opaque24(),
+                        snapshot.turn().pickerBase()
+                    );
                     draft.pickupBox(pickup.entityId(), pickup.itemId());
                     var recipient = snapshot.participants().stream()
                         .filter(member -> member.sessionId().equals(session)).findFirst().orElseThrow();
