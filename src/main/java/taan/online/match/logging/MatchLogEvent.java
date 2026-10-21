@@ -4,6 +4,9 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    REWARDS_COMMITTED("match.rewards.committed", Level.INFO, "Match rewards committed"),
+    REWARDS_DUPLICATE("match.rewards.duplicate", Level.DEBUG, "Previously committed match rewards reused"),
+    REWARDS_FAILED("match.rewards.failed", Level.ERROR, "Match rewards could not be committed"),
     NUCLEAR_ACTIVATED("match.nuclear.activated", Level.DEBUG, "Nuclear item activated"),
     NUCLEAR_DUPLICATE("match.nuclear.duplicate", Level.DEBUG, "Duplicate nuclear activation ignored"),
     NUCLEAR_REJECTED("match.nuclear.rejected", Level.DEBUG, "Nuclear activation rejected"),
@@ -33,7 +36,7 @@ public enum MatchLogEvent implements LogEvent {
     ITEM_DISCARD_IGNORED("match.item.discard.ignored", Level.DEBUG, "Match item discard ignored"),
     BONUS_IGNORED("match.bonus.ignored", Level.DEBUG, "Match bonus report ignored"),
     DEPARTURE_ACCEPTED("match.departure.accepted", Level.DEBUG, "Match departure accepted"),
-    FINISHED("match.finished", Level.INFO, "Match finished without awards"),
+    FINISHED("match.finished", Level.INFO, "Match outcome finalized"),
     OUTCOME_DECIDED("match.outcome.decided", Level.DEBUG, "Match outcome decided"),
     ITEM_DELIVERY_FAILED("match.item.delivery.failed", Level.ERROR, "Match item delivery failed"),
     SPEND_COMMITTED("match.spend.committed", Level.DEBUG, "Item spending committed"),

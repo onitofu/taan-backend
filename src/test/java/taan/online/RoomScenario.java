@@ -19,6 +19,8 @@ import taan.online.character.repository.TestCharacterRepository;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.SettleMatchResultAction;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.protocol.BinaryWriter;
@@ -130,6 +132,22 @@ public final class RoomScenario implements AutoCloseable {
         Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle,
         MatchLootPolicy policy
     ) {
+        this(executor, capacity, kind, mode, lifecycle, policy, TestMatchResults.action());
+    }
+
+    public RoomScenario(MatchExecutionMode mode, SettleMatchResultAction settlements) {
+        this(Runnable::run, 64, null, mode, value -> value, MatchLootPolicy.disabled(), settlements);
+    }
+
+    private RoomScenario(
+        MatchCommandExecutor executor,
+        int capacity,
+        Integer kind,
+        MatchExecutionMode mode,
+        Function<RoomMatchLifecycle, RoomMatchLifecycle> lifecycle,
+        MatchLootPolicy policy,
+        SettleMatchResultAction settlements
+    ) {
         sessions = new SessionRegistry();
         access = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(access, 2181);
@@ -162,7 +180,9 @@ public final class RoomScenario implements AutoCloseable {
             executor,
             capacity,
             mode,
-            policy
+            policy,
+            MatchBoxPolicy.DISABLED,
+            settlements
         );
         rooms = new RoomRegistry(
             channels,

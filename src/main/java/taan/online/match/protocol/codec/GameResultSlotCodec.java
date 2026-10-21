@@ -9,16 +9,17 @@ import taan.online.protocol.MalformedPacketException;
 public final class GameResultSlotCodec {
     public void encode(BinaryWriter output, GameResultSlot slot) {
         MatchWireChecks.slot(slot.slotIndex());
-        MatchWireChecks.triple(slot.scalar3c());
-        output.unsignedInt(GameResultSlot.TYPE_ID).unsignedByte(slot.slotIndex()).unsignedShort(slot.scalar0a())
-            .unsignedInt(slot.scalar0c()).unsignedInt(0).unsignedInt(slot.scalar1c()).unsignedByte(slot.scalar20())
-            .unsignedInt(slot.scalar24()).float32(slot.scalar28()).unsignedInt(slot.scalar2c()).unsignedInt(0);
+        MatchWireChecks.triple(slot.medals());
+        output.unsignedInt(GameResultSlot.TYPE_ID).unsignedByte(slot.slotIndex()).unsignedShort(slot.level())
+            .unsignedInt(slot.expDeltaFallback()).unsignedInt(0).unsignedInt(slot.displayedGold())
+            .unsignedByte(slot.kills()).unsignedInt(slot.damage()).float32(slot.accuracy()).unsignedInt(slot.assists())
+            .unsignedInt(0);
 
-        for (int value : slot.scalar3c()) {
+        for (int value : slot.medals()) {
             output.unsignedByte(value);
         }
 
-        output.unsignedByte(slot.scalar3f()).unsignedInt(slot.scalar40()).unsignedInt(slot.scalar44());
+        output.unsignedByte(slot.showSoulBonus()).unsignedInt(slot.soulExp()).unsignedInt(slot.soulGold());
     }
 
     public GameResultSlot decode(BinaryReader input) {
@@ -27,24 +28,24 @@ public final class GameResultSlotCodec {
         }
 
         int index = input.unsignedByte();
-        int scalar0a = input.unsignedShort();
-        long scalar0c = input.unsignedInt();
+        int level = input.unsignedShort();
+        long expDeltaFallback = input.unsignedInt();
         MatchWireChecks.emptyVector(input);
-        long scalar1c = input.unsignedInt();
-        int scalar20 = input.unsignedByte();
-        long scalar24 = input.unsignedInt();
-        float scalar28 = input.float32();
-        long scalar2c = input.unsignedInt();
+        long displayedGold = input.unsignedInt();
+        int kills = input.unsignedByte();
+        long damage = input.unsignedInt();
+        float accuracy = input.float32();
+        long assists = input.unsignedInt();
         MatchWireChecks.emptyVector(input);
         var slot = new GameResultSlot(
             index,
-            scalar0a,
-            scalar0c,
-            scalar1c,
-            scalar20,
-            scalar24,
-            scalar28,
-            scalar2c,
+            level,
+            expDeltaFallback,
+            displayedGold,
+            kills,
+            damage,
+            accuracy,
+            assists,
             List.of(input.unsignedByte(), input.unsignedByte(), input.unsignedByte()),
             input.unsignedByte(),
             input.unsignedInt(),

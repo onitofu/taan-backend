@@ -202,7 +202,8 @@ public final class Room {
             character.level(),
             character.gender(),
             appearance,
-            character.createdAt()
+            character.createdAt(),
+            character.progress()
         );
         slots.set(
             slot.index(),

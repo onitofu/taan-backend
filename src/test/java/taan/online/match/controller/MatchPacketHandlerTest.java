@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import taan.online.CollectingPacketOutput;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
+import taan.online.TestMatchResults;
 import taan.online.MatchRoomFixture;
 import taan.online.MatchTerminalFixture;
 import taan.online.TestMatchScheduler;
@@ -117,7 +118,8 @@ class MatchPacketHandlerTest {
                 ),
                 Runnable::run,
                 8,
-                (context, participant) -> true
+                (context, participant) -> true,
+                TestMatchResults.action()
             );
             var draft = room.draft();
             matches.reserve(draft);

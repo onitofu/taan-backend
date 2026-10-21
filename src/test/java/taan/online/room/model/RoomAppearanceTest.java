@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import taan.online.RoomScenario;
 import taan.online.character.model.AppearancePart;
 import taan.online.character.model.CharacterAppearance;
+import taan.online.character.model.CharacterProgress;
+import taan.online.character.model.GameCharacter;
 
 class RoomAppearanceTest {
     @Test
@@ -28,7 +30,19 @@ class RoomAppearanceTest {
                 null,
                 scenario.owner(owner)
             );
-            room.enter(scenario.owner(guest), "");
+            var originalCharacter = scenario.owner(guest).character();
+            var progress = new CharacterProgress(700, 1, 2, 3);
+            var character = new GameCharacter(
+                originalCharacter.id(),
+                originalCharacter.accountId(),
+                originalCharacter.name(),
+                originalCharacter.level(),
+                originalCharacter.gender(),
+                originalCharacter.appearance(),
+                originalCharacter.createdAt(),
+                progress
+            );
+            room.enter(new RoomParticipant(guest, character, 0), "");
             room.changeWeapon(guest, 0);
             room.setReady(scenario.owner(guest).character().accountId(), true);
             var old = room.slots();
@@ -42,6 +56,7 @@ class RoomAppearanceTest {
             var original = old.get(2);
             assertEquals(RoomSlotState.READY, changed.state());
             assertEquals(0, changed.participant().weaponId());
+            assertEquals(progress, changed.participant().character().progress());
             assertEquals(original.participant().character().id(), changed.participant().character().id());
             assertEquals(original.participant().character().createdAt(), changed.participant().character().createdAt());
             assertEquals(List.of(old.getFirst()), List.of(room.slots().getFirst()));

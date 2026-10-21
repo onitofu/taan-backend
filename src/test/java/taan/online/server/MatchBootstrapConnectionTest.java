@@ -9,6 +9,7 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchResultAssertions;
 import taan.online.MatchFixtures;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
@@ -123,7 +124,7 @@ class MatchBootstrapConnectionTest {
                 world.request(clients.getFirst(), root);
 
                 for (var client : clients) {
-                    assertEquals(406, read(client).length);
+                    MatchResultAssertions.readEnd(() -> read(client), 0);
                     assertFalse(new RoomResponseCodec().ready(read(client)).ready());
                     assertTrue(client.channel().isActive());
                     assertNull(client.channel().readOutbound());

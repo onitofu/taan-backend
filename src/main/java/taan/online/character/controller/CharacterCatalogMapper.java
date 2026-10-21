@@ -17,7 +17,10 @@ public final class CharacterCatalogMapper {
                 character.name().value(),
                 character.level(),
                 0,
-                gender(character.gender())
+                gender(character.gender()),
+                character.progress().forceMedals(),
+                character.progress().killMedals(),
+                character.progress().supplyMedals()
             )
         ).toList();
         var appearances = snapshots.stream().map(this::appearance).toList();

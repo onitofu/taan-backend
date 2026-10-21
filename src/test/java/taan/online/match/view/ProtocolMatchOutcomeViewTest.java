@@ -9,6 +9,7 @@ import java.util.HexFormat;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.TestMatchResults;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchOutcomeCause;
 import taan.online.match.protocol.codec.EndGameCodec;
@@ -29,8 +30,10 @@ class ProtocolMatchOutcomeViewTest {
 
             byte[] root = Arrays.copyOfRange(frame, 4, frame.length);
             var output = new CollectingPacketOutput();
-            new ProtocolMatchView(output).end(new MatchOutcome(Set.of(team), false, MatchOutcomeCause.ELIMINATION));
-            assertArrayEquals(root, output.batches.getFirst().getFirst());
+            new ProtocolMatchView(output).end(
+                TestMatchResults.end(new MatchOutcome(Set.of(team), false, MatchOutcomeCause.ELIMINATION))
+            );
+            assertArrayEquals(root, output.batches.getFirst().getLast());
             var packet = new EndGameCodec().decode(root);
             assertEquals(winner, packet.result().resultKind());
             assertEquals(8, packet.result().slots().size());

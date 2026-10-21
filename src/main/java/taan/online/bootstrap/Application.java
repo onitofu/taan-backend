@@ -62,6 +62,8 @@ import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.SettleMatchResultAction;
+import taan.online.match.repository.jdbc.JdbcMatchResultRepository;
 import taan.online.match.service.MoveMatchActorAction;
 import taan.online.match.service.PassMatchTurnAction;
 import taan.online.match.service.RecordMatchSpendAction;
@@ -187,6 +189,16 @@ public final class Application implements AutoCloseable {
         selectionScheduler = new ScheduledRoomSelectionScheduler(config.maxConnections());
         matchExecutor = new BoundedMatchExecutor(config.matchWorkerThreads(), config.maxConnections());
         matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
+        workers = new ThreadPoolExecutor(
+            config.workerThreads(),
+            config.workerThreads(),
+            0,
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(config.workerQueueCapacity()),
+            Thread.ofPlatform().name("account-worker-", 0).factory(),
+            new ThreadPoolExecutor.AbortPolicy()
+        );
+
         var matches = new MatchRegistry(
             matchDefinitions,
             new MatchBootstrapSettings(
@@ -210,7 +222,12 @@ public final class Application implements AutoCloseable {
             ),
             matchExecutor,
             config.matchQueueCapacity(),
-            new ChannelMatchAccess(channels)
+            new ChannelMatchAccess(channels),
+            new SettleMatchResultAction(
+                new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds()),
+                workers,
+                Clock.systemUTC()
+            )
         );
         rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
         var matchDispatcher = new MatchRequestDispatcher(
@@ -290,16 +307,6 @@ public final class Application implements AutoCloseable {
             new CashRefreshPacketHandler(sessions),
             new ClientLoggingPacketHandler(sessions),
             config.playableTimeSeconds()
-        );
-
-        workers = new ThreadPoolExecutor(
-            config.workerThreads(),
-            config.workerThreads(),
-            0,
-            TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(config.workerQueueCapacity()),
-            Thread.ofPlatform().name("account-worker-", 0).factory(),
-            new ThreadPoolExecutor.AbortPolicy()
         );
 
         var warnings = new WarningLogLimiter(

@@ -15,6 +15,14 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField damage(long value) {
+        return new LogField("damage", value);
+    }
+
+    public static LogField forceMedal(boolean value) {
+        return new LogField("forceMedal", value);
+    }
+
     public static LogField effectiveWeaponId(Integer value) {
         return new LogField("effectiveWeaponId", value);
     }

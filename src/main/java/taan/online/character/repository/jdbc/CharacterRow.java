@@ -14,6 +14,7 @@ import taan.online.character.model.AppearancePart;
 import taan.online.character.model.CharacterAppearance;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
+import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.GameCharacter;
 
 final class CharacterRow {
@@ -23,6 +24,7 @@ final class CharacterRow {
     private final int level;
     private final AccountGender gender;
     private final Instant createdAt;
+    private final CharacterProgress progress;
     private final List<AppearancePart> parts = IntStream.range(0, 16)
         .mapToObj(slot -> new AppearancePart(slot, 0, 0, 0, 0)).collect(Collectors.toCollection(ArrayList::new));
 
@@ -37,6 +39,12 @@ final class CharacterRow {
         level = rows.getInt("level");
         gender = gender(rows.getShort("gender"));
         createdAt = rows.getObject("created_at", OffsetDateTime.class).toInstant();
+        progress = new CharacterProgress(
+            rows.getLong("experience"),
+            rows.getLong("force_medals"),
+            rows.getLong("kill_medals"),
+            rows.getLong("supply_medals")
+        );
     }
 
     void addPart(ResultSet rows) throws SQLException {
@@ -53,7 +61,7 @@ final class CharacterRow {
     }
 
     GameCharacter character() {
-        return new GameCharacter(id, owner, name, level, gender, new CharacterAppearance(parts), createdAt);
+        return new GameCharacter(id, owner, name, level, gender, new CharacterAppearance(parts), createdAt, progress);
     }
 
     static AccountGender gender(short value) throws SQLException {

@@ -8,10 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.EOFException;
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
@@ -58,7 +55,7 @@ class MatchTerminationIntegrationTest {
     void endsActiveMatchWithoutChangingDurableDataAndAcceptsCardsAndAnotherReservation() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config); var logs = new LogCapture()) {
@@ -77,7 +74,7 @@ class MatchTerminationIntegrationTest {
                 owner.send(MatchFixtures.root("PqResult_SelectCard"));
                 owner.send(MatchFixtures.root("give-up-empty"));
                 cash(owner);
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -87,21 +84,21 @@ class MatchTerminationIntegrationTest {
                 guest.send(MatchFixtures.root("give-up-empty"));
                 ended(owner, 1);
                 ended(guest, 1);
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                 assertFalse(logs.text().contains("alpha@example.test"));
                 assertFalse(logs.text().contains("Heroalpha"));
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
     void closesLoadingConnectionsOnDisconnectAndReleasesTheirClaimsAndRoomNumber() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -124,14 +121,14 @@ class MatchTerminationIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
     void shutsDownLoadedMatchesWithinTheDeadlineAndRestartsWithOnlyDurableData() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -158,14 +155,14 @@ class MatchTerminationIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
-    void completesALethalScenarioOverTcpThenPlaysAnotherMatchWithoutChangingDurableData() throws Exception {
+    void commitsTheDamageMedalBeforeTcpResultsAndPlaysAnotherMatchWithoutOtherPersistentChanges() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -198,9 +195,14 @@ class MatchTerminationIntegrationTest {
                 int winner = slot == 0 ? 1 : 2;
                 ended(owner, winner);
                 ended(guest, winner);
+                long awarded = database.scalar(
+                    "SELECT force_medals FROM characters WHERE id = " + actor.character().id().value()
+                );
+                assertEquals(1, awarded);
+                assertEquals(1, database.scalar("SELECT sum(force_medals) FROM characters"));
                 cash(owner);
                 cash(guest);
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -209,7 +211,8 @@ class MatchTerminationIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner, 2);
                 ended(guest, 2);
-                assertEquals(before, durableFingerprint());
+                assertEquals(1, database.scalar("SELECT sum(force_medals) FROM characters"));
+                assertEquals(before, database.unrelatedDataFingerprint());
             }
         }
     }
@@ -218,7 +221,7 @@ class MatchTerminationIntegrationTest {
     void keepsTheCommittedWinnerWhenTheDefeatedTcpPeerDoesNotAcknowledge() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration(Map.of("BACKEND_MATCH_COMPLETION_GRACE_SECONDS", "1"));
 
         try (var app = new Application(config)) {
@@ -258,7 +261,7 @@ class MatchTerminationIntegrationTest {
                 assertTrue(matches.current(token).isEmpty());
                 assertTrue(rooms.membership(defeated.sessionId()).isEmpty());
                 assertEquals(shooter.sessionId(), RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId());
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
             }
         }
     }
@@ -325,7 +328,7 @@ class MatchTerminationIntegrationTest {
     }
 
     private void ended(CharacterTestClient client, int winner) throws Exception {
-        assertArrayEquals(MatchFixtures.endGame(winner), client.read());
+        MatchResultAssertions.readEnd(client::read, winner);
         assertFalse(wire.ready(client.read()).ready());
     }
 
@@ -364,21 +367,5 @@ class MatchTerminationIntegrationTest {
         }
 
         throw new AssertionError("Match connection remained active");
-    }
-
-    private String durableFingerprint() throws Exception {
-        var digest = MessageDigest.getInstance("SHA-256");
-
-        for (String table : new String[]{"accounts", "characters", "inventories", "inventory_items"}) {
-            try (var connection = database.source().getConnection(); var query = connection.createStatement();
-                var rows = query.executeQuery("SELECT to_jsonb(t)::text FROM " + table + " t ORDER BY id")) {
-                while (rows.next()) {
-                    digest.update(rows.getString(1).getBytes(StandardCharsets.UTF_8));
-                    digest.update((byte) 0);
-                }
-            }
-        }
-
-        return HexFormat.of().formatHex(digest.digest());
     }
 }

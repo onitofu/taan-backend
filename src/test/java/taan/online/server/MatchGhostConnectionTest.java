@@ -9,6 +9,7 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchResultAssertions;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
 import taan.online.MatchScenarioTestPackets;
@@ -17,7 +18,6 @@ import taan.online.RoomScenario;
 import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
-import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.MakeGhostRequestCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.GameScenario;
@@ -70,8 +70,8 @@ class MatchGhostConnectionTest {
                 world.request(shooter, ack);
                 assertTrue(world.matches.current(token).isPresent());
                 world.request(observer, ack);
-                var ownerResult = new EndGameCodec().decode(read(owner));
-                assertEquals(ownerResult, new EndGameCodec().decode(read(guest)));
+                var ownerResult = MatchResultAssertions.readEnd(() -> read(owner), deadSlot == 0 ? 2 : 1);
+                assertEquals(ownerResult, MatchResultAssertions.readEnd(() -> read(guest), deadSlot == 0 ? 2 : 1));
                 assertFalse(new RoomResponseCodec().ready(read(owner)).ready());
                 assertFalse(new RoomResponseCodec().ready(read(guest)).ready());
                 assertTrue(world.matches.current(token).isEmpty());
