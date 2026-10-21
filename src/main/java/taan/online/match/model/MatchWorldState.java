@@ -17,8 +17,21 @@ public record MatchWorldState(
     Map<UUID, List<MatchFall>> falls,
     Set<UUID> processedDeaths,
     Optional<ScenarioCommitReceipt> receipt,
-    Map<Long, MatchItemBox> boxes
+    Map<Long, MatchItemBox> boxes,
+    MatchDamageStatistics damageStatistics
 ) {
+    public MatchWorldState(
+        long revision,
+        Map<UUID, MatchActorState> actors,
+        List<TerrainLayerDefinition> terrain,
+        Map<UUID, List<MatchFall>> falls,
+        Set<UUID> processedDeaths,
+        Optional<ScenarioCommitReceipt> receipt,
+        Map<Long, MatchItemBox> boxes
+    ) {
+        this(revision, actors, terrain, falls, processedDeaths, receipt, boxes, MatchDamageStatistics.empty());
+    }
+
     public MatchWorldState(
         long revision,
         Map<UUID, MatchActorState> actors,
@@ -39,6 +52,7 @@ public record MatchWorldState(
         processedDeaths = Set.copyOf(processedDeaths);
         Objects.requireNonNull(receipt);
         boxes = Map.copyOf(boxes);
+        Objects.requireNonNull(damageStatistics);
     }
 
     public static MatchWorldState initial(Map<UUID, MatchActorState> actors, List<TerrainLayerDefinition> terrain) {
@@ -98,10 +112,28 @@ public record MatchWorldState(
             deaths.add(session);
         }
 
-        return new MatchWorldState(Math.incrementExact(revision), updated, terrain, falls, deaths, receipt, boxes);
+        return new MatchWorldState(
+            Math.incrementExact(revision),
+            updated,
+            terrain,
+            falls,
+            deaths,
+            receipt,
+            boxes,
+            damageStatistics
+        );
     }
 
     public MatchWorldState withoutBoxes() {
-        return new MatchWorldState(revision, actors, terrain, falls, processedDeaths, receipt, Map.of());
+        return new MatchWorldState(
+            revision,
+            actors,
+            terrain,
+            falls,
+            processedDeaths,
+            receipt,
+            Map.of(),
+            damageStatistics
+        );
     }
 }

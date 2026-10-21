@@ -8,7 +8,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterCatalogMapper;
 import taan.online.match.model.MatchExitKind;
-import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ForsakeItemCodec;
@@ -16,6 +16,7 @@ import taan.online.match.protocol.codec.LeaveUserCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.SetRewardCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
@@ -23,6 +24,7 @@ import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
+import taan.online.match.protocol.packet.GameRewardExp;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
@@ -36,6 +38,7 @@ import taan.online.match.protocol.packet.PcGamePlayTurnStart;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
+import taan.online.match.protocol.packet.PcResultSetReward;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
 import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.SpentItem;
@@ -43,6 +46,7 @@ import taan.online.match.service.MatchOutput;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
@@ -264,22 +268,53 @@ public final class ProtocolMatchView implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> end(MatchOutcome outcome) {
-        if (outcome.awardsGranted()) {
-            throw new IllegalArgumentException("Unsupported match outcome");
-        }
-
-        int winner = outcome.winningTeams().isEmpty() ? 0
-            : outcome.winningTeams().contains(RoomTeam.BLUE) ? 1 : 2;
+    public CompletionStage<Void> end(MatchEndResult end) {
+        int winner = end.result().winningTeam().map(team -> team == RoomTeam.BLUE ? 1 : 2).orElse(0);
         var result = new GameResult(
             winner,
-            IntStream.range(0, 8).mapToObj(
-                index -> new GameResultSlot(index, 0, 0, 0, 0, 0, 0, 0, List.of(0, 0, 0), 0, 0, 0)
-            ).toList(),
+            IntStream.range(0, 8).mapToObj(index -> resultSlot(end, index)).toList(),
             0,
             0
         );
-        return output.send(List.of(new EndGameCodec().encode(new PcGameSessionEndGame(result, 0))));
+        var rewards = IntStream.range(0, 8).mapToObj(
+            index -> {
+                long characterId = end.result().participants().stream().filter(p -> p.slotIndex() == index)
+                    .mapToLong(p -> p.characterId().value()).findFirst().orElse(0);
+                return new GameRewardExp("", characterId, 0);
+            }
+        ).toList();
+        return output.send(
+            List.of(
+                new SetRewardCodec().encode(new PcResultSetReward(rewards)),
+                new EndGameCodec().encode(new PcGameSessionEndGame(result, 0))
+            )
+        );
+    }
+
+    private GameResultSlot resultSlot(MatchEndResult end, int index) {
+        var participant = end.result().participants().stream().filter(value -> value.slotIndex() == index).findFirst();
+
+        if (participant.isEmpty()) {
+            return new GameResultSlot(index, 0, 0, 0, 0, 0, 0, 0, List.of(0, 0, 0), 0, 0, 0);
+        }
+
+        MatchParticipantResult statistics = participant.orElseThrow();
+        int level = end.participants().stream().filter(value -> value.character().id().equals(statistics.characterId()))
+            .findFirst().orElseThrow().character().level();
+        return new GameResultSlot(
+            index,
+            level,
+            0,
+            0,
+            0,
+            statistics.damage(),
+            0,
+            0,
+            List.of(statistics.forceMedal() ? 1 : 0, 0, 0),
+            0,
+            0,
+            0
+        );
     }
 
     @Override

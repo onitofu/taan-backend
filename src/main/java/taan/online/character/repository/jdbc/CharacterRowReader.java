@@ -14,6 +14,7 @@ final class CharacterRowReader {
     static List<GameCharacter> read(Connection connection, AccountId owner, int timeout) throws SQLException {
         String sql = """
             SELECT c.id, c.account_id, c.name, c.level, c.created_at, a.gender,
+                   c.experience, c.force_medals, c.kill_medals, c.supply_medals,
                    i.id AS equipment_id, p.slot, p.item_id, p.palette_1_id, p.palette_2_id, p.palette_3_id
             FROM characters c
             JOIN accounts a ON a.id = c.account_id

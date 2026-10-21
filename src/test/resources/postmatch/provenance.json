@@ -1,0 +1,19 @@
+{
+  "fixtures": [
+    {
+      "bonus-medal-soul-08-connection3-end-game.frame.hex": "4cb235d9e6f456ad20feee4f611b3d3793f11fb2d70c3e0e94d73bee33d3aee5",
+      "original_file": "bonus-medal-soul-08-connection3-end-game.frame.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "character-info-progress.root.hex": "03ffa86362a30d2105b919ad81c1be5f84fd4ed08d0675c86cdc85e16487a698",
+      "original_file": "character-info-progress.root.hex",
+      "origin": "UNKNOWN"
+    },
+    {
+      "negative-exp-04-connection3-set-reward.frame.hex": "b1b3ceacad65f024e9a5c15a29963cf9e5f6f2101d05f4e18dacc3f41eb0f3c0",
+      "original_file": "negative-exp-04-connection3-set-reward.frame.hex",
+      "origin": "UNKNOWN"
+    }
+  ]
+}

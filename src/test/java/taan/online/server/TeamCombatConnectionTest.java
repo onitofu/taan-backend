@@ -10,9 +10,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import taan.online.room.model.RoomTeam;
+import taan.online.MatchResultAssertions;
 import taan.online.SelectionFixtures;
 import taan.online.TeamScenarioPackets;
-import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.MakeGhostRequestCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
@@ -121,7 +122,7 @@ class TeamCombatConnectionTest {
             assertTrue(f.world.matches.current(f.token).isEmpty());
 
             for (var client : f.clients) {
-                new EndGameCodec().decode(read(client));
+                MatchResultAssertions.readEnd(() -> read(client), next.team() == RoomTeam.BLUE ? 1 : 2);
                 assertTrue(client.channel().isActive());
             }
         }

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
@@ -31,6 +32,7 @@ public final class TestMatchOutput implements MatchOutput {
     public RuntimeException bootstrapFailure;
     public int ends;
     public final List<MatchOutcome> outcomes = new ArrayList<>();
+    public final List<MatchEndResult> results = new ArrayList<>();
     public final List<String> closed = new ArrayList<>();
     public CompletableFuture<Void> delivery = CompletableFuture.completedFuture(null);
     public RuntimeException failure;
@@ -150,8 +152,9 @@ public final class TestMatchOutput implements MatchOutput {
     }
 
     @Override
-    public CompletionStage<Void> end(MatchOutcome outcome) {
-        outcomes.add(outcome);
+    public CompletionStage<Void> end(MatchEndResult result) {
+        outcomes.add(result.result().outcome());
+        results.add(result);
         ends++;
         onEnd.run();
 

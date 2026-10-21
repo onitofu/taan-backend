@@ -10,12 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchResultAssertions;
 import taan.online.LogCapture;
 import taan.online.MatchRepeatTestPackets;
 import taan.online.TeamScenarioPackets;
 import taan.online.TestFixtures;
 import taan.online.match.model.MatchItemSource;
-import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
@@ -202,7 +202,7 @@ class ChannelLootConnectionTest {
                 assertTrue(f.world.matches.current(token).isEmpty());
 
                 for (var client : f.clients) {
-                    assertEquals(0, new EndGameCodec().decode(read(client)).result().resultKind());
+                    MatchResultAssertions.readEnd(() -> read(client), 0);
                     assertTrue(client.channel().isActive());
                 }
 

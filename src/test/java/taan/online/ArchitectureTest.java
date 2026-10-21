@@ -281,6 +281,7 @@ class ArchitectureTest {
             "taan.online.persistence..",
             "taan.online.match.model..",
             "taan.online.match.service..",
+            "taan.online.match.repository..",
             "taan.online.bootstrap..",
             "taan.online.account.model..",
             "taan.online.account.service..",

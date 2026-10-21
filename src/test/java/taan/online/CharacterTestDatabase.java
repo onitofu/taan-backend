@@ -1,6 +1,9 @@
 package taan.online;
 
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.Map;
@@ -45,7 +48,28 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public void reset() throws SQLException {
-        execute("TRUNCATE inventory_items, inventories, characters, accounts RESTART IDENTITY");
+        execute(
+            "TRUNCATE match_participant_results, match_results, inventory_items, inventories, characters, accounts "
+                + "RESTART IDENTITY"
+        );
+    }
+
+    public String unrelatedDataFingerprint() throws Exception {
+        var digest = MessageDigest.getInstance("SHA-256");
+
+        for (String table : new String[]{"accounts", "characters", "inventories", "inventory_items"}) {
+            try (var connection = source.getConnection(); var query = connection.createStatement();
+                var rows = query.executeQuery(
+                    "SELECT (to_jsonb(t) - 'force_medals')::text FROM " + table + " t ORDER BY id"
+                )) {
+                while (rows.next()) {
+                    digest.update(rows.getString(1).getBytes(StandardCharsets.UTF_8));
+                    digest.update((byte) 0);
+                }
+            }
+        }
+
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     public Account account(String login, AccountGender gender) {

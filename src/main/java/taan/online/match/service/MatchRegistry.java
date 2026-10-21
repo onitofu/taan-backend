@@ -76,6 +76,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     private final MatchCommandExecutor executor;
     private final int capacity;
     private final MatchAdmissionAccess access;
+    private final SettleMatchResultAction settlements;
     private final Map<UUID, MatchRuntime> sessions = new ConcurrentHashMap<>();
     private final Map<MatchId, MatchRuntime> matches = new ConcurrentHashMap<>();
     private final Map<UUID, MatchSubscription> subscriptions = new ConcurrentHashMap<>();
@@ -91,7 +92,8 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         WarningLogLimiter warnings,
         MatchCommandExecutor executor,
         int capacity,
-        MatchAdmissionAccess access
+        MatchAdmissionAccess access,
+        SettleMatchResultAction settlements
     ) {
         this.definitions = Objects.requireNonNull(definitions);
         preparation = new MatchPreparation(definitions);
@@ -103,6 +105,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         this.executor = executor;
         this.capacity = capacity;
         this.access = access;
+        this.settlements = Objects.requireNonNull(settlements);
     }
 
     @Override
@@ -436,13 +439,8 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             ? departing == null ? null : subscriptions.get(departing) : null;
         var outcome = MatchOutcomeExecution.terminal(snapshot, runtime.live(), closeReason);
         MatchOutcomeExecution.finished(snapshot, outcome, closeReason);
-        terminations.put(
-            token,
-            new MatchTerminationDispatch(
-                runtime,
-                new MatchTerminationDelivery(terminal, outputs, exiting, outcome)
-            )
-        );
+        var delivery = new MatchTerminationDelivery(terminal, outputs, exiting, snapshot.participants());
+        terminations.put(token, MatchTerminationDispatch.prepare(runtime, delivery, settlements, snapshot, outcome));
 
         if (mode == RoomMatchTerminationMode.RETURN_TO_ROOM) {
             recipients.forEach(value -> receipts.put(value.sessionId(), new MatchResultReceipt(token, value)));

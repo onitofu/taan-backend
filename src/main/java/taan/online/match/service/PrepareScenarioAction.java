@@ -55,7 +55,7 @@ public final class PrepareScenarioAction {
 
             switch (event) {
                 case ScenarioDamageClaim damage -> {
-                    draft.damage(session, damage.damage());
+                    draft.damage(shooter, session, damage.damage());
                     draft.damageEnergy(session, damage.energy1e());
                     draft.damageEnergy(shooter, damage.energy1c());
                 }

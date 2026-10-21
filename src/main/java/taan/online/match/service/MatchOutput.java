@@ -2,10 +2,10 @@ package taan.online.match.service;
 
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
-import taan.online.match.model.MatchOutcome;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
@@ -33,7 +33,7 @@ public interface MatchOutput {
 
     CompletionStage<Void> scenario(CommittedScenario scenario);
 
-    CompletionStage<Void> end(MatchOutcome outcome);
+    CompletionStage<Void> end(MatchEndResult result);
 
     void close(String reason);
 }

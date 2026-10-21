@@ -17,7 +17,8 @@ public record MatchOutcome(Set<RoomTeam> winningTeams, boolean awardsGranted, Ma
     public MatchOutcome {
         winningTeams = Set.copyOf(winningTeams);
         Objects.requireNonNull(cause);
-        if (winningTeams.size() > 1 || winningTeams.isEmpty() != (cause == MatchOutcomeCause.TECHNICAL_CANCELLATION)) {
+        if (winningTeams.size() > 1 || winningTeams.isEmpty() != (cause == MatchOutcomeCause.TECHNICAL_CANCELLATION)
+            || awardsGranted && winningTeams.isEmpty()) {
             throw new IllegalArgumentException("Inconsistent match outcome");
         }
     }

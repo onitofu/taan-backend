@@ -9,10 +9,11 @@ final class CharacterInfoCodec {
             .wideString(info.name()).unsignedShort(info.level())
             .unsignedInt(0).unsignedInt(0).unsignedInt(0).unsignedInt(info.gold()).unsignedByte(info.gender());
 
-        for (int field = 0; field < 9; field++) {
+        for (int field = 0; field < 6; field++) {
             output.unsignedInt(0);
         }
 
+        output.unsignedInt(info.forceMedals()).unsignedInt(info.killMedals()).unsignedInt(info.supplyMedals());
         output.wideString("");
     }
 }

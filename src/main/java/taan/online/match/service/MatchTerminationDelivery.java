@@ -14,9 +14,11 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchExitKind;
-import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchResult;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.MatchEndResult;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
@@ -26,7 +28,7 @@ final class MatchTerminationDelivery {
     private static final EventLogger LOG = EventLogger.forClass(MatchTerminationDelivery.class);
 
     private final RoomMatchTermination terminal;
-    private final MatchOutcome outcome;
+    private final List<MatchParticipant> participants;
     private final List<MatchSubscription> recipients;
     private final MatchSubscription departing;
 
@@ -34,10 +36,10 @@ final class MatchTerminationDelivery {
         RoomMatchTermination terminal,
         List<MatchSubscription> recipients,
         MatchSubscription departing,
-        MatchOutcome outcome
+        List<MatchParticipant> participants
     ) {
         this.terminal = terminal;
-        this.outcome = outcome;
+        this.participants = List.copyOf(participants);
         this.recipients = List.copyOf(recipients);
         this.departing = departing;
     }
@@ -76,12 +78,12 @@ final class MatchTerminationDelivery {
         return terminal;
     }
 
-    CompletionStage<Void> dispatch(UUID requester) {
+    CompletionStage<Void> dispatch(UUID requester, MatchResult stored) {
         CompletionStage<Void> result = CompletableFuture.completedFuture(null);
 
         for (var recipient : recipients) {
             if (terminal.mode() == RoomMatchTerminationMode.RETURN_TO_ROOM) {
-                var delivery = deliver(recipient);
+                var delivery = deliver(recipient, new MatchEndResult(stored, participants));
 
                 if (recipient.sessionId().equals(requester)) {
                     result = delivery;
@@ -98,9 +100,17 @@ final class MatchTerminationDelivery {
         return result;
     }
 
-    private CompletionStage<Void> deliver(MatchSubscription recipient) {
+    void settlementFailed() {
+        recipients.forEach(recipient -> recipient.output().close("MATCH_SETTLEMENT_FAILED"));
+
+        if (departing != null) {
+            departing.output().close("MATCH_SETTLEMENT_FAILED");
+        }
+    }
+
+    private CompletionStage<Void> deliver(MatchSubscription recipient, MatchEndResult result) {
         try {
-            return recipient.output().end(outcome).handle(
+            return recipient.output().end(result).handle(
                 LogContext.propagate(
                     (ignored, failure) -> {
                         if (failure != null) {

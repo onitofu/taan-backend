@@ -13,7 +13,7 @@ import taan.online.room.model.RoomState;
 
 class MatchOutcomeTest {
     @Test
-    void commitsTheWinnerOnceThenWaitsForBothAcksAndStartsAnotherMatchWithoutRewards() throws Exception {
+    void commitsTheWinnerOnceThenWaitsForBothAcksAndStartsAnotherMatchWithOneMedal() throws Exception {
         try (var f = new MatchOutcomeFixture(); var logs = new LogCapture()) {
             var before = f.snapshot();
             var shooter = f.active();
@@ -34,7 +34,7 @@ class MatchOutcomeTest {
             assertEquals(1, f.guest.ends);
             assertEquals(Set.of(team), f.owner.outcomes.getFirst().winningTeams());
             assertEquals(f.owner.outcomes, f.guest.outcomes);
-            assertFalse(f.owner.outcomes.getFirst().awardsGranted());
+            assertTrue(f.owner.outcomes.getFirst().awardsGranted());
             assertEquals(RoomState.WAITING, f.room.scenario.rooms.current(f.room.owner).orElseThrow().state());
             assertTrue(f.room.scenario.matchTimers.deadlines.isEmpty());
             assertTrue(logs.text().contains("match.outcome.decided"));

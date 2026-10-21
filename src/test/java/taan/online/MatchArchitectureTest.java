@@ -52,11 +52,31 @@ class MatchArchitectureTest {
             "taan.online.match.service..",
             "taan.online.match.model..",
             "taan.online.match.logging..",
+            "taan.online.match.repository",
             "taan.online.logging..",
             "taan.online.room.service..",
             "taan.online.room.model..",
             "taan.online.character.model..",
             "taan.online.account.model.."
+        );
+
+    @ArchTest
+    static final ArchRule REPOSITORIES = classes().that().resideInAPackage("taan.online.match.repository")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "taan.online.match.repository",
+            "taan.online.match.model.."
+        );
+
+    @ArchTest
+    static final ArchRule JDBC = classes().that().resideInAPackage("taan.online.match.repository.jdbc..")
+        .should().onlyDependOnClassesThat().resideInAnyPackage(
+            "java..",
+            "javax.sql..",
+            "taan.online.match.repository..",
+            "taan.online.match.model..",
+            "taan.online.character.model..",
+            "taan.online.room.model.."
         );
 
     @ArchTest

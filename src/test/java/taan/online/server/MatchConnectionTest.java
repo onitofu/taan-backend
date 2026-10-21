@@ -10,6 +10,7 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import taan.online.MatchResultAssertions;
 import taan.online.MatchFixtures;
 import taan.online.LogCapture;
 import taan.online.match.controller.MatchPacketHandler;
@@ -36,7 +37,7 @@ class MatchConnectionTest {
             world.request(owner, MatchFixtures.root("give-up-empty"));
 
             for (var client : clients) {
-                assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(client));
+                MatchResultAssertions.readEnd(() -> read(client), 0);
                 assertEquals(false, new RoomResponseCodec().ready(read(client)).ready());
                 assertNull(client.channel().readOutbound());
                 assertTrue(client.channel().isActive());
@@ -92,7 +93,7 @@ class MatchConnectionTest {
                         assertTrue(world.rooms.forChannel(1).isEmpty());
                     } else {
                         assertTrue(guest.channel().isActive());
-                        assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(guest));
+                        MatchResultAssertions.readEnd(() -> read(guest), 0);
                         var wire = new RoomResponseCodec();
                         wire.ready(read(guest));
                         assertEquals(0, wire.slot(read(guest)).slot().slotIndex());
@@ -123,7 +124,7 @@ class MatchConnectionTest {
             world.tick();
 
             assertTrue(owner.jobs().isEmpty());
-            assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(guest));
+            MatchResultAssertions.readEnd(() -> read(guest), 0);
             drain(guest);
             world.request(guest, new byte[]{0x72, 0x06, (byte) 0x86, 0x38, 0});
 
@@ -142,8 +143,9 @@ class MatchConnectionTest {
             owner.channel().pipeline().addBefore(owner.context().name(), "delay", delayed);
             world.request(guest, MatchFixtures.root("give-up-empty"));
 
-            assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(guest));
+            MatchResultAssertions.readEnd(() -> read(guest), 0);
             new RoomResponseCodec().ready(read(guest));
+            delayed.fail();
             delayed.fail();
             world.tick();
 
@@ -197,7 +199,7 @@ class MatchConnectionTest {
             assertFalse(owner.channel().isActive());
             assertTrue(guest.channel().isActive());
             assertTrue(matches.current(token).isEmpty());
-            assertArrayEquals(MatchFixtures.root("end-game-result0-no-awards"), read(guest));
+            MatchResultAssertions.readEnd(() -> read(guest), 0);
             assertTrue(logs.text().contains("match.operation.failed"));
             assertEquals(
                 1,

@@ -22,7 +22,7 @@ class MatchTerminalCodecTest {
 
         for (int index = 0; index < 8; index++) {
             assertEquals(index, end.result().slots().get(index).slotIndex());
-            assertEquals(0, end.result().slots().get(index).scalar28());
+            assertEquals(0, end.result().slots().get(index).accuracy());
         }
 
         var giveUp = new GiveUpCodec();
@@ -55,8 +55,8 @@ class MatchTerminalCodecTest {
         slots.clear();
 
         assertEquals(message, codec.decode(codec.encode(message)));
-        assertEquals(List.of(1, 2, 255), message.result().slots().getFirst().scalar3c());
+        assertEquals(List.of(1, 2, 255), message.result().slots().getFirst().medals());
         assertThrows(UnsupportedOperationException.class, () -> message.result().slots().clear());
-        assertThrows(UnsupportedOperationException.class, () -> message.result().slots().getFirst().scalar3c().clear());
+        assertThrows(UnsupportedOperationException.class, () -> message.result().slots().getFirst().medals().clear());
     }
 }

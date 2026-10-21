@@ -7,9 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.EOFException;
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
@@ -61,10 +58,10 @@ class MatchBootstrapIntegrationTest {
     }
 
     @Test
-    void bootsBothTcpClientsAndReturnsThemWithoutChangingPersistentData() throws Exception {
+    void bootsBothTcpClientsAndReturnsThemWithoutChangingUnrelatedPersistentData() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -106,7 +103,7 @@ class MatchBootstrapIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -118,14 +115,14 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
     void expiresUnfinishedLoadingAndReleasesTheAccountClaims() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration(Map.of("BACKEND_MATCH_LOADING_TIMEOUT_SECONDS", "1"));
 
         try (var app = new Application(config)) {
@@ -149,14 +146,14 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
-    void watchdogStopsAndPassesAnInactiveActionWithoutChangingPersistentData() throws Exception {
+    void watchdogStopsAndPassesAnInactiveActionWithoutChangingUnrelatedPersistentData() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration(Map.of("BACKEND_MATCH_ACTION_TIMEOUT_SECONDS", "1"));
 
         try (var app = new Application(config)) {
@@ -191,7 +188,7 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
@@ -200,7 +197,7 @@ class MatchBootstrapIntegrationTest {
         var a = player("alpha");
         var b = player("bravo");
         var catalog = MatchFixtures.catalog();
-        String before = durableFingerprint();
+        String before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -255,14 +252,14 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
     void passesFromTheAirAndFromTheGroundWithoutEchoingTheOwnersMotion() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        var before = durableFingerprint();
+        var before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -307,14 +304,14 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, durableFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint());
     }
 
     @Test
     void exchangesThreeScenariosThroughProductionDispatchAndAcknowledgesEachSessionOnce() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        var before = durableFingerprint();
+        var before = database.unrelatedDataFingerprint();
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -389,7 +386,7 @@ class MatchBootstrapIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
-                assertEquals(before, durableFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint());
             }
         }
     }
@@ -441,7 +438,7 @@ class MatchBootstrapIntegrationTest {
     }
 
     private void ended(CharacterTestClient client) throws Exception {
-        assertArrayEquals(MatchFixtures.endGame(2), client.read());
+        MatchResultAssertions.readEnd(client::read, 2);
         assertFalse(wire.ready(client.read()).ready());
     }
 
@@ -480,21 +477,5 @@ class MatchBootstrapIntegrationTest {
         }
 
         throw new AssertionError("Match connection remained active");
-    }
-
-    private String durableFingerprint() throws Exception {
-        var digest = MessageDigest.getInstance("SHA-256");
-
-        for (String table : new String[]{"accounts", "characters", "inventories", "inventory_items"}) {
-            try (var connection = database.source().getConnection(); var query = connection.createStatement();
-                var rows = query.executeQuery("SELECT to_jsonb(t)::text FROM " + table + " t ORDER BY id")) {
-                while (rows.next()) {
-                    digest.update(rows.getString(1).getBytes(StandardCharsets.UTF_8));
-                    digest.update((byte) 0);
-                }
-            }
-        }
-
-        return HexFormat.of().formatHex(digest.digest());
     }
 }

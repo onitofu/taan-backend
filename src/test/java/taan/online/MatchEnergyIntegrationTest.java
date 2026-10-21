@@ -109,7 +109,7 @@ class MatchEnergyIntegrationTest {
 
                     owner.send(MatchFixtures.root("give-up-empty"));
                     for (var client : List.of(owner, guest)) {
-                        assertArrayEquals(MatchFixtures.endGame(2), client.read());
+                        MatchResultAssertions.readEnd(client::read, 2);
                         rooms.ready(client.read());
                         client.send(SelectionFixtures.cash(0, 0));
                         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());

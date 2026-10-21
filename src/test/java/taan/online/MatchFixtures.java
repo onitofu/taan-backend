@@ -27,6 +27,7 @@ import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchAdmissionAccess;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
+import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
@@ -160,6 +161,32 @@ public final class MatchFixtures {
         MatchLootPolicy policy,
         MatchBoxPolicy boxes
     ) {
+        return registry(
+            catalog,
+            scheduler,
+            random,
+            access,
+            executor,
+            capacity,
+            mode,
+            policy,
+            boxes,
+            TestMatchResults.action()
+        );
+    }
+
+    public static MatchRegistry registry(
+        MatchDefinitionCatalog catalog,
+        TestMatchScheduler scheduler,
+        RandomGenerator random,
+        MatchAdmissionAccess access,
+        MatchCommandExecutor executor,
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        MatchBoxPolicy boxes,
+        SettleMatchResultAction settlements
+    ) {
         return new MatchRegistry(
             catalog,
             new MatchBootstrapSettings(
@@ -183,7 +210,8 @@ public final class MatchFixtures {
             ),
             executor,
             capacity,
-            access
+            access,
+            settlements
         );
     }
 

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.TestMatchResults;
 import taan.online.MatchBootstrapFixture;
 import taan.online.MatchFixtures;
 import taan.online.match.model.MatchOutcome;
@@ -30,9 +31,12 @@ class ProtocolMatchViewTest {
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> view.end(new MatchOutcome(Set.of(RoomTeam.BLUE, RoomTeam.RED), false))
+            () -> view.end(TestMatchResults.end(new MatchOutcome(Set.of(RoomTeam.BLUE, RoomTeam.RED), false)))
         );
-        assertThrows(IllegalArgumentException.class, () -> view.end(new MatchOutcome(Set.of(), true)));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> view.end(TestMatchResults.end(new MatchOutcome(Set.of(), true)))
+        );
         assertEquals(0, output.batches.size());
     }
 
@@ -41,15 +45,15 @@ class ProtocolMatchViewTest {
         var output = new CollectingPacketOutput();
         var view = new ProtocolMatchView(output);
         byte[] expected = MatchFixtures.root("end-game-result0-no-awards");
-        view.end(MatchOutcome.previewAborted()).toCompletableFuture().join();
+        view.end(TestMatchResults.end(MatchOutcome.previewAborted())).toCompletableFuture().join();
 
         assertEquals(406, expected.length);
-        assertEquals(1, output.batches.getFirst().size());
-        assertArrayEquals(expected, output.batches.getFirst().getFirst());
-        output.batches.getFirst().getFirst()[0] = 0;
-        view.end(MatchOutcome.previewAborted());
+        assertEquals(2, output.batches.getFirst().size());
+        assertArrayEquals(expected, output.batches.getFirst().getLast());
+        output.batches.getFirst().getLast()[0] = 0;
+        view.end(TestMatchResults.end(MatchOutcome.previewAborted()));
 
-        assertArrayEquals(expected, output.batches.getLast().getFirst());
+        assertArrayEquals(expected, output.batches.getLast().getLast());
         view.close("TEST_CLOSE");
 
         assertEquals(List.of("TEST_CLOSE"), output.closeReasons);
@@ -69,17 +73,17 @@ class ProtocolMatchViewTest {
             assertEquals(
                 snapshot.turn().activeSlot(),
                 new TurnStartCodec().decode(
-                    output.batches.getLast().getFirst()
+                    output.batches.getLast().getLast()
                 ).activeSlot()
             );
             view.stopTurn(2);
-            assertEquals(2, new TurnEndCodec().decode(output.batches.getLast().getFirst()).slotIndex());
+            assertEquals(2, new TurnEndCodec().decode(output.batches.getLast().getLast()).slotIndex());
             view.movement(new MatchMovementNotice(MatchMovementKind.MOVE, 0, 100, 200, 1, 0));
-            assertEquals(100, new MoveCodec().decode(output.batches.getLast().getFirst()).x());
+            assertEquals(100, new MoveCodec().decode(output.batches.getLast().getLast()).x());
             view.movement(new MatchMovementNotice(MatchMovementKind.SET_POS, 2, 300, 400, 0, 0));
-            assertEquals(400, new SetPosCodec().decode(output.batches.getLast().getFirst()).y());
+            assertEquals(400, new SetPosCodec().decode(output.batches.getLast().getLast()).y());
             view.movement(new MatchMovementNotice(MatchMovementKind.PASS_TURN, 2, 300, 400, 1, 0xffffffffL));
-            assertEquals(0xffffffffL, new PassTurnCodec().decode(output.batches.getLast().getFirst()).scalar20());
+            assertEquals(0xffffffffL, new PassTurnCodec().decode(output.batches.getLast().getLast()).scalar20());
         }
     }
 }
