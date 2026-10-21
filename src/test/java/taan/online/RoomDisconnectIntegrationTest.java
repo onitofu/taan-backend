@@ -92,7 +92,7 @@ class RoomDisconnectIntegrationTest {
             restarted.start();
             try (var client = new CharacterTestClient(config.port())) {
                 lobby(client, a, 1);
-                cash(client);
+                RoomIntegrationSupport.assertBalances(client, 0, 0);
             }
         }
     }
@@ -151,15 +151,15 @@ class RoomDisconnectIntegrationTest {
                     "The room is not ready to start.",
                     new NoticeMessageCodec().decode(guest.read()).message()
                 );
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.send(RoomScenario.leave(room, 0));
                 assertEquals(1, wire.leave(guest.read()).success());
                 assertTrue(lists.initialize(observer.read()).rooms().isEmpty());
                 guest.send(ChannelFixtures.enter(0));
                 bootstrap(guest);
                 observer.read();
-                cash(guest);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertEquals(1, count(logs, "room.owner.changed"));
                 assertEquals(1, count(logs, "room.destroyed"));
                 assertTrue(logs.events().stream().noneMatch(event -> event.getLevel().toString().equals("ERROR")));
@@ -193,12 +193,6 @@ class RoomDisconnectIntegrationTest {
         assertEquals(0x22b60517, ChannelFixtures.type(client.read()));
         assertTrue(new LobbyRoomListCodec().initialize(client.read()).rooms().isEmpty());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 
     private void awaitClosed(CharacterTestClient client) throws Exception {

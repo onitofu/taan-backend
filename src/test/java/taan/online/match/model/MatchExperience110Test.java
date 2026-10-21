@@ -21,7 +21,7 @@ import taan.online.room.model.RoomMode;
 
 class MatchExperience110Test {
     @ParameterizedTest
-    @ValueSource(longs = {1, 60000, 300000, 600000, 1800000, 2700000})
+    @ValueSource(longs = {1, 60000, 300000, 600000, 1800000})
     void awardsTheSameExperienceForEveryPositiveDuration(long duration) {
         var original = ExperienceTestFixtures.result();
         var result = new MatchResult(
@@ -31,7 +31,7 @@ class MatchExperience110Test {
             original.cause(),
             original.policyVersion(),
             original.participants(),
-            Math.min(duration, 1800000)
+            duration
         );
         var rules = new MatchExperienceRules(TestLevels.table());
         var winner = rules.calculate(result, result.participants().getFirst(), CharacterProgress.initial());

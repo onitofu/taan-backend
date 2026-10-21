@@ -22,6 +22,7 @@ import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.SpentMatchItem;
+import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchGuidedTest {
     @Test
@@ -197,6 +198,31 @@ class MatchGuidedTest {
             assertTrue(p.energy.record(spend));
             assertTrue(p.energy.record(spend));
             assertEquals(ScenarioApplicationOutcome.APPLIED, p.apply(p.shot(1)).outcome());
+            assertEquals(1, p.f.owner.spends.size());
+        }
+    }
+
+    @Test
+    void clearsTheCommittedGuidedTurnAfterTheMissingAcknowledgementExpires() throws Exception {
+        try (var p = new MatchRepeatFixture(MatchGuidedTestPackets.POLICY)) {
+            p.grant(7, true);
+            assertTrue(p.energy.activate(p.use(0, 7)));
+            assertTrue(p.energy.record(p.energy.spend(List.of())));
+            var scene = MatchGuidedTestPackets.shot(0, 0, List.of(7), 0, 1);
+            assertEquals(ScenarioApplicationOutcome.APPLIED, p.apply(scene).outcome());
+            var timer = p.f.timers.commands.getFirst();
+            p.f.runtime.confirmScenario(p.energy.movement.live.ack(0, false));
+            p.f.run();
+            p.f.timers.now = p.f.runtime.snapshot().deadlineNanos();
+            timer.run();
+            p.f.run();
+
+            assertEquals(RoomMatchEndReason.DISCONNECTED, p.f.callbacks.reason);
+            assertTrue(p.f.match.attacks().isEmpty());
+            assertTrue(p.f.match.loot().inventories().isEmpty());
+            assertEquals(1, p.f.owner.spends.size());
+            timer.run();
+            p.f.run();
             assertEquals(1, p.f.owner.spends.size());
         }
     }

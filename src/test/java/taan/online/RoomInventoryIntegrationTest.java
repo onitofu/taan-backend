@@ -69,13 +69,13 @@ class RoomInventoryIntegrationTest {
                 var observer = new CharacterTestClient(config.port());
                 var foreign = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
-                lobby(observer, c, 1);
+                RoomIntegrationSupport.enterLobby(database, observer, c, 1);
                 owner.read();
                 guest.read();
-                lobby(foreign, d, 2);
+                RoomIntegrationSupport.enterLobby(database, foreign, d, 2);
                 owner.send(root("create-unprotected"));
                 int room = wire.initialize(owner.read()).info().roomId();
                 guest.read();
@@ -106,8 +106,8 @@ class RoomInventoryIntegrationTest {
                 assertEquals(bag, InventoryFixtures.update(owner.read()).id());
                 assertEquals(equipment, InventoryFixtures.update(owner.read()).id());
                 assertArrayEquals(moveSound(bag, equipment), owner.read());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.send(InventoryFixtures.move(
                     b.id().value(),
                     guestEquipment,
@@ -126,12 +126,12 @@ class RoomInventoryIntegrationTest {
                     database.scalar("SELECT inventory_id FROM inventory_items WHERE id = "
                     + guestHair)
                 );
-                cash(owner);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
                 guest.send(InventoryFixtures.move(b.id().value(), guestBag, spare, 0, 1039, guestBag, 79, 0));
                 InventoryFixtures.update(guest.read());
                 assertArrayEquals(moveSound(guestBag, guestBag), guest.read());
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
                 guest.send(RoomScenario.ready(0));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -186,8 +186,8 @@ class RoomInventoryIntegrationTest {
                 owner.read();
                 owner.read();
                 owner.read();
-                cash(owner);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertEquals(saved, inventories(a));
                 assertTrue(logs.text().contains("room.appearance.updated"));
                 assertTrue(logs.text().contains("STATE_RESTRICTED"));
@@ -200,7 +200,7 @@ class RoomInventoryIntegrationTest {
         try (var app = new Application(config)) {
             app.start();
             try (var owner = new CharacterTestClient(config.port())) {
-                lobby(owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
                 owner.send(root("create-unprotected"));
                 var init = wire.initialize(owner.read());
 
@@ -236,8 +236,8 @@ class RoomInventoryIntegrationTest {
                 var owner = new CharacterTestClient(config.port());
                 var guest = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
                 owner.send(root("create-unprotected"));
                 int room = wire.initialize(owner.read()).info().roomId();
@@ -252,7 +252,7 @@ class RoomInventoryIntegrationTest {
 
                 assertEquals(0, slot.slot().state());
                 wire.option(guest.read());
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
                 assertEquals(original, database.characters().findByAccount(a.id()).getFirst());
                 assertEquals(bag, database.scalar("SELECT inventory_id FROM inventory_items WHERE id = " + uid));
                 assertFalse(logs.text().contains("room.appearance.updated"));
@@ -290,27 +290,7 @@ class RoomInventoryIntegrationTest {
         return account;
     }
 
-    private void lobby(CharacterTestClient client, Account account, int channel) throws Exception {
-        client.login(account.login().value());
-        var character = database.characters().findByAccount(account.id()).getFirst();
-        client.send(CharacterFixtures.select(character.id().value()));
-        client.read();
-        client.read();
-        client.send(ChannelFixtures.move(channel));
-        client.read();
-        client.send(ChannelFixtures.enter(1));
-        client.read();
-        client.read();
-        client.read();
-    }
-
     private byte[] moveSound(long source, long destination) {
         return new InventoryUpdateCodec().moved(new PrMoveInventoryItem(source, destination));
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

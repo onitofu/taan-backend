@@ -55,8 +55,8 @@ class MatchEnergyIntegrationTest {
                     var owner = new CharacterTestClient(config.port());
                     var guest = new CharacterTestClient(config.port())
                 ) {
-                    lobby(database, owner, a);
-                    lobby(database, guest, b);
+                    RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                    RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                     owner.read();
                     owner.send(RoomFixtures.root("create-unprotected"));
                     int roomId = rooms.initialize(owner.read()).info().roomId();
@@ -232,20 +232,6 @@ class MatchEnergyIntegrationTest {
         var account = database.account(name + "@example.test", AccountGender.FEMALE);
         database.create(account.id(), "Hero" + name, AccountGender.FEMALE);
         return account;
-    }
-
-    private void lobby(CharacterTestDatabase database, CharacterTestClient client, Account account) throws Exception {
-        client.login(account.login().value());
-        var character = database.characters().findByAccount(account.id()).getFirst().id();
-        client.send(CharacterFixtures.select(character.value()));
-        client.read();
-        client.read();
-        client.send(ChannelFixtures.move(1));
-        client.read();
-        client.send(ChannelFixtures.enter(1));
-        client.read();
-        client.read();
-        client.read();
     }
 
     private void started(CharacterTestClient client) throws Exception {

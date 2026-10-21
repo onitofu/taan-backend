@@ -75,9 +75,9 @@ class RoomSlotIntegrationTest {
                 owner.sendFragmented(root("PqGameSession_OpenCloseSlot-close"));
 
                 assertArrayEquals(root("PcGameSession_OpenCloseSlot-close"), owner.read());
-                cash(guest);
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.send(RoomEntryFixtures.enter(room));
                 var joined = wire.initialize(guest.read());
 
@@ -99,8 +99,8 @@ class RoomSlotIntegrationTest {
                 );
 
                 assertArrayEquals(root("PcGameSession_OpenCloseSlot-close"), owner.read());
-                cash(guest);
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 owner.disconnect();
 
                 assertArrayEquals(root("PcGameSession_UpdateSlot-leave-blue0"), guest.read());
@@ -109,8 +109,8 @@ class RoomSlotIntegrationTest {
                 guest.send(root("PqGameSession_OpenCloseSlot-open"));
 
                 assertArrayEquals(root("PcGameSession_OpenCloseSlot-open"), guest.read());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.disconnect();
 
                 assertTrue(lists.initialize(observer.read()).rooms().isEmpty());
@@ -175,7 +175,7 @@ class RoomSlotIntegrationTest {
                 guest.send(Arrays.copyOf(valid, valid.length + 1));
 
                 assertEquals(7, wire.slot(owner.read()).slot().slotIndex());
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
             }
         }
     }
@@ -198,11 +198,5 @@ class RoomSlotIntegrationTest {
         assertEquals(0x22b60517, ChannelFixtures.type(client.read()));
         new LobbyRoomListCodec().initialize(client.read());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

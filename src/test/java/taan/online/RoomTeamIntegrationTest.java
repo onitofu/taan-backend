@@ -84,15 +84,15 @@ class RoomTeamIntegrationTest {
                 assertArrayEquals(root("05-ChangeTeam.reply"), owner.read());
                 assertArrayEquals(root("05-ChangeTeam.reply"), guest.read());
                 guest.sendTogether(team(1), team(255));
-                cash(guest);
-                cash(owner);
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.sendTogether(root("06-ChangeTeam.request"), team(2));
 
                 assertArrayEquals(root("06-ChangeTeam.reply"), owner.read());
                 assertArrayEquals(root("06-ChangeTeam.reply"), guest.read());
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
                 guest.send(team(1));
 
                 assertArrayEquals(root("05-ChangeTeam.reply"), owner.read());
@@ -104,7 +104,7 @@ class RoomTeamIntegrationTest {
                 assertEquals(0, ownerTransfer.oldSlot0());
                 assertEquals(2, ownerTransfer.newSlot0());
                 assertEquals(ownerTransfer, wire.changeTeam(guest.read()));
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 observer.send(RoomEntryFixtures.enter(room));
                 var joined = wire.initialize(observer.read());
                 wire.slot(owner.read());
@@ -134,8 +134,8 @@ class RoomTeamIntegrationTest {
                 assertEquals(c.id().value(), transfer.accountId());
                 assertEquals(0, transfer.oldSlot0());
                 assertEquals(2, transfer.newSlot0());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                 assertFalse(logs.text().contains(TestFixtures.VERIFIER));
                 assertFalse(logs.text().contains("bravo@example.test"));
@@ -181,7 +181,7 @@ class RoomTeamIntegrationTest {
                 );
                 assertArrayEquals(SelectionFixtures.cash(0, 0), guest.read());
                 assertArrayEquals(SelectionFixtures.money(0), guest.read());
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
                 owner.send(integer(root("PqGameSession_OpenCloseSlot-open"), 5, 7, 1));
                 wire.slotAvailability(owner.read());
                 wire.slotAvailability(guest.read());
@@ -196,7 +196,7 @@ class RoomTeamIntegrationTest {
 
                 assertEquals(7, left.slotIndex());
                 assertEquals(0, left.state());
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
             }
         }
 
@@ -232,11 +232,5 @@ class RoomTeamIntegrationTest {
         assertEquals(0x22b60517, ChannelFixtures.type(client.read()));
         new LobbyRoomListCodec().initialize(client.read());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

@@ -75,7 +75,7 @@ class MatchRewardRulesTest {
             MatchOutcomeCause.ELIMINATION,
             "pvp-rewards-1.1.0",
             List.of(participant, other),
-            Math.min(duration, 1800000)
+            duration
         );
         var reward = new MatchRewardRules(TestLevels.table()).calculate(
             result,

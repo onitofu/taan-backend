@@ -29,7 +29,11 @@ public final class MatchResultAssertions {
         }
 
         if (ByteBuffer.wrap(first).order(ByteOrder.LITTLE_ENDIAN).getInt() == PcUpdateMoney.TYPE_ID) {
-            assertTrue(new UpdateMoneyCodec().decode(first).balance() >= 0);
+            var money = new UpdateMoneyCodec().decode(first);
+            assertEquals(0, money.localIndex());
+            assertEquals(0, money.kind());
+            assertEquals(0, money.limitMessageAmount());
+            assertEquals(0, money.showLimitMessage());
             first = reader.read();
         }
 

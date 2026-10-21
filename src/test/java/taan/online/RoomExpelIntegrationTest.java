@@ -60,13 +60,13 @@ class RoomExpelIntegrationTest {
                 var observer = new CharacterTestClient(config.port());
                 var foreign = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
-                lobby(observer, c, 1);
+                RoomIntegrationSupport.enterLobby(database, observer, c, 1);
                 owner.read();
                 guest.read();
-                lobby(foreign, d, 2);
+                RoomIntegrationSupport.enterLobby(database, foreign, d, 2);
                 foreign.send(root("create-unprotected"));
                 wire.initialize(foreign.read());
                 owner.send(root("create-unprotected"));
@@ -85,8 +85,8 @@ class RoomExpelIntegrationTest {
                 wire.ready(guest.read());
                 guest.send(RoomScenario.expel(1001));
                 owner.send(RoomScenario.expel(2));
-                cash(guest);
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
                 owner.sendFragmented(root("PqGameSession_UserExpel-native"));
 
                 assertArrayEquals(root("PcGameSession_UserExpel-guest"), guest.read());
@@ -96,10 +96,10 @@ class RoomExpelIntegrationTest {
                 assertEquals(1, removed.resetWidget());
                 assertEquals(1, listings.update(observer.read()).rooms().getFirst().playerCount());
                 owner.send(RoomScenario.expel(1002));
-                cash(owner);
-                cash(guest);
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.sendTogether(RoomScenario.leave(room, 0), ChannelFixtures.enter(0));
 
                 assertEquals(1, wire.leave(guest.read()).success());
@@ -125,8 +125,8 @@ class RoomExpelIntegrationTest {
                 wire.slot(guest.read());
                 assertEquals(b.id().value(), wire.option(guest.read()).option().ownerAccountId());
                 assertEquals(1, listings.update(observer.read()).rooms().getFirst().playerCount());
-                cash(guest);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertEquals(character, database.characters().findByAccount(b.id()).getFirst());
                 assertEquals(inventory, inventory(b));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
@@ -139,7 +139,7 @@ class RoomExpelIntegrationTest {
         try (var app = new Application(config)) {
             app.start();
             try (var guest = new CharacterTestClient(config.port())) {
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 guest.send(root("create-unprotected"));
 
                 assertEquals(1, wire.initialize(guest.read()).info().details().playerCount());
@@ -162,8 +162,8 @@ class RoomExpelIntegrationTest {
                 var owner = new CharacterTestClient(config.port());
                 var guest = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
                 owner.send(root("create-unprotected"));
                 int room = wire.initialize(owner.read()).info().roomId();
@@ -176,20 +176,20 @@ class RoomExpelIntegrationTest {
 
                 assertEquals(2, wire.expel(guest.read()).targetAccountId());
                 assertEquals(0, wire.slot(owner.read()).slot().state());
-                cash(owner);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
                 guest.disconnect();
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
 
                 try (var reconnected = new CharacterTestClient(config.port())) {
-                    lobby(reconnected, b, 1);
+                    RoomIntegrationSupport.enterLobby(database, reconnected, b, 1);
                     reconnected.send(RoomEntryFixtures.enter(room));
                     var init = wire.initialize(reconnected.read());
 
                     assertEquals(2, init.info().details().playerCount());
                     assertEquals(1002, init.slots().get(2).occupant().characterId());
                     assertEquals(2, wire.slot(owner.read()).slot().slotIndex());
-                    cash(owner);
+                    RoomIntegrationSupport.assertBalances(owner, 0, 0);
                 }
             }
         }
@@ -208,25 +208,5 @@ class RoomExpelIntegrationTest {
         var account = database.account(name + "@example.test", AccountGender.FEMALE);
         assertFalse(database.create(account.id(), "Hero" + name, AccountGender.FEMALE).catalog().isEmpty());
         return account;
-    }
-
-    private void lobby(CharacterTestClient client, Account account, int channel) throws Exception {
-        client.login(account.login().value());
-        long character = database.characters().findByAccount(account.id()).getFirst().id().value();
-        client.send(CharacterFixtures.select(character));
-        client.read();
-        client.read();
-        client.send(ChannelFixtures.move(channel));
-        client.read();
-        client.send(ChannelFixtures.enter(1));
-        client.read();
-        client.read();
-        client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

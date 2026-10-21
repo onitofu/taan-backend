@@ -24,14 +24,12 @@ import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
 import taan.online.match.protocol.codec.NotifyEatItemCodec;
-import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
-import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
@@ -40,7 +38,6 @@ import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
-import taan.online.match.service.model.MatchSnapshot;
 import taan.online.network.FrameDecoder;
 
 class MatchGuidedConnectionTest {
@@ -64,7 +61,7 @@ class MatchGuidedConnectionTest {
                 MatchFixtures.loaded(world.matches, token);
                 var initial = world.matches.current(token).orElseThrow();
                 if (initial.turn().activeSlot() != desiredSlot) {
-                    pass(world, initial.turn().activeSlot() == 0 ? owner : guest, initial);
+                    world.pass(initial.turn().activeSlot() == 0 ? owner : guest, initial);
                     initial = world.matches.current(token).orElseThrow();
                 }
 
@@ -74,7 +71,7 @@ class MatchGuidedConnectionTest {
                 var observer = slot == 0 ? guest : owner;
                 var member = initial.participants().stream().filter(p -> p.slotIndex() == slot)
                     .findFirst().orElseThrow();
-                pass(world, sender, initial);
+                world.pass(sender, initial);
                 var bonus = new PcGamePlayEatBonusItem(
                     slot,
                     new ScenarioEatItemBoxCommand(new ScenarioCommandHeader(slot, 11, -17, -3), -1L, item, -1),
@@ -82,7 +79,7 @@ class MatchGuidedConnectionTest {
                 );
                 world.request(sender, new EatBonusItemCodec().encode(bonus));
                 world.request(sender, new NotifyEatItemCodec().encode(new PcGamePlayNotifyEatItem(slot, 0, item)));
-                pass(world, observer, world.matches.current(token).orElseThrow());
+                world.pass(observer, world.matches.current(token).orElseThrow());
                 var before = world.matches.current(token).orElseThrow();
                 assertEquals(slot, before.turn().activeSlot());
                 assertTrue(before.loot().inventory(member.sessionId()).receipts().getFirst().confirmed());
@@ -158,14 +155,6 @@ class MatchGuidedConnectionTest {
                 }
             }
         }
-    }
-
-    private void pass(RoomConnectionWorld world, ConnectionContextTestHarness client, MatchSnapshot snapshot) {
-        int slot = snapshot.turn().activeSlot();
-        var member = snapshot.participants().stream().filter(p -> p.slotIndex() == slot).findFirst().orElseThrow();
-        var actor = snapshot.actors().get(member.sessionId());
-        var request = new PcGamePlayPassTurn(slot, actor.x(), actor.y(), actor.facing(), 0);
-        world.request(client, new PassTurnCodec().encode(request));
     }
 
     private byte[] frame(byte[] root) {

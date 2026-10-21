@@ -167,9 +167,25 @@ class MatchRewardPersistenceIntegrationTest {
         source.setCurrentSchema("reward_upgrade");
         Flyway.configure().dataSource(source).defaultSchema("reward_upgrade").target("13").load().migrate();
 
-        for (String table : new String[]{"accounts", "characters", "match_results"}) {
-            database.execute("INSERT INTO reward_upgrade." + table + " SELECT * FROM public." + table);
-        }
+        database.execute("""
+            INSERT INTO reward_upgrade.accounts (id, login, credential_verifier, gender, created_at, cash)
+            OVERRIDING SYSTEM VALUE
+            SELECT id, login, credential_verifier, gender, created_at, cash FROM public.accounts
+            """);
+        database.execute("""
+            INSERT INTO reward_upgrade.characters
+                (id, account_id, name, level, created_at, deleted_at, experience,
+                 force_medals, kill_medals, supply_medals, gold)
+            OVERRIDING SYSTEM VALUE
+            SELECT id, account_id, name, level, created_at, deleted_at, experience,
+                   force_medals, kill_medals, supply_medals, gold FROM public.characters
+            """);
+        database.execute("""
+            INSERT INTO reward_upgrade.match_results
+                (match_id, finished_at, winning_team, cause, policy_version, reward_duration_millis)
+            SELECT match_id, finished_at, winning_team, cause, policy_version, reward_duration_millis
+            FROM public.match_results
+            """);
 
         String columns = "match_id, character_id, slot_index, team, damage, award_eligible, force_medal, kills, "
             + "kill_medal, experience_before, level_before, experience_after, level_after, experience_base_delta, "

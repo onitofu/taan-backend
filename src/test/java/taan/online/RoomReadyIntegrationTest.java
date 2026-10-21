@@ -99,10 +99,10 @@ class RoomReadyIntegrationTest {
                 }
 
                 guest.sendTogether(team(1), ready(255));
-                cash(guest);
-                cash(owner);
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 observer.send(RoomEntryFixtures.enter(room));
                 var init = wire.initialize(observer.read());
                 wire.slot(owner.read());
@@ -132,8 +132,8 @@ class RoomReadyIntegrationTest {
                 owner.send(ready(1));
 
                 assertFalse(wire.ready(owner.read()).ready());
-                cash(guest);
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 owner.disconnect();
 
                 assertEquals(0, wire.slot(observer.read()).slot().slotIndex());
@@ -151,8 +151,8 @@ class RoomReadyIntegrationTest {
                 guest.send(Arrays.copyOf(ready(0), 4));
 
                 assertEquals(4, wire.slot(observer.read()).slot().slotIndex());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                 assertFalse(logs.text().contains(TestFixtures.VERIFIER));
                 assertFalse(logs.text().contains("bravo@example.test"));
@@ -196,11 +196,5 @@ class RoomReadyIntegrationTest {
         client.read();
         client.read();
         client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }
