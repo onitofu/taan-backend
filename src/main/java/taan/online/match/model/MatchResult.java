@@ -86,7 +86,10 @@ public record MatchResult(
                     participation.longestTurnMillis().getOrDefault(session, 0L),
                     participation.voluntarilyPassed().contains(session)
                 ),
-                null
+                null,
+                null,
+                null,
+                statistics.shots(session)
             );
         }).toList();
         long maximum = drafts.stream().filter(p -> p.awardEligible() && !p.passive())
@@ -101,14 +104,17 @@ public record MatchResult(
             p.kills(),
             p.awardEligible() && !p.passive() && p.kills() >= 2,
             p.statistics(),
-            null
+            null,
+            null,
+            null,
+            p.shots()
         )).toList();
         return new MatchResult(
             id,
             finishedAt,
             outcome.winningTeams().stream().findFirst(),
             outcome.cause(),
-            "pvp-exp-1.1.0",
+            "pvp-rewards-1.1.0",
             results,
             participation.durationMillis()
         );
@@ -124,6 +130,7 @@ public record MatchResult(
             participants.stream().anyMatch(
                 p -> p.forceMedal() || p.killMedal()
                     || p.experienceReward() != null && p.experienceReward().delta() > 0
+                    || p.goldReward() != null && p.goldReward().delta() > 0
             ),
             cause
         );

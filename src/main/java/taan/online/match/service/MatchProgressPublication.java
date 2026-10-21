@@ -17,7 +17,8 @@ final class MatchProgressPublication {
             .map(p -> new RoomMatchCharacterProgress(
                 member.sessionId(),
                 member.admissionId(),
-                p.experienceReward().after()
+                p.experienceReward().after(),
+                p.goldReward() == null ? null : p.goldReward().after()
             ))).toList();
         runtime.callbacks.progressCommitted(runtime.token(), updates);
     }

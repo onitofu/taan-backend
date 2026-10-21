@@ -19,10 +19,11 @@ import taan.online.SelectionFixtures;
 import taan.online.TestLevels;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.model.RoomMatchToken;
@@ -157,6 +158,7 @@ class MatchConnectionTest {
             new RoomResponseCodec().option(read(guest));
             world.request(guest, MatchFixtures.root("PqResult_RandSelect.captured"));
 
+            assertEquals(2, new ResultSelectionCodec().selected(read(guest)).slotIndex());
             assertNull(guest.channel().readOutbound());
         }
     }
@@ -179,7 +181,7 @@ class MatchConnectionTest {
                 new MatchPacketHandler(
                     matches,
                     new TerminateMatchAction(null),
-                    new ConsumeMatchResultAction(matches),
+                    new SelectMatchRewardAction(matches),
                     new ConfirmMatchLoadingAction(matches),
                     new ConfirmMatchPositionAction(matches),
                     new ReportMatchEnemiesAction(matches),

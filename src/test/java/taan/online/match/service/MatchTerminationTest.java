@@ -80,7 +80,7 @@ class MatchTerminationTest {
             assertTrue(result.delivery().toCompletableFuture().isDone());
             assertFalse(f.outputs.get(1).delivery.isDone());
             assertEquals(f.token, rooms.matchContext(owner).token());
-            assertTrue(new ConsumeMatchResultAction(f.room.scenario.matches).execute(owner, context));
+            assertTrue(f.room.scenario.matches.consumeResult(context));
             assertNull(
                 new TerminateMatchAction(f.room.scenario.matches).execute(
                     owner,
@@ -134,7 +134,7 @@ class MatchTerminationTest {
                 assertEquals(
                     f.room.players.get(1),
                     f.room.scenario.rooms.current(f.room.players.get(1))
-                        .orElseThrow().ownerSessionId()
+                    .orElseThrow().ownerSessionId()
                 );
             }
         }

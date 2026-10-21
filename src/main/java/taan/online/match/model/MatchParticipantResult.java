@@ -14,7 +14,10 @@ public record MatchParticipantResult(
     int kills,
     boolean killMedal,
     MatchParticipantStatistics statistics,
-    MatchExperienceReward experienceReward
+    MatchExperienceReward experienceReward,
+    MatchGoldReward goldReward,
+    MatchRewardCard card,
+    MatchShotStatistics shots
 ) {
     public MatchParticipantResult(
         CharacterId characterId,
@@ -25,6 +28,35 @@ public record MatchParticipantResult(
         boolean forceMedal
     ) {
         this(characterId, slotIndex, team, damage, awardEligible, forceMedal, 0, false, null, null);
+    }
+
+    public MatchParticipantResult(
+        CharacterId characterId,
+        int slotIndex,
+        RoomTeam team,
+        long damage,
+        boolean awardEligible,
+        boolean forceMedal,
+        int kills,
+        boolean killMedal,
+        MatchParticipantStatistics statistics,
+        MatchExperienceReward experienceReward
+    ) {
+        this(
+            characterId,
+            slotIndex,
+            team,
+            damage,
+            awardEligible,
+            forceMedal,
+            kills,
+            killMedal,
+            statistics,
+            experienceReward,
+            null,
+            null,
+            null
+        );
     }
 
     public MatchParticipantResult {
@@ -46,7 +78,29 @@ public record MatchParticipantResult(
         return hadOpportunity() && statistics.acceptedShots() == 0 && damage == 0 && kills == 0;
     }
 
+    public MatchParticipantResult withDraw(int draw) {
+        return new MatchParticipantResult(
+            characterId,
+            slotIndex,
+            team,
+            damage,
+            awardEligible,
+            forceMedal,
+            kills,
+            killMedal,
+            statistics.withDraw(draw),
+            experienceReward,
+            goldReward,
+            card,
+            shots
+        );
+    }
+
     public MatchParticipantResult rewarded(MatchExperienceReward reward) {
+        return rewarded(reward, goldReward, card);
+    }
+
+    public MatchParticipantResult rewarded(MatchExperienceReward reward, MatchGoldReward gold, MatchRewardCard prize) {
         return new MatchParticipantResult(
             characterId,
             slotIndex,
@@ -57,7 +111,10 @@ public record MatchParticipantResult(
             kills,
             killMedal,
             null,
-            reward
+            reward,
+            gold,
+            prize,
+            shots
         );
     }
 }

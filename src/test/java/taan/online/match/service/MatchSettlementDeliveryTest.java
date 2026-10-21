@@ -59,8 +59,11 @@ class MatchSettlementDeliveryTest {
             assertEquals(1, fixture.owner.ends);
             assertEquals(1, fixture.guest.ends);
             assertTrue(fixture.owner.outcomes.getFirst().awardsGranted());
-            assertEquals(77, fixture.owner.results.getFirst().result().participants().stream()
-                .mapToLong(value -> value.damage()).sum());
+            assertEquals(
+                77,
+                fixture.owner.results.getFirst().result().participants().stream()
+                .mapToLong(value -> value.damage()).sum()
+            );
             assertEquals(RoomState.WAITING, scenario.rooms.current(fixture.room.owner).orElseThrow().state());
             fixture.matches.dispatchTermination(terminated.termination(), other, () -> writes.incrementAndGet())
                 .toCompletableFuture().join();
@@ -100,12 +103,18 @@ class MatchSettlementDeliveryTest {
                 assertEquals(List.of(leave ? "MATCH_ROOM_LEAVE" : "MATCH_SETTLEMENT_FAILED"), fixture.owner.closed);
                 assertEquals(List.of("MATCH_SETTLEMENT_FAILED"), fixture.guest.closed);
                 assertTrue(fixture.matches.current(fixture.token).isEmpty());
-                assertEquals(RoomState.WAITING, scenario.rooms.current(fixture.room.players.get(1))
-                    .orElseThrow().state());
+                assertEquals(
+                    RoomState.WAITING,
+                    scenario.rooms.current(fixture.room.players.get(1))
+                    .orElseThrow().state()
+                );
                 assertFalse(logs.text().contains("private-settlement-value"));
                 assertFalse(logs.text().contains("match.rewards.committed"));
-                assertEquals(1, logs.events().stream().filter(event -> event.getFormattedMessage()
-                    .equals("Match rewards could not be committed")).count());
+                assertEquals(
+                    1,
+                    logs.events().stream().filter(event -> event.getFormattedMessage()
+                    .equals("Match rewards could not be committed")).count()
+                );
             }
         }
     }
@@ -123,7 +132,8 @@ class MatchSettlementDeliveryTest {
                 terminal,
                 List.of(new MatchSubscription(fixture.room.players.get(1), fixture.guest)),
                 new MatchSubscription(fixture.room.owner, fixture.owner),
-                fixture.runtime.snapshot().participants()
+                fixture.runtime.snapshot().participants(),
+                null
             );
             delivery.settlementFailed();
 

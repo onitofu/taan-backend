@@ -89,7 +89,7 @@ final class RoomMatchOperations {
 
             if (subscription != null && expected.equals(subscription.membership())
                 && channels.refreshProgress(update.sessionId(), update.progress())) {
-                room.refreshProgress(update.sessionId(), update.progress());
+                room.refreshProgress(update.sessionId(), update.progress(), update.goldAfter());
             }
         }
     }

@@ -4,17 +4,21 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.model.CharacterProgress;
 import taan.online.match.model.MatchExperienceRules;
 import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchResult;
+import taan.online.match.model.MatchRewardRules;
 
-final class MatchExperiencePersistence {
+final class MatchRewardPersistence {
     private final MatchExperienceRules rules;
     private final int timeout;
+    private final MatchRewardRules rewardRules;
 
-    MatchExperiencePersistence(MatchExperienceRules rules, int timeout) {
-        this.rules = rules;
+    MatchRewardPersistence(CharacterLevelTable levels, int timeout) {
+        this.rules = new MatchExperienceRules(levels);
+        rewardRules = new MatchRewardRules(levels);
         this.timeout = timeout;
     }
 
@@ -25,9 +29,11 @@ final class MatchExperiencePersistence {
 
         for (var participant : ordered) {
             CharacterProgress before;
+            long goldBefore;
+            boolean full = result.policyVersion().equals("pvp-rewards-1.1.0");
 
             try (var statement = connection.prepareStatement(
-                "SELECT experience, level, force_medals, kill_medals, supply_medals "
+                "SELECT experience, gold, level, force_medals, kill_medals, supply_medals "
                     + "FROM characters WHERE id = ? FOR UPDATE"
             )) {
                 statement.setQueryTimeout(timeout);
@@ -38,6 +44,7 @@ final class MatchExperiencePersistence {
                         throw new SQLException("Reward character is missing", "23503");
                     }
 
+                    goldBefore = rows.getLong("gold");
                     before = new CharacterProgress(
                         rows.getLong("experience"),
                         rows.getLong("force_medals"),
@@ -47,25 +54,29 @@ final class MatchExperiencePersistence {
                 }
             }
 
-            var reward = rules.calculate(result, participant, before);
+            var settled = full ? rewardRules.calculate(result, participant, before, goldBefore)
+                : participant.rewarded(rules.calculate(result, participant, before));
+            var reward = settled.experienceReward();
             var after = reward.after();
 
             try (var statement = connection.prepareStatement(
-                "UPDATE characters SET experience = ?, level = ?, force_medals = ?, kill_medals = ? WHERE id = ?"
+                "UPDATE characters SET experience = ?, level = ?, force_medals = ?, kill_medals = ?, "
+                    + "gold = ? WHERE id = ?"
             )) {
                 statement.setQueryTimeout(timeout);
                 statement.setLong(1, after.progress().experience());
                 statement.setInt(2, after.level());
                 statement.setLong(3, after.progress().forceMedals());
                 statement.setLong(4, after.progress().killMedals());
-                statement.setLong(5, participant.characterId().value());
+                statement.setLong(5, full ? settled.goldReward().after() : goldBefore);
+                statement.setLong(6, participant.characterId().value());
 
                 if (statement.executeUpdate() != 1) {
                     throw new SQLException("Reward character update failed", "22000");
                 }
             }
 
-            rewards.add(participant.rewarded(reward));
+            rewards.add(settled);
         }
 
         rewards.sort(Comparator.comparingInt(MatchParticipantResult::slotIndex));

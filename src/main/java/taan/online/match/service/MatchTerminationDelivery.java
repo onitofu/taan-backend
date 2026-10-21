@@ -28,6 +28,7 @@ final class MatchTerminationDelivery {
     private static final EventLogger LOG = EventLogger.forClass(MatchTerminationDelivery.class);
 
     private final RoomMatchTermination terminal;
+    private final MatchResultSelections selections;
     private final List<MatchParticipant> participants;
     private final List<MatchSubscription> recipients;
     private final MatchSubscription departing;
@@ -36,9 +37,11 @@ final class MatchTerminationDelivery {
         RoomMatchTermination terminal,
         List<MatchSubscription> recipients,
         MatchSubscription departing,
-        List<MatchParticipant> participants
+        List<MatchParticipant> participants,
+        MatchResultSelections selections
     ) {
         this.terminal = terminal;
+        this.selections = selections;
         this.participants = List.copyOf(participants);
         this.recipients = List.copyOf(recipients);
         this.departing = departing;
@@ -79,6 +82,10 @@ final class MatchTerminationDelivery {
     }
 
     CompletionStage<Void> dispatch(UUID requester, MatchResult stored) {
+        if (terminal.mode() == RoomMatchTerminationMode.RETURN_TO_ROOM) {
+            selections.publish(terminal, participants, recipients);
+        }
+
         CompletionStage<Void> result = CompletableFuture.completedFuture(null);
 
         for (var recipient : recipients) {

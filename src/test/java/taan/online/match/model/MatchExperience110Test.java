@@ -88,7 +88,7 @@ class MatchExperience110Test {
                 CharacterProgress.initial()
             );
 
-            assertEquals("pvp-exp-1.1.0", completed.policyVersion());
+            assertEquals("pvp-rewards-1.1.0", completed.policyVersion());
             assertEquals(1160, winner.delta());
             assertEquals(1, winner.after().progress().forceMedals());
             assertEquals(1, winner.after().progress().killMedals());

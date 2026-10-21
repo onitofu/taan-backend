@@ -5,8 +5,8 @@ import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.TestMatchOutput;
 import taan.online.room.model.RoomMode;
@@ -32,7 +32,7 @@ public final class MatchTerminalFixture implements AutoCloseable {
         handler = new MatchPacketHandler(
             matches,
             new TerminateMatchAction(matches),
-            new ConsumeMatchResultAction(matches),
+            new SelectMatchRewardAction(matches),
             new ConfirmMatchLoadingAction(matches),
             new ConfirmMatchPositionAction(matches),
             new ReportMatchEnemiesAction(matches),

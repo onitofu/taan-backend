@@ -6,11 +6,12 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchOutcome;
-import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
+import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchRewardSelectionNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PendingMatchSpend;
@@ -163,6 +164,23 @@ public final class TestMatchOutput implements MatchOutput {
         }
 
         return delivery;
+    }
+
+    public final List<MatchRewardSelectionNotice> selections = new ArrayList<>();
+    public RuntimeException selectionFailure;
+    public CompletionStage<Void> selectionDelivery = CompletableFuture.completedFuture(null);
+    public Runnable onSelection = () -> { };
+
+    @Override
+    public CompletionStage<Void> selectReward(MatchRewardSelectionNotice notice) {
+        selections.add(notice);
+        onSelection.run();
+
+        if (selectionFailure != null) {
+            throw selectionFailure;
+        }
+
+        return selectionDelivery;
     }
 
     @Override

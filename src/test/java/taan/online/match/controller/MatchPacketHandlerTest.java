@@ -23,6 +23,7 @@ import taan.online.TestMatchResults;
 import taan.online.TestMatchScheduler;
 import taan.online.logging.WarningLogLimiter;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
 import taan.online.match.protocol.packet.PcGamePlayGiveUp;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
@@ -31,14 +32,15 @@ import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConfirmScenarioAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.SelectMatchRewardCommand;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchContext;
@@ -46,14 +48,14 @@ import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchPacketHandlerTest {
     @Test
-    void consumesBothCardTypesWithoutRepliesOrRewardsAndInvalidatesReceiptsOnRestart() throws Exception {
+    void handlesOneCardChoiceAndInvalidatesResultReceiptsOnRestart() throws Exception {
         try (var f = new MatchTerminalFixture(2, RoomMode.ITEM, MatchPhase.PREVIEW); var logs = new LogCapture()) {
             var id = f.room.owner;
             var handler = f.handler;
             var before = handler.capture(id);
             byte[] giveUp = MatchFixtures.root("give-up-empty");
             byte[] random = MatchFixtures.root("PqResult_RandSelect.captured");
-            byte[] card = MatchFixtures.root("PqResult_SelectCard");
+            byte[] card = new ResultSelectionCodec().encode(new PqResultSelectCard(3, 0));
             handler.handle(id, PqResultRandSelect.TYPE_ID, random, before);
 
             assertEquals(0, f.outputs.getFirst().ends);
@@ -75,7 +77,7 @@ class MatchPacketHandlerTest {
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, before);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());
-            assertFalse(new ConsumeMatchResultAction(f.room.scenario.matches).execute(id, ended.roomContext()));
+            assertFalse(f.room.scenario.matches.consumeResult(ended.roomContext()));
             assertNull(
                 new TerminateMatchAction(f.room.scenario.matches).execute(
                     UUID.randomUUID(),
@@ -88,15 +90,17 @@ class MatchPacketHandlerTest {
                     null
                 ).toCompletableFuture().join().termination()
             );
-            assertFalse(
-                new ConsumeMatchResultAction(f.room.scenario.matches).execute(UUID.randomUUID(), ended.roomContext())
-            );
-            assertFalse(new ConsumeMatchResultAction(f.room.scenario.matches).execute(id, null));
+            new SelectMatchRewardAction(f.room.scenario.matches).execute(
+                new SelectMatchRewardCommand(UUID.randomUUID(), ended.roomContext(), 0, null)
+            ).toCompletableFuture().join();
+            new SelectMatchRewardAction(f.room.scenario.matches).execute(
+                new SelectMatchRewardCommand(id, null, 0, null)
+            ).toCompletableFuture().join();
             handler.handle(id, PcGamePlayGiveUp.TYPE_ID, giveUp, null);
 
             assertTrue(f.room.scenario.matches.current(next).isPresent());
             assertTrue(logs.text().contains("match.result.selection.ignored"));
-            assertTrue(logs.text().contains("NO_AWARDS"));
+            assertTrue(logs.text().contains("match.result.card.selected"));
             assertFalse(logs.text().contains("Hero"));
         }
     }
@@ -129,7 +133,7 @@ class MatchPacketHandlerTest {
             var handler = new MatchPacketHandler(
                 matches,
                 new TerminateMatchAction(matches),
-                new ConsumeMatchResultAction(matches),
+                new SelectMatchRewardAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
                 new ReportMatchEnemiesAction(matches),

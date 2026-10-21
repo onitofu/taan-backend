@@ -15,11 +15,14 @@ import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.match.model.MatchExperienceReward;
-import taan.online.match.model.MatchExperienceRules;
+import taan.online.match.model.MatchGoldReward;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchOutcomeCause;
 import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchResult;
+import taan.online.match.model.MatchRewardCard;
+import taan.online.match.model.MatchRewardCardKind;
+import taan.online.match.model.MatchShotStatistics;
 import taan.online.match.repository.MatchResultRepository;
 import taan.online.match.repository.MatchSettlement;
 import taan.online.room.model.RoomTeam;
@@ -27,12 +30,12 @@ import taan.online.room.model.RoomTeam;
 public final class JdbcMatchResultRepository implements MatchResultRepository {
     private final DataSource dataSource;
     private final int timeout;
-    private final MatchExperiencePersistence experience;
+    private final MatchRewardPersistence experience;
 
     public JdbcMatchResultRepository(DataSource dataSource, int timeout, CharacterLevelTable levels) {
         this.dataSource = dataSource;
         this.timeout = timeout;
-        experience = new MatchExperiencePersistence(new MatchExperienceRules(levels), timeout);
+        experience = new MatchRewardPersistence(levels, timeout);
     }
 
     @Override
@@ -121,8 +124,10 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
                 (match_id, character_id, slot_index, team, damage, award_eligible, force_medal, kills, kill_medal,
                  experience_before, level_before, experience_after, level_after, experience_base_delta,
                  experience_pcroom_delta, experience_medal_delta, experience_guard_adjustment,
-                 force_medals_after, kill_medals_after, supply_medals_after)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 force_medals_after, kill_medals_after, supply_medals_after,
+                 experience_card_delta, gold_before, gold_after, gold_base_delta, gold_medal_delta, gold_card_delta,
+                 card_draw, card_kind, card_amount, accepted_shots, damaging_shots)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         try (var statement = connection.prepareStatement(sql)) {
@@ -157,6 +162,28 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
                     statement.setLong(19, reward.after().progress().killMedals());
                     statement.setLong(20, reward.after().progress().supplyMedals());
                 }
+                statement.setLong(21, reward == null ? 0 : reward.cardDelta());
+                var gold = participant.goldReward();
+
+                if (gold == null) {
+                    for (int column = 22; column <= 26; column++) {
+                        statement.setNull(column, Types.BIGINT);
+                    }
+                } else {
+                    statement.setLong(22, gold.before());
+                    statement.setLong(23, gold.after());
+                    statement.setLong(24, gold.baseDelta());
+                    statement.setLong(25, gold.medalDelta());
+                    statement.setLong(26, gold.cardDelta());
+                }
+
+                var card = participant.card();
+                statement.setObject(27, card == null ? null : card.draw(), Types.SMALLINT);
+                statement.setString(28, card == null ? null : card.kind().name());
+                statement.setObject(29, card == null ? null : card.amount(), Types.BIGINT);
+                var shots = participant.shots();
+                statement.setObject(30, shots == null ? null : shots.acceptedShots(), Types.BIGINT);
+                statement.setObject(31, shots == null ? null : shots.damagingShots(), Types.BIGINT);
                 statement.addBatch();
             }
 
@@ -218,7 +245,9 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
             SELECT character_id, slot_index, team, damage, award_eligible, force_medal, kills, kill_medal,
                    experience_before, level_before, experience_after, level_after, experience_base_delta,
                    experience_pcroom_delta, experience_medal_delta, experience_guard_adjustment,
-                   force_medals_after, kill_medals_after, supply_medals_after
+                   force_medals_after, kill_medals_after, supply_medals_after, experience_card_delta,
+                   gold_before, gold_after, gold_base_delta, gold_medal_delta, gold_card_delta,
+                   card_draw, card_kind, card_amount, accepted_shots, damaging_shots
             FROM match_participant_results WHERE match_id = ? ORDER BY slot_index
             """;
         var participants = new ArrayList<MatchParticipantResult>();
@@ -240,7 +269,17 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
                             rows.getInt("kills"),
                             rows.getBoolean("kill_medal"),
                             null,
-                            readExperience(rows)
+                            readExperience(rows),
+                            readGold(rows),
+                            rows.getObject("card_draw") == null ? null : new MatchRewardCard(
+                                rows.getInt("card_draw"),
+                                MatchRewardCardKind.valueOf(rows.getString("card_kind")),
+                                rows.getLong("card_amount")
+                            ),
+                            rows.getObject("accepted_shots") == null ? null : new MatchShotStatistics(
+                                rows.getLong("accepted_shots"),
+                                rows.getLong("damaging_shots")
+                            )
                         )
                     );
                 }
@@ -271,7 +310,18 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
             rows.getLong("experience_base_delta"),
             rows.getLong("experience_pcroom_delta"),
             rows.getLong("experience_medal_delta"),
-            rows.getLong("experience_guard_adjustment")
+            rows.getLong("experience_guard_adjustment"),
+            rows.getLong("experience_card_delta")
+        );
+    }
+
+    private static MatchGoldReward readGold(ResultSet rows) throws SQLException {
+        return rows.getObject("gold_before") == null ? null : new MatchGoldReward(
+            rows.getLong("gold_before"),
+            rows.getLong("gold_after"),
+            rows.getLong("gold_base_delta"),
+            rows.getLong("gold_medal_delta"),
+            rows.getLong("gold_card_delta")
         );
     }
 

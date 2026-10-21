@@ -18,12 +18,15 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
+import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
@@ -52,10 +55,10 @@ class MatchTerminationIntegrationTest {
     }
 
     @Test
-    void endsActiveMatchWithoutChangingDurableDataAndAcceptsCardsAndAnotherReservation() throws Exception {
+    void endsActiveMatchAndAcceptsOnePrepaidCardChoiceBeforeAnotherReservation() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = database.unrelatedDataFingerprint();
+        String before = database.unrelatedDataFingerprint(true);
         var config = database.configuration();
 
         try (var app = new Application(config); var logs = new LogCapture()) {
@@ -70,11 +73,15 @@ class MatchTerminationIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner, 2);
                 ended(guest, 2);
-                owner.send(MatchFixtures.root("PqResult_RandSelect.captured"));
-                owner.send(MatchFixtures.root("PqResult_SelectCard"));
+                var cards = new ResultSelectionCodec();
+                owner.send(cards.encode(new PqResultSelectCard(3, 0)));
+                assertEquals(3, cards.selected(owner.read()).cardIndex());
+                assertEquals(0, cards.selected(guest.read()).slotIndex());
+                owner.send(cards.encode(new PqResultSelectCard(5, 0)));
+                assertEquals(3, cards.selected(owner.read()).cardIndex());
                 owner.send(MatchFixtures.root("give-up-empty"));
                 cash(owner);
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -84,14 +91,14 @@ class MatchTerminationIntegrationTest {
                 guest.send(MatchFixtures.root("give-up-empty"));
                 ended(owner, 1);
                 ended(guest, 1);
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
                 assertFalse(logs.text().contains("alpha@example.test"));
                 assertFalse(logs.text().contains("Heroalpha"));
             }
         }
 
-        assertEquals(before, database.unrelatedDataFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint(true));
     }
 
     @Test
@@ -162,7 +169,7 @@ class MatchTerminationIntegrationTest {
     void commitsTheDamageMedalBeforeTcpResultsAndPlaysAnotherMatchWithoutOtherPersistentChanges() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = database.unrelatedDataFingerprint();
+        String before = database.unrelatedDataFingerprint(true);
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -202,7 +209,7 @@ class MatchTerminationIntegrationTest {
                 assertEquals(1, database.scalar("SELECT sum(force_medals) FROM characters"));
                 cash(owner);
                 cash(guest);
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -212,7 +219,7 @@ class MatchTerminationIntegrationTest {
                 ended(owner, 2);
                 ended(guest, 2);
                 assertEquals(1, database.scalar("SELECT sum(force_medals) FROM characters"));
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
             }
         }
     }
@@ -221,7 +228,7 @@ class MatchTerminationIntegrationTest {
     void keepsTheCommittedWinnerWhenTheDefeatedTcpPeerDoesNotAcknowledge() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = database.unrelatedDataFingerprint();
+        String before = database.unrelatedDataFingerprint(true);
         var config = database.configuration(Map.of("BACKEND_MATCH_COMPLETION_GRACE_SECONDS", "1"));
 
         try (var app = new Application(config)) {
@@ -261,7 +268,7 @@ class MatchTerminationIntegrationTest {
                 assertTrue(matches.current(token).isEmpty());
                 assertTrue(rooms.membership(defeated.sessionId()).isEmpty());
                 assertEquals(shooter.sessionId(), RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId());
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
             }
         }
     }
@@ -355,7 +362,7 @@ class MatchTerminationIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
+        assertTrue(new UpdateMoneyCodec().decode(client.read()).balance() >= 0);
     }
 
     private void awaitClosed(CharacterTestClient client) throws Exception {

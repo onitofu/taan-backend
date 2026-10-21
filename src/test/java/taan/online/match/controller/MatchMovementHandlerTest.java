@@ -23,10 +23,10 @@ import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MoveMatchActorAction;
 import taan.online.match.service.PassMatchTurnAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -45,7 +45,7 @@ class MatchMovementHandlerTest {
             var handler = new MatchPacketHandler(
                 matches,
                 new TerminateMatchAction(matches),
-                new ConsumeMatchResultAction(matches),
+                new SelectMatchRewardAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
                 new ReportMatchEnemiesAction(matches),

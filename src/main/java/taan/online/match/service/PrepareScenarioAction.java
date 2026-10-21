@@ -124,6 +124,7 @@ public final class PrepareScenarioAction {
             refitted.add(session);
         }
 
+        draft.finishShot(shooter);
         var sender = scenario.sender();
         var receipt = new ScenarioCommitReceipt(
             scenario.hash(),
