@@ -183,6 +183,10 @@ public final class Room {
     }
 
     public void refreshProgress(UUID sessionId, CharacterProgressSnapshot progress) {
+        refreshProgress(sessionId, progress, null);
+    }
+
+    public void refreshProgress(UUID sessionId, CharacterProgressSnapshot progress, Long goldAfter) {
         var slot = slots.stream().filter(value -> value.participant() != null
             && value.participant().sessionId().equals(sessionId)
             && value.participant().character().id().equals(progress.characterId())).findFirst();
@@ -202,7 +206,8 @@ public final class Room {
             old.gender(),
             old.appearance(),
             old.createdAt(),
-            progress.progress()
+            progress.progress(),
+            goldAfter == null ? old.gold() : goldAfter
         );
         slots.set(
             current.index(),
@@ -236,7 +241,8 @@ public final class Room {
             character.gender(),
             appearance,
             character.createdAt(),
-            character.progress()
+            character.progress(),
+            character.gold()
         );
         slots.set(
             slot.index(),

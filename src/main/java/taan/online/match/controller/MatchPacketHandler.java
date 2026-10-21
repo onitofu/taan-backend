@@ -36,7 +36,6 @@ import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConfirmScenarioAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.MoveMatchActorAction;
@@ -46,6 +45,7 @@ import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.ReportMatchGhostAction;
 import taan.online.match.service.ReportMatchPickupAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.ConfirmScenarioCommand;
@@ -53,6 +53,7 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.match.service.model.SelectMatchRewardCommand;
 import taan.online.match.view.ProtocolMatchView;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.PacketOutput;
@@ -67,7 +68,7 @@ public final class MatchPacketHandler {
     private final MoveMatchActorAction movement;
     private final PassMatchTurnAction passing;
     private final TerminateMatchAction terminate;
-    private final ConsumeMatchResultAction consume;
+    private final SelectMatchRewardAction selection;
     private final ConfirmMatchLoadingAction loading;
     private final ConfirmMatchPositionAction position;
     private final ReportMatchEnemiesAction reports;
@@ -77,7 +78,7 @@ public final class MatchPacketHandler {
     public MatchPacketHandler(
         MatchRegistry matches,
         TerminateMatchAction terminate,
-        ConsumeMatchResultAction consume,
+        SelectMatchRewardAction selection,
         ConfirmMatchLoadingAction loading,
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports,
@@ -86,7 +87,7 @@ public final class MatchPacketHandler {
         this(
             matches,
             terminate,
-            consume,
+            selection,
             loading,
             position,
             reports,
@@ -99,7 +100,7 @@ public final class MatchPacketHandler {
     public MatchPacketHandler(
         MatchRegistry matches,
         TerminateMatchAction terminate,
-        ConsumeMatchResultAction consume,
+        SelectMatchRewardAction selection,
         ConfirmMatchLoadingAction loading,
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports,
@@ -110,7 +111,7 @@ public final class MatchPacketHandler {
         this(
             matches,
             terminate,
-            consume,
+            selection,
             loading,
             position,
             reports,
@@ -125,7 +126,7 @@ public final class MatchPacketHandler {
     public MatchPacketHandler(
         MatchRegistry matches,
         TerminateMatchAction terminate,
-        ConsumeMatchResultAction consume,
+        SelectMatchRewardAction selection,
         ConfirmMatchLoadingAction loading,
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports,
@@ -138,7 +139,7 @@ public final class MatchPacketHandler {
         this(
             matches,
             terminate,
-            consume,
+            selection,
             loading,
             position,
             reports,
@@ -161,7 +162,7 @@ public final class MatchPacketHandler {
     public MatchPacketHandler(
         MatchRegistry matches,
         TerminateMatchAction terminate,
-        ConsumeMatchResultAction consume,
+        SelectMatchRewardAction selection,
         ConfirmMatchLoadingAction loading,
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports,
@@ -181,7 +182,7 @@ public final class MatchPacketHandler {
         this.matches = matches;
         ghosts = new ReportMatchGhostAction(matches);
         this.terminate = terminate;
-        this.consume = consume;
+        this.selection = selection;
         this.loading = loading;
         this.position = position;
         this.reports = reports;
@@ -296,15 +297,16 @@ public final class MatchPacketHandler {
         var codec = new ResultSelectionCodec();
 
         if (type == PqResultRandSelect.TYPE_ID) {
-            codec.randomSelect(root);
-        } else if (type == PqResultSelectCard.TYPE_ID) {
-            codec.selectCard(root);
-        } else {
-            throw new MalformedPacketException("UNSUPPORTED_MATCH_PACKET");
+            var packet = codec.randomSelect(root);
+            return selection.execute(new SelectMatchRewardCommand(id, context, packet.scalar10(), null));
         }
 
-        consume.execute(id, context);
-        return CompletableFuture.completedFuture(null);
+        if (type == PqResultSelectCard.TYPE_ID) {
+            var packet = codec.selectCard(root);
+            return selection.execute(new SelectMatchRewardCommand(id, context, packet.scalar11(), packet.scalar10()));
+        }
+
+        throw new MalformedPacketException("UNSUPPORTED_MATCH_PACKET");
     }
 
     private CompletionStage<Void> motion(UUID id, int type, byte[] root, MatchRequestContext request) {

@@ -7,16 +7,27 @@ import java.util.UUID;
 public record MatchCombatStatistics(
     Map<UUID, Long> damage,
     Map<UUID, Integer> kills,
-    Map<UUID, Long> acceptedShots
+    Map<UUID, Long> acceptedShots,
+    Map<UUID, Long> damagingShots
 ) {
     public MatchCombatStatistics(Map<UUID, Long> damage) {
         this(damage, Map.of(), Map.of());
+    }
+
+    public MatchCombatStatistics(Map<UUID, Long> damage, Map<UUID, Integer> kills, Map<UUID, Long> acceptedShots) {
+        this(damage, kills, acceptedShots, Map.of());
     }
 
     public MatchCombatStatistics {
         damage = Map.copyOf(damage);
         kills = Map.copyOf(kills);
         acceptedShots = Map.copyOf(acceptedShots);
+        damagingShots = Map.copyOf(damagingShots);
+
+        for (var entry : damagingShots.entrySet()) {
+            new MatchShotStatistics(acceptedShots.getOrDefault(entry.getKey(), 0L), entry.getValue());
+        }
+
         damage.values().forEach(value -> require(value, 0xffffffffL));
         kills.values().forEach(value -> require(value, 255));
         acceptedShots.values().forEach(value -> require(value, Long.MAX_VALUE));
@@ -38,6 +49,16 @@ public record MatchCombatStatistics(
         return acceptedShots.getOrDefault(session, 0L);
     }
 
+    public MatchShotStatistics shots(UUID session) {
+        return new MatchShotStatistics(acceptedShots(session), damagingShots.getOrDefault(session, 0L));
+    }
+
+    public MatchCombatStatistics hit(UUID session) {
+        var updated = new HashMap<>(damagingShots);
+        updated.put(session, Math.incrementExact(damagingShots.getOrDefault(session, 0L)));
+        return new MatchCombatStatistics(damage, kills, acceptedShots, updated);
+    }
+
     public MatchCombatStatistics credit(UUID session, long amount) {
         require(amount, 0xffffffffL);
 
@@ -49,19 +70,19 @@ public record MatchCombatStatistics(
         require(total, 0xffffffffL);
         var updated = new HashMap<>(damage);
         updated.put(session, total);
-        return new MatchCombatStatistics(updated, kills, acceptedShots);
+        return new MatchCombatStatistics(updated, kills, acceptedShots, damagingShots);
     }
 
     public MatchCombatStatistics killed(UUID session) {
         var updated = new HashMap<>(kills);
         updated.put(session, Math.incrementExact(kills(session)));
-        return new MatchCombatStatistics(damage, updated, acceptedShots);
+        return new MatchCombatStatistics(damage, updated, acceptedShots, damagingShots);
     }
 
     public MatchCombatStatistics fired(UUID session) {
         var updated = new HashMap<>(acceptedShots);
         updated.put(session, Math.incrementExact(acceptedShots(session)));
-        return new MatchCombatStatistics(damage, kills, updated);
+        return new MatchCombatStatistics(damage, kills, updated, damagingShots);
     }
 
     private static void require(long value, long maximum) {

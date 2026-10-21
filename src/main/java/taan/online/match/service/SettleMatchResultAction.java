@@ -1,5 +1,7 @@
 package taan.online.match.service;
 
+import static taan.online.logging.LogField.cardAmount;
+import static taan.online.logging.LogField.cardKind;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.damage;
 import static taan.online.logging.LogField.durationMs;
@@ -7,17 +9,22 @@ import static taan.online.logging.LogField.experienceAfter;
 import static taan.online.logging.LogField.experienceBefore;
 import static taan.online.logging.LogField.experienceDelta;
 import static taan.online.logging.LogField.forceMedal;
+import static taan.online.logging.LogField.goldAfter;
+import static taan.online.logging.LogField.goldBefore;
+import static taan.online.logging.LogField.goldDelta;
 import static taan.online.logging.LogField.killMedal;
 import static taan.online.logging.LogField.levelAfter;
 import static taan.online.logging.LogField.levelBefore;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.random.RandomGenerator;
 import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
@@ -33,11 +40,22 @@ public final class SettleMatchResultAction {
     private final MatchResultRepository results;
     private final Executor executor;
     private final Clock clock;
+    private final RandomGenerator random;
 
     public SettleMatchResultAction(MatchResultRepository results, Executor executor, Clock clock) {
+        this(results, executor, clock, new SecureRandom());
+    }
+
+    public SettleMatchResultAction(
+        MatchResultRepository results,
+        Executor executor,
+        Clock clock,
+        RandomGenerator random
+    ) {
         this.results = results;
         this.executor = executor;
         this.clock = clock;
+        this.random = random;
     }
 
     MatchResult prepare(MatchSnapshot snapshot, MatchOutcome outcome) {
@@ -45,7 +63,7 @@ public final class SettleMatchResultAction {
     }
 
     MatchResult prepare(MatchSnapshot snapshot, MatchOutcome outcome, MatchParticipationState participation) {
-        return MatchResult.finish(
+        var result = MatchResult.finish(
             snapshot.id(),
             clock.instant(),
             outcome,
@@ -54,6 +72,9 @@ public final class SettleMatchResultAction {
             snapshot.resolution().exits(),
             participation
         );
+        return result.rewarded(result.participants().stream().map(
+            p -> p.awardEligible() && !p.passive() ? p.withDraw(random.nextInt(100)) : p
+        ).toList());
     }
 
     CompletionStage<MatchResult> execute(MatchResult result) {
@@ -78,6 +99,8 @@ public final class SettleMatchResultAction {
 
             for (var participant : stored.result().participants()) {
                 var reward = participant.experienceReward();
+                var gold = participant.goldReward();
+                var card = participant.card();
                 LOG.log(
                     event,
                     matchId(stored.result().matchId().value()),
@@ -85,6 +108,11 @@ public final class SettleMatchResultAction {
                     damage(participant.damage()),
                     forceMedal(participant.forceMedal()),
                     killMedal(participant.killMedal()),
+                    goldBefore(gold == null ? null : gold.before()),
+                    goldAfter(gold == null ? null : gold.after()),
+                    goldDelta(gold == null ? null : gold.delta()),
+                    cardKind(card == null ? null : card.kind().name()),
+                    cardAmount(card == null ? null : card.amount()),
                     experienceBefore(reward == null ? null : reward.experienceBefore()),
                     experienceAfter(reward == null ? null : reward.after().progress().experience()),
                     experienceDelta(reward == null ? null : reward.delta()),

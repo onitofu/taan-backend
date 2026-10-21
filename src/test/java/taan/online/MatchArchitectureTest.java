@@ -148,7 +148,7 @@ class MatchArchitectureTest {
     @ArchTest
     static final ArchRule MAILBOX_OWNER = classes().that().haveSimpleName("MatchMailbox")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.match\\.service\\.(MatchRuntime|MatchMailbox)"
+            "taan\\.online\\.match\\.service\\.(MatchRuntime|MatchResultSelectionRuntime|MatchMailbox)"
         );
 
     @ArchTest

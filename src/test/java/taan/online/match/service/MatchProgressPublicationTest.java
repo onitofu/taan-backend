@@ -7,15 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.ExperienceTestFixtures;
+import taan.online.FixedRewardRandom;
 import taan.online.LogCapture;
 import taan.online.RoomScenario;
+import taan.online.TestLevels;
 import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.CharacterProgressSnapshot;
+import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchRewardRules;
 import taan.online.match.repository.MatchSettlement;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.service.model.RoomMatchCharacterProgress;
@@ -38,7 +43,7 @@ class MatchProgressPublicationTest {
                     0
                 )
             );
-            var update = new RoomMatchCharacterProgress(id, original.admissionId(), progress);
+            var update = new RoomMatchCharacterProgress(id, original.admissionId(), progress, 123L);
             var callbacks = f.room.scenario.rooms.matchCallbacks();
             callbacks.progressCommitted(f.token, List.of(update));
 
@@ -48,6 +53,7 @@ class MatchProgressPublicationTest {
                 .filter(slot -> slot.participant() != null && slot.participant().sessionId().equals(id))
                 .findFirst().orElseThrow().participant().character();
             assertEquals(progress.progress(), character.progress());
+            assertEquals(123, character.gold());
             assertEquals(2, character.level());
             assertEquals(1, original.character().level());
             var stale = new CharacterProgressSnapshot(
@@ -132,6 +138,47 @@ class MatchProgressPublicationTest {
                 .filter(p -> p.forceMedal()).findFirst().orElseThrow().experienceReward();
             assertEquals(2069, saved.after().progress().experience());
             assertEquals(2, saved.after().level());
+        }
+    }
+
+    @Test
+    void freezesRandomDrawsBeforeRetriesAndLogsCommittedGoldWithoutSensitiveValues() {
+        var random = new FixedRewardRandom(99);
+        var rules = new MatchRewardRules(TestLevels.table());
+        var action = new SettleMatchResultAction(
+            input -> new MatchSettlement(
+                input.rewarded(input.participants().stream().map(p -> rules.calculate(
+                    input,
+                    p,
+                    new CharacterProgress(900, 0, 0, 0),
+                    123
+                )).toList()),
+                true
+            ),
+            Runnable::run,
+            Clock.systemUTC(),
+            random
+        );
+
+        try (var fixture = new MatchOutcomeFixture(); var logs = new LogCapture()) {
+            var snapshot = fixture.snapshot();
+            var shooter = snapshot.participants().getFirst();
+            var prepared = action.prepare(
+                snapshot,
+                new MatchOutcome(Set.of(shooter.team()), false),
+                ExperienceTestFixtures.participation(shooter.sessionId())
+            );
+            int draws = random.calls;
+            var first = action.execute(prepared).toCompletableFuture().join();
+            var replay = action.execute(prepared).toCompletableFuture().join();
+
+            assertEquals(1, draws);
+            assertEquals(draws, random.calls);
+            assertEquals(first, replay);
+            assertTrue(logs.text().contains("goldBefore=\"123\""));
+            assertTrue(logs.text().contains("cardKind=\"EXPERIENCE\""));
+            assertTrue(logs.text().contains("cardAmount=\"50\""));
+            assertFalse(logs.text().contains(shooter.character().name().value()));
         }
     }
 

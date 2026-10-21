@@ -44,7 +44,7 @@ class MatchResultTest {
             assertEquals(2, tied.participants().stream().filter(MatchParticipantResult::forceMedal).count());
             assertTrue(tied.outcome().awardsGranted());
             assertEquals(outcome.winningTeams(), tied.outcome().winningTeams());
-            assertEquals("pvp-exp-1.1.0", tied.policyVersion());
+            assertEquals("pvp-rewards-1.1.0", tied.policyVersion());
             assertThrows(UnsupportedOperationException.class, () -> tied.participants().clear());
 
             for (var exit : MatchExitKind.values()) {

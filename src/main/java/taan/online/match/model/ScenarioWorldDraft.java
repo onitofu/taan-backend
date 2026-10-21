@@ -52,6 +52,12 @@ public final class ScenarioWorldDraft {
         combatStatistics = combatStatistics.fired(session);
     }
 
+    public void finishShot(UUID session) {
+        if (combatStatistics.damage(session) > original.combatStatistics().damage(session)) {
+            combatStatistics = combatStatistics.hit(session);
+        }
+    }
+
     public void createBox(long id, int x, int y) {
         var box = MatchBoxRules.create(boxes, definitions.map(), boxBudget, creations, id, x, y);
         boxes.put(id, box);

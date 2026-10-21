@@ -11,8 +11,8 @@ import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
@@ -32,7 +32,7 @@ final class MatchItemHandlerFixture implements AutoCloseable {
         handler = new MatchPacketHandler(
             matches,
             new TerminateMatchAction(matches),
-            new ConsumeMatchResultAction(matches),
+            new SelectMatchRewardAction(matches),
             new ConfirmMatchLoadingAction(matches),
             new ConfirmMatchPositionAction(matches),
             new ReportMatchEnemiesAction(matches),

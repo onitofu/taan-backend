@@ -25,6 +25,8 @@ final class MatchJdbcStub {
     boolean created = true;
     boolean missingCharacter;
     long experience = 900;
+    long gold = 0;
+    final Map<Long, Long> goldWrites = new HashMap<>();
     final List<Long> lockedCharacters = new ArrayList<>();
     final Map<Long, List<Long>> progressWrites = new HashMap<>();
     boolean missingResult;
@@ -81,8 +83,9 @@ final class MatchJdbcStub {
                 }
 
                 if (method.getName().equals("executeUpdate") && kind.equals("progress")) {
+                    goldWrites.put((Long) parameters.get(6), (Long) parameters.get(5));
                     progressWrites.put(
-                        (Long) parameters.get(5),
+                        (Long) parameters.get(6),
                         List.of(
                             (Long) parameters.get(1),
                             ((Integer) parameters.get(2)).longValue(),
@@ -129,6 +132,7 @@ final class MatchJdbcStub {
                 if (kind.equals("locked")) {
                     return switch (column) {
                         case "experience" -> experience;
+                        case "gold" -> gold;
                         case "force_medals", "kill_medals", "supply_medals" -> 0L;
                         default -> throw new AssertionError(column);
                     };
@@ -154,6 +158,20 @@ final class MatchJdbcStub {
                         case "experience_base_delta" -> participant.experienceReward().baseDelta();
                         case "experience_pcroom_delta" -> participant.experienceReward().pcroomDelta();
                         case "experience_medal_delta" -> participant.experienceReward().medalDelta();
+                        case "experience_card_delta" -> participant.experienceReward() == null
+                            ? 0L : participant.experienceReward().cardDelta();
+                        case "gold_before" -> participant.goldReward() == null
+                            ? null : participant.goldReward().before();
+                        case "gold_after" -> participant.goldReward().after();
+                        case "gold_base_delta" -> participant.goldReward().baseDelta();
+                        case "gold_medal_delta" -> participant.goldReward().medalDelta();
+                        case "gold_card_delta" -> participant.goldReward().cardDelta();
+                        case "card_draw" -> participant.card() == null ? null : participant.card().draw();
+                        case "card_kind" -> participant.card().kind().name();
+                        case "card_amount" -> participant.card().amount();
+                        case "accepted_shots" -> participant.shots() == null
+                            ? null : participant.shots().acceptedShots();
+                        case "damaging_shots" -> participant.shots().damagingShots();
                         case "experience_guard_adjustment" -> participant.experienceReward().guardAdjustment();
                         case "force_medals_after" -> participant.experienceReward().after().progress().forceMedals();
                         case "kill_medals_after" -> participant.experienceReward().after().progress().killMedals();

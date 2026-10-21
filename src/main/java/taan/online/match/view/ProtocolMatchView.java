@@ -10,15 +10,19 @@ import java.util.stream.IntStream;
 import taan.online.character.controller.CharacterAppearanceMapper;
 import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.protocol.codec.UpdateExpCodec;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.character.protocol.packet.PcUpdateExp;
+import taan.online.character.protocol.packet.PcUpdateMoney;
 import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchParticipantResult;
+import taan.online.match.model.MatchRewardCardKind;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ForsakeItemCodec;
 import taan.online.match.protocol.codec.LeaveUserCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.SetRewardCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
@@ -29,7 +33,10 @@ import taan.online.match.protocol.codec.UseItemCodec;
 import taan.online.match.protocol.packet.ExpResult;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
+import taan.online.match.protocol.packet.GameReward;
 import taan.online.match.protocol.packet.GameRewardExp;
+import taan.online.match.protocol.packet.GameRewardGold;
+import taan.online.match.protocol.packet.GameRewardQuest;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
@@ -44,6 +51,8 @@ import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import taan.online.match.protocol.packet.PcResultSetReward;
+import taan.online.match.protocol.packet.PrResultAlreadyOpend;
+import taan.online.match.protocol.packet.PrResultSelectCard;
 import taan.online.match.protocol.packet.ResultBonus;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
 import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
@@ -54,6 +63,7 @@ import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.MatchEndResult;
 import taan.online.match.service.model.MatchMovementNotice;
+import taan.online.match.service.model.MatchRewardSelectionNotice;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PendingMatchSpend;
@@ -285,13 +295,7 @@ public final class ProtocolMatchView implements MatchOutput {
             0,
             0
         );
-        var rewards = IntStream.range(0, 8).mapToObj(
-            index -> {
-                long characterId = end.result().participants().stream().filter(p -> p.slotIndex() == index)
-                    .mapToLong(p -> p.characterId().value()).findFirst().orElse(0);
-                return new GameRewardExp("", characterId, 0);
-            }
-        ).toList();
+        var rewards = IntStream.range(0, 8).mapToObj(index -> rewardCard(end, index)).toList();
         var roots = new ArrayList<byte[]>();
         end.participants().stream().filter(p -> p.sessionId().equals(end.recipientSessionId()))
             .flatMap(p -> end.result().participants().stream().filter(v -> v.characterId().equals(p.character().id())))
@@ -303,6 +307,10 @@ public final class ProtocolMatchView implements MatchOutput {
                 levels.displayStart(reward.after().level()),
                 levels.displayNext(reward.after().level())
             ))));
+        end.participants().stream().filter(p -> p.sessionId().equals(end.recipientSessionId()))
+            .flatMap(p -> end.result().participants().stream().filter(v -> v.characterId().equals(p.character().id())))
+            .map(MatchParticipantResult::goldReward).filter(Objects::nonNull).findFirst()
+            .ifPresent(gold -> roots.add(new UpdateMoneyCodec().encode(new PcUpdateMoney(0, 0, gold.after(), 0, 0))));
         roots.add(new SetRewardCodec().encode(new PcResultSetReward(rewards)));
         roots.add(new EndGameCodec().encode(new PcGameSessionEndGame(result, 0)));
         return output.send(roots);
@@ -325,16 +333,20 @@ public final class ProtocolMatchView implements MatchOutput {
         );
         var bonuses = reward == null ? List.<ResultBonus>of() : List.of(
             new ResultBonus(0, Math.toIntExact(reward.pcroomDelta()), 0),
-            new ResultBonus(4, Math.toIntExact(reward.medalDelta()), 0)
+            new ResultBonus(
+                4,
+                Math.toIntExact(reward.medalDelta()),
+                statistics.goldReward() == null ? 0 : Math.toIntExact(statistics.goldReward().medalDelta())
+            )
         );
         return new GameResultSlot(
             index,
             reward == null ? level : reward.after().level(),
             reward == null ? 0 : Integer.toUnsignedLong(Math.toIntExact(reward.delta())),
-            0,
+            statistics.goldReward() == null ? 0 : statistics.goldReward().delta(),
             statistics.kills(),
             statistics.damage(),
-            0,
+            statistics.shots() == null ? 0 : statistics.shots().accuracy(),
             0,
             List.of(statistics.forceMedal() ? 1 : 0, statistics.killMedal() ? 1 : 0, 0),
             0,
@@ -343,6 +355,34 @@ public final class ProtocolMatchView implements MatchOutput {
             snapshots,
             bonuses
         );
+    }
+
+    private GameReward rewardCard(MatchEndResult end, int index) {
+        var participant = end.result().participants().stream().filter(p -> p.slotIndex() == index).findFirst();
+
+        if (participant.isEmpty()) {
+            return new GameRewardQuest("", 0, 0);
+        }
+
+        var member = participant.orElseThrow();
+        var card = member.card();
+
+        if (card == null) {
+            return new GameRewardQuest("", member.characterId().value(), 0);
+        }
+
+        return card.kind() == MatchRewardCardKind.EXPERIENCE
+            ? new GameRewardExp("", member.characterId().value(), card.amount())
+            : new GameRewardGold("", member.characterId().value(), card.amount(), 0, 0);
+    }
+
+    @Override
+    public CompletionStage<Void> selectReward(MatchRewardSelectionNotice notice) {
+        var codec = new ResultSelectionCodec();
+        byte[] packet = notice.alreadyOpen()
+            ? codec.encode(new PrResultAlreadyOpend(notice.cardIndex(), notice.slotIndex()))
+            : codec.encode(new PrResultSelectCard(notice.cardIndex(), notice.slotIndex()));
+        return output.send(List.of(packet));
     }
 
     private ExpResult experience(int level, long current) {

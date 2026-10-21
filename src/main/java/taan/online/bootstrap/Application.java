@@ -4,6 +4,7 @@ import static taan.online.logging.LogField.port;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -11,7 +12,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.random.RandomGenerator;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.LoggerFactory;
 import taan.online.account.controller.CheckAccountPacketHandler;
@@ -60,7 +60,6 @@ import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
 import taan.online.match.service.ConfirmScenarioAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.MoveMatchActorAction;
@@ -69,6 +68,7 @@ import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.ReportMatchPickupAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.UseMatchItemAction;
@@ -216,7 +216,7 @@ public final class Application implements AutoCloseable {
             ),
             matchScheduler,
             System::nanoTime,
-            RandomGenerator.getDefault(),
+            new SecureRandom(),
             new WarningLogLimiter(
                 LoggerFactory.getLogger(MatchRegistry.class),
                 config.logWarnBurst(),
@@ -229,7 +229,8 @@ public final class Application implements AutoCloseable {
             new SettleMatchResultAction(
                 new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds(), levels),
                 workers,
-                Clock.systemUTC()
+                Clock.systemUTC(),
+                new SecureRandom()
             )
         );
         rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
@@ -237,7 +238,7 @@ public final class Application implements AutoCloseable {
             new MatchPacketHandler(
                 matches,
                 new TerminateMatchAction(matches),
-                new ConsumeMatchResultAction(matches),
+                new SelectMatchRewardAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
                 new ReportMatchEnemiesAction(matches),

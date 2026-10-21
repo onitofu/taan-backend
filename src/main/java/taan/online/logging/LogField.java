@@ -15,6 +15,30 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField goldBefore(Long value) {
+        return new LogField("goldBefore", value);
+    }
+
+    public static LogField goldAfter(Long value) {
+        return new LogField("goldAfter", value);
+    }
+
+    public static LogField goldDelta(Long value) {
+        return new LogField("goldDelta", value);
+    }
+
+    public static LogField cardKind(String value) {
+        return new LogField("cardKind", value);
+    }
+
+    public static LogField cardAmount(Long value) {
+        return new LogField("cardAmount", value);
+    }
+
+    public static LogField cardIndex(int value) {
+        return new LogField("cardIndex", value);
+    }
+
     public static LogField experienceBefore(Long value) {
         return new LogField("experienceBefore", value);
     }

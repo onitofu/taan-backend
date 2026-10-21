@@ -13,6 +13,15 @@ public final class MatchExperienceRules {
     }
 
     public MatchExperienceReward calculate(MatchResult match, MatchParticipantResult member, CharacterProgress before) {
+        return calculate(match, member, before, null);
+    }
+
+    public MatchExperienceReward calculate(
+        MatchResult match,
+        MatchParticipantResult member,
+        CharacterProgress before,
+        Integer draw
+    ) {
         int level = levels.level(before.experience());
         boolean eligible = member.awardEligible() && match.rewardDurationMillis() > 0
             && match.winningTeam().isPresent();
@@ -54,7 +63,20 @@ public final class MatchExperienceRules {
         long baseDelta = base.truncate();
         long clubDelta = base.plus(club).truncate() - baseDelta;
         long medalDelta = base.plus(club).plus(medal).truncate() - baseDelta - clubDelta;
-        long proposed = baseDelta + clubDelta + medalDelta;
+        var noncard = base.plus(club).plus(medal);
+        boolean experienceCard = eligible && !passive && draw != null && draw >= 90
+            && before.experience() + noncard.truncate() < CharacterLevelTable.EXPERIENCE_CAP;
+        var card = experienceCard ? base.times(1, 5) : ExperienceFraction.of(0, 1);
+        long cardDelta = noncard.plus(card).truncate() - noncard.truncate();
+        cardDelta = Math.min(
+            cardDelta,
+            Math.max(
+                0,
+                CharacterLevelTable.EXPERIENCE_CAP
+                - before.experience() - noncard.truncate()
+            )
+        );
+        long proposed = baseDelta + clubDelta + medalDelta + cardDelta;
         long after = Math.clamp(
             before.experience() + proposed,
             levels.threshold(level),
@@ -66,7 +88,10 @@ public final class MatchExperienceRules {
             baseDelta += adjustment;
         } else {
             long remaining = -adjustment;
-            long removed = Math.min(remaining, Math.max(0, medalDelta));
+            long removed = Math.min(remaining, cardDelta);
+            cardDelta -= removed;
+            remaining -= removed;
+            removed = Math.min(remaining, Math.max(0, medalDelta));
             medalDelta -= removed;
             remaining -= removed;
             removed = Math.min(remaining, Math.max(0, clubDelta));
@@ -88,7 +113,8 @@ public final class MatchExperienceRules {
             baseDelta,
             clubDelta,
             medalDelta,
-            adjustment
+            adjustment,
+            cardDelta
         );
     }
 }

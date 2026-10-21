@@ -55,12 +55,17 @@ public final class CharacterTestDatabase implements AutoCloseable {
     }
 
     public String unrelatedDataFingerprint() throws Exception {
+        return unrelatedDataFingerprint(false);
+    }
+
+    public String unrelatedDataFingerprint(boolean goldRewarded) throws Exception {
         var digest = MessageDigest.getInstance("SHA-256");
 
         for (String table : new String[]{"accounts", "characters", "inventories", "inventory_items"}) {
             try (var connection = source.getConnection(); var query = connection.createStatement();
                 var rows = query.executeQuery(
-                    "SELECT (to_jsonb(t) - 'force_medals' - 'kill_medals' - 'experience' - 'level')::text "
+                    "SELECT (to_jsonb(t) - 'force_medals' - 'kill_medals' - 'experience' - 'level'"
+                        + (goldRewarded ? " - 'gold'" : "") + ")::text "
                         + "FROM " + table + " t ORDER BY id"
                 )) {
                 while (rows.next()) {

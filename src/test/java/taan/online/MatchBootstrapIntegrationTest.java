@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
@@ -61,7 +62,7 @@ class MatchBootstrapIntegrationTest {
     void bootsBothTcpClientsAndReturnsThemWithoutChangingUnrelatedPersistentData() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        String before = database.unrelatedDataFingerprint();
+        String before = database.unrelatedDataFingerprint(true);
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -103,7 +104,7 @@ class MatchBootstrapIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
                 wire.ready(guest.read());
@@ -115,7 +116,7 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, database.unrelatedDataFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint(true));
     }
 
     @Test
@@ -197,7 +198,7 @@ class MatchBootstrapIntegrationTest {
         var a = player("alpha");
         var b = player("bravo");
         var catalog = MatchFixtures.catalog();
-        String before = database.unrelatedDataFingerprint();
+        String before = database.unrelatedDataFingerprint(true);
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -252,7 +253,7 @@ class MatchBootstrapIntegrationTest {
             }
         }
 
-        assertEquals(before, database.unrelatedDataFingerprint());
+        assertEquals(before, database.unrelatedDataFingerprint(true));
     }
 
     @Test
@@ -311,7 +312,7 @@ class MatchBootstrapIntegrationTest {
     void exchangesThreeScenariosThroughProductionDispatchAndAcknowledgesEachSessionOnce() throws Exception {
         var a = player("alpha");
         var b = player("bravo");
-        var before = database.unrelatedDataFingerprint();
+        var before = database.unrelatedDataFingerprint(true);
         var config = database.configuration();
 
         try (var app = new Application(config)) {
@@ -386,7 +387,7 @@ class MatchBootstrapIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
-                assertEquals(before, database.unrelatedDataFingerprint());
+                assertEquals(before, database.unrelatedDataFingerprint(true));
             }
         }
     }
@@ -465,7 +466,7 @@ class MatchBootstrapIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
+        assertTrue(new UpdateMoneyCodec().decode(client.read()).balance() >= 0);
     }
 
     private void awaitClosed(CharacterTestClient client) throws Exception {

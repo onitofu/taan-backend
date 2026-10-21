@@ -23,11 +23,11 @@ import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.service.ConfirmMatchLoadingAction;
 import taan.online.match.service.ConfirmMatchPositionAction;
-import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.MatchAdmissionAccess;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.ReportMatchEnemiesAction;
+import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
@@ -49,7 +49,7 @@ public final class MatchFixtures {
             new MatchPacketHandler(
                 matches,
                 new TerminateMatchAction(matches),
-                new ConsumeMatchResultAction(matches),
+                new SelectMatchRewardAction(matches),
                 new ConfirmMatchLoadingAction(matches),
                 new ConfirmMatchPositionAction(matches),
                 new ReportMatchEnemiesAction(matches),

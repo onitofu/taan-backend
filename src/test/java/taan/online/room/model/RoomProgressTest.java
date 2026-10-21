@@ -31,9 +31,11 @@ class RoomProgressTest {
 
         assertEquals(character, room.slots().getFirst().participant().character());
 
+        room.refreshProgress(session, progress, 123L);
         room.refreshProgress(session, progress);
-        room.refreshProgress(session, progress);
+        room.updateAppearance(session, CharacterFixtures.appearance(AccountGender.FEMALE));
 
+        assertEquals(123, room.slots().getFirst().participant().character().gold());
         assertEquals(2, room.slots().getFirst().participant().character().level());
         assertEquals(progress.progress(), room.slots().getFirst().participant().character().progress());
         room.changeTeam(session, RoomTeam.RED);

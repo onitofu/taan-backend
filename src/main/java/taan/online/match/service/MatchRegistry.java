@@ -37,7 +37,6 @@ import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchRequestBinding;
-import taan.online.match.service.model.MatchResultReceipt;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
@@ -46,6 +45,7 @@ import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
+import taan.online.match.service.model.SelectMatchRewardCommand;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.match.service.model.UseMatchItemCommand;
@@ -80,7 +80,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     private final Map<UUID, MatchRuntime> sessions = new ConcurrentHashMap<>();
     private final Map<MatchId, MatchRuntime> matches = new ConcurrentHashMap<>();
     private final Map<UUID, MatchSubscription> subscriptions = new ConcurrentHashMap<>();
-    private final Map<UUID, MatchResultReceipt> receipts = new ConcurrentHashMap<>();
+    private final MatchResultSelections selections;
     private final Map<RoomMatchToken, MatchTerminationDispatch> terminations = new ConcurrentHashMap<>();
 
     public MatchRegistry(
@@ -106,6 +106,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         this.capacity = capacity;
         this.access = access;
         this.settlements = Objects.requireNonNull(settlements);
+        selections = new MatchResultSelections(executor, capacity, random, warnings);
     }
 
     @Override
@@ -166,7 +167,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             var runtime = new MatchRuntime(match, profile, scheduler, clock, warnings, executor, capacity, access);
             matches.put(match.id(), runtime);
             participants.forEach(value -> sessions.put(value.sessionId(), runtime));
-            participants.forEach(value -> receipts.remove(value.sessionId()));
+            participants.forEach(value -> selections.remove(value.sessionId()));
         } catch (IllegalArgumentException failure) {
             MatchReservationLog.log(MatchLogEvent.RESERVATION_REJECTED, draft, "INVALID_SETUP");
             return result(RoomMatchReservationOutcome.REJECTED, null, "INVALID_SETUP");
@@ -213,7 +214,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 pending.runtime().finish(() -> { });
             }
 
-            receipts.values().removeIf(value -> value.token().equals(token));
+            selections.cancel(token);
             return result(RoomMatchReservationOutcome.STALE, null, "STALE_MATCH");
         }
 
@@ -244,7 +245,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         }
 
         subscriptions.remove(id);
-        receipts.remove(id);
+        selections.remove(id);
     }
 
     @Override
@@ -253,7 +254,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
         return runtime != null && runtime.activate(
             Objects.requireNonNull(callbacks),
             runtime.snapshot().participants().stream().map(p -> subscriptions.get(p.sessionId()))
-                .filter(Objects::nonNull).toList()
+            .filter(Objects::nonNull).toList()
         );
     }
 
@@ -277,7 +278,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             return runtime.admits(context) ? context : null;
         }
 
-        var receipt = receipts.get(session);
+        var receipt = selections.receipt(session);
         return receipt == null ? null : MatchCommandContext.from(
             new RoomMatchContext(receipt.membership(), receipt.token())
         );
@@ -439,11 +440,11 @@ public final class MatchRegistry implements RoomMatchLifecycle {
             ? departing == null ? null : subscriptions.get(departing) : null;
         var outcome = MatchOutcomeExecution.terminal(snapshot, runtime.live(), closeReason);
         MatchOutcomeExecution.finished(snapshot, outcome, closeReason);
-        var delivery = new MatchTerminationDelivery(terminal, outputs, exiting, snapshot.participants());
+        var delivery = new MatchTerminationDelivery(terminal, outputs, exiting, snapshot.participants(), selections);
         terminations.put(token, MatchTerminationDispatch.prepare(runtime, delivery, settlements, snapshot, outcome));
 
         if (mode == RoomMatchTerminationMode.RETURN_TO_ROOM) {
-            recipients.forEach(value -> receipts.put(value.sessionId(), new MatchResultReceipt(token, value)));
+            selections.reserve(token, recipients);
         }
 
         matches.remove(snapshot.id(), runtime);
@@ -458,8 +459,12 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
     @Override
     public RoomMatchToken resultToken(RoomMembership membership) {
-        var receipt = receipts.get(membership.sessionId());
+        var receipt = selections.receipt(membership.sessionId());
         return receipt != null && receipt.membership().equals(membership) ? receipt.token() : null;
+    }
+
+    public CompletionStage<Void> selectReward(SelectMatchRewardCommand command) {
+        return selections.select(command);
     }
 
     public boolean consumeResult(RoomMatchContext context) {
@@ -468,10 +473,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
 
     @Override
     public void release(RoomMembership membership) {
-        receipts.computeIfPresent(
-            membership.sessionId(),
-            (id, value) -> value.membership().equals(membership) ? null : value
-        );
+        selections.release(membership);
     }
 
     public Optional<MatchSnapshot> current(RoomMatchToken token) {
