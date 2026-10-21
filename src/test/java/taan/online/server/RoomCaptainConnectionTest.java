@@ -12,8 +12,13 @@ import static taan.online.server.RoomConnectionWorld.read;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
+import taan.online.MatchFixtures;
+import taan.online.MatchResultAssertions;
 import taan.online.RoomScenario;
+import taan.online.RuntimeRoomTestAccess;
 import taan.online.SelectionFixtures;
+import taan.online.match.model.MatchPhase;
+import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.protocol.packet.PqGameSessionCancelChief;
@@ -58,6 +63,47 @@ class RoomCaptainConnectionTest {
             assertArrayEquals(SelectionFixtures.money(0), read(owner));
             assertTrue(owner.channel().isActive());
             assertEquals(1, world.rooms.forChannel(1).getFirst().playerCount());
+        }
+    }
+
+    @Test
+    void returnsTheCorrectResultAfterSurrenderInEachCaptainExecutionProfile() throws Exception {
+        for (int mode : new int[]{2, 3}) {
+            try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO)) {
+                var owner = world.client(1);
+                var guest = world.client(2);
+                world.drainOutputs();
+                int room = world.create(owner);
+                world.drainOutputs();
+                world.join(guest, room);
+                world.request(guest, RoomScenario.ready(1));
+                world.request(owner, RoomScenario.settings(1, mode, mode == 2 ? 2 : 0, 255));
+                world.request(owner, root("PqGameSession_ChiefDecision-native"));
+                world.timers.advanceSeconds(5);
+                world.tick();
+                world.request(owner, root("start-empty"));
+                var ownerId = RuntimeRoomTestAccess.room(world.rooms, room).ownerSessionId();
+                var token = world.rooms.matchContext(ownerId).token();
+                MatchFixtures.loaded(world.matches, token);
+
+                assertEquals(
+                    mode == 2 ? MatchPhase.ACTION : MatchPhase.PREVIEW,
+                    world.matches.current(token).orElseThrow().phase()
+                );
+                world.drainOutputs();
+                world.request(owner, MatchFixtures.root("give-up-empty"));
+
+                int expectedResult = mode == 2 ? 2 : 0;
+
+                for (var client : List.of(owner, guest)) {
+                    MatchResultAssertions.readEnd(() -> read(client), expectedResult);
+                    assertFalse(new RoomResponseCodec().ready(read(client)).ready());
+                    assertTrue(client.channel().isActive());
+                    assertNull(client.channel().readOutbound());
+                }
+
+                assertTrue(world.matches.current(token).isEmpty());
+            }
         }
     }
 
