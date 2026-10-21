@@ -126,7 +126,12 @@ class MatchSpecialAdmissionTest {
     @Test
     void rejectsEveryInvalidSpecialRouteAndEveryUnauthorizedSpendList() throws Exception {
         for (int[] fields : new int[][]{
-            {1, 0, 0, 255, 5}, {2, 0, 0, 255, 6}, {1, 1, 0, 255, 6}, {1, 0, 1, 255, 6}, {1, 0, 0, 0, 6}
+            {1, 0, 0, 255, 5},
+            {2, 0, 0, 255, 6},
+            {1, 1, 0, 255, 6},
+            {1, 0, 1, 255, 6},
+            {1, 0, 0, 0, 6},
+            {1, 0, 0, 0, 8}
         }) {
             try (var e = new EnergyRuntimeFixture()) {
                 e.charge();

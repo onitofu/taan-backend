@@ -71,6 +71,7 @@ class MatchItemSelectionRulesTest {
             }
 
             assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 0, 4).isEmpty());
+            assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 0, 8).isEmpty());
             assertTrue(MatchItemSelectionRules.activate(member, world, loot, normal, 255, 6).isEmpty());
             var full = world.energy(member.sessionId(), member.maxEnergy());
             assertTrue(MatchItemSelectionRules.activate(member, full, loot, normal, 0, 6).isEmpty());
