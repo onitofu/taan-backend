@@ -87,13 +87,13 @@ class RoomPasswordIntegrationTest {
 
                 assertArrayEquals(root("enter-fail-6"), guest.read());
                 assertArrayEquals(root("enter-fail-6"), guest.read());
-                cash(guest);
-                cash(owner);
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 foreign.send(RoomEntryFixtures.enter(room, "пароль"));
 
                 assertArrayEquals(root("enter-fail-4"), foreign.read());
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 guest.sendFragmented(RoomEntryFixtures.enter(room, "пароль"));
                 byte[] joined = guest.read();
 
@@ -119,8 +119,8 @@ class RoomPasswordIntegrationTest {
                 observer.send(RoomEntryFixtures.enter(room, "пароль"));
 
                 assertArrayEquals(root("enter-fail-4"), observer.read());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertFalse(logs.text().contains("пароль"));
                 assertFalse(logs.text().contains("wrong"));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
@@ -174,7 +174,7 @@ class RoomPasswordIntegrationTest {
                 byte[] valid = RoomEntryFixtures.enter(room, secret);
                 guest.send(Arrays.copyOf(valid, 11));
                 guest.awaitClosure();
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
 
                 assertFalse(logs.text().contains(secret));
                 assertFalse(logs.text().contains(secret + "x"));
@@ -206,12 +206,6 @@ class RoomPasswordIntegrationTest {
         var rooms = new LobbyRoomListCodec().initialize(client.read());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
         return rooms;
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 
     private void assertNoSecret(byte[] root, String password) {

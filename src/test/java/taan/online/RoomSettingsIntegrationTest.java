@@ -67,13 +67,13 @@ class RoomSettingsIntegrationTest {
                 var observer = new CharacterTestClient(config.port());
                 var foreign = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
-                lobby(observer, c, 1);
+                RoomIntegrationSupport.enterLobby(database, observer, c, 1);
                 owner.read();
                 guest.read();
-                lobby(foreign, d, 2);
+                RoomIntegrationSupport.enterLobby(database, foreign, d, 2);
                 foreign.send(root("create-unprotected"));
                 wire.initialize(foreign.read());
                 owner.send(root("create-unprotected"));
@@ -109,17 +109,17 @@ class RoomSettingsIntegrationTest {
                     assertEquals(expected, wire.settings(guest.read()));
                 }
 
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 owner.send(settings(200, 1, 0, 255));
                 assertEquals(expected, wire.settings(owner.read()));
                 rejectionNotice(owner);
                 guest.send(settings(1, 0, 2, 255));
                 assertEquals(expected, wire.settings(guest.read()));
                 rejectionNotice(guest);
-                cash(owner);
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 owner.send(map(4));
 
                 assertEquals(new PcGameSessionChangeGameOption(4, 1, 0, 255), wire.settings(owner.read()));
@@ -145,13 +145,13 @@ class RoomSettingsIntegrationTest {
                 assertEquals(new PcGameSessionChangeGameOption(17, 0, 2, 255), wire.settings(observer.read()));
                 assertEquals(17, wire.settings(guest.read()).mapId());
                 guest.send(weapon(1002, 0));
-                cash(guest);
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 guest.send(Arrays.copyOf(map(1), 7));
 
                 assertEquals(2, wire.slot(observer.read()).slot().slotIndex());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertEquals(character, database.characters().findByAccount(b.id()).getFirst());
                 assertEquals(inventory, inventory(b));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
@@ -164,7 +164,7 @@ class RoomSettingsIntegrationTest {
         try (var restarted = new Application(config)) {
             restarted.start();
             try (var owner = new CharacterTestClient(config.port())) {
-                lobby(owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
                 owner.send(root("create-unprotected"));
                 var init = wire.initialize(owner.read());
 
@@ -191,8 +191,8 @@ class RoomSettingsIntegrationTest {
                 var owner = new CharacterTestClient(config.port());
                 var guest = new CharacterTestClient(config.port())
             ) {
-                lobby(owner, a, 1);
-                lobby(guest, b, 1);
+                RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                 owner.read();
                 owner.send(root("create-unprotected"));
                 int room = wire.initialize(owner.read()).info().roomId();
@@ -221,7 +221,7 @@ class RoomSettingsIntegrationTest {
                     owner.send(request);
                     assertEquals(initial, wire.settings(owner.read()));
                     rejectionNotice(owner);
-                    cash(guest);
+                    RoomIntegrationSupport.assertBalances(guest, 0, 0);
                 }
 
                 owner.sendTogether(map(2), settings(4, 1, 0, 255));
@@ -234,7 +234,7 @@ class RoomSettingsIntegrationTest {
 
                 assertEquals(0, wire.slot(guest.read()).slot().state());
                 wire.option(guest.read());
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
             }
         }
     }
@@ -259,25 +259,5 @@ class RoomSettingsIntegrationTest {
         var account = database.account(name + "@example.test", AccountGender.FEMALE);
         assertFalse(database.create(account.id(), "Hero" + name, AccountGender.FEMALE).catalog().isEmpty());
         return account;
-    }
-
-    private void lobby(CharacterTestClient client, Account account, int channel) throws Exception {
-        client.login(account.login().value());
-        long character = database.characters().findByAccount(account.id()).getFirst().id().value();
-        client.send(CharacterFixtures.select(character));
-        client.read();
-        client.read();
-        client.send(ChannelFixtures.move(channel));
-        client.read();
-        client.send(ChannelFixtures.enter(1));
-        client.read();
-        client.read();
-        client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

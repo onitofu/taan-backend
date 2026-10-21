@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
-import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
@@ -100,7 +99,7 @@ class MatchBootstrapIntegrationTest {
                 var position = first.activeSlot() == 0 ? guestPose : ownerPose;
                 active.sendTogether(new byte[]{0x6d, 0x08, 0x0b, 0x5e, 0, 0}, new SetPosCodec().encode(position));
                 assertEquals(position, new SetPosCodec().decode(observer.read()));
-                cash(active);
+                RoomIntegrationSupport.assertBalances(database, active, active == owner ? a : b);
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
@@ -142,7 +141,7 @@ class MatchBootstrapIntegrationTest {
 
                 try (var fresh = new CharacterTestClient(config.port())) {
                     lobby(fresh, a);
-                    cash(fresh);
+                    RoomIntegrationSupport.assertBalances(database, fresh, a);
                 }
             }
         }
@@ -184,8 +183,8 @@ class MatchBootstrapIntegrationTest {
                 owner.send(MatchFixtures.root("give-up-empty"));
                 ended(owner);
                 ended(guest);
-                cash(owner);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(database, owner, a);
+                RoomIntegrationSupport.assertBalances(database, guest, b);
             }
         }
 
@@ -248,8 +247,8 @@ class MatchBootstrapIntegrationTest {
                     }
                 }
 
-                cash(owner);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(database, owner, a);
+                RoomIntegrationSupport.assertBalances(database, guest, b);
             }
         }
 
@@ -366,7 +365,7 @@ class MatchBootstrapIntegrationTest {
                     }
 
                     assertArrayEquals(root, observer.read());
-                    cash(shooter);
+                    RoomIntegrationSupport.assertBalances(database, shooter, shooter == owner ? a : b);
                     observer.sendTogether(ack, ack);
                     assertEquals(active, new TurnEndCodec().decode(owner.read()).slotIndex());
                     assertEquals(active, new TurnEndCodec().decode(guest.read()).slotIndex());
@@ -461,12 +460,6 @@ class MatchBootstrapIntegrationTest {
         assertEquals(0x22b60517, ChannelFixtures.type(client.read()));
         client.read();
         client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertTrue(new UpdateMoneyCodec().decode(client.read()).balance() >= 0);
     }
 
     private void awaitClosed(CharacterTestClient client) throws Exception {

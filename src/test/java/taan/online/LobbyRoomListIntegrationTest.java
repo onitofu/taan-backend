@@ -88,7 +88,7 @@ class LobbyRoomListIntegrationTest {
                 ownerA.disconnect();
 
                 assertEquals(List.of(roomB), ids(wire.initialize(observer.read()).rooms()));
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 observer.send(ChannelFixtures.move(2));
                 observer.read();
                 observer.send(ChannelFixtures.enter(1));
@@ -98,8 +98,8 @@ class LobbyRoomListIntegrationTest {
                 ownerB.send(RoomScenario.leave(roomB, 0));
 
                 assertEquals(1, new RoomResponseCodec().leave(ownerB.read()).success());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 observer.send(ChannelFixtures.move(1));
                 observer.read();
                 foreign.read();
@@ -113,8 +113,8 @@ class LobbyRoomListIntegrationTest {
                 ownerB.send(ChannelFixtures.enter(0));
 
                 assertTrue(bootstrap(ownerB).isEmpty());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
             }
         }
     }
@@ -154,7 +154,7 @@ class LobbyRoomListIntegrationTest {
                         IntStream.rangeClosed(2, 31).boxed().toList(),
                         ids(new LobbyRoomListCodec().initialize(observer.read()).rooms())
                     );
-                    cash(observer);
+                    RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 }
             } finally {
                 for (var owner : owners) {
@@ -202,12 +202,5 @@ class LobbyRoomListIntegrationTest {
 
     private List<Integer> ids(List<GameSessionInfoPack> rooms) {
         return rooms.stream().map(GameSessionInfoPack::roomId).toList();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

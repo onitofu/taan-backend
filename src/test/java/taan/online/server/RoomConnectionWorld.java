@@ -22,10 +22,13 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelGroupDefinition;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.match.model.MatchBoxPolicy;
+import taan.online.match.protocol.codec.PassTurnCodec;
+import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
+import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.RoomRegistry;
@@ -151,6 +154,14 @@ final class RoomConnectionWorld implements AutoCloseable {
         client.channel().writeInbound(root);
         client.run();
         tick();
+    }
+
+    void pass(ConnectionContextTestHarness client, MatchSnapshot snapshot) {
+        int slot = snapshot.turn().activeSlot();
+        var member = snapshot.participants().stream().filter(p -> p.slotIndex() == slot).findFirst().orElseThrow();
+        var actor = snapshot.actors().get(member.sessionId());
+        var request = new PcGamePlayPassTurn(slot, actor.x(), actor.y(), actor.facing(), 0);
+        request(client, new PassTurnCodec().encode(request));
     }
 
     void tick() {

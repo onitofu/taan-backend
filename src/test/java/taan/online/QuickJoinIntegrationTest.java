@@ -83,8 +83,8 @@ class QuickJoinIntegrationTest {
                 guest.send(root("quickjoin-any"));
 
                 assertArrayEquals(root("quickjoin-fail"), guest.read());
-                cash(owner);
-                cash(observer);
+                RoomIntegrationSupport.assertBalances(owner, 0, 0);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
                 owner.send(RoomScenario.leave(protectedRoom, 0));
                 wire.leave(owner.read());
                 assertTrue(lists.initialize(guest.read()).rooms().isEmpty());
@@ -111,8 +111,8 @@ class QuickJoinIntegrationTest {
 
                 assertArrayEquals(root("quickjoin-fail"), guest.read());
                 assertEquals(0x22910506, ChannelFixtures.type(guest.read()));
-                cash(guest);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 owner.disconnect();
 
                 assertArrayEquals(root("PcGameSession_UpdateSlot-leave-blue0"), guest.read());
@@ -121,8 +121,8 @@ class QuickJoinIntegrationTest {
                 guest.disconnect();
 
                 assertTrue(lists.initialize(observer.read()).rooms().isEmpty());
-                cash(observer);
-                cash(foreign);
+                RoomIntegrationSupport.assertBalances(observer, 0, 0);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
                 assertFalse(logs.text().contains("пароль"));
                 assertFalse(logs.text().contains("Комната"));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
@@ -174,7 +174,7 @@ class QuickJoinIntegrationTest {
                 assertEquals(3, joined.info().details().playerCount());
                 assertEquals(joined.slots().get(1), wire.slot(second.read()).slot());
                 assertEquals(joined.slots().get(1), wire.slot(member.read()).slot());
-                cash(first);
+                RoomIntegrationSupport.assertBalances(first, 0, 0);
             }
         }
     }
@@ -238,10 +238,10 @@ class QuickJoinIntegrationTest {
 
                 if (quickEntered) {
                     assertArrayEquals(root("enter-fail-5"), enterReply);
-                    cash(clients.get(8));
+                    RoomIntegrationSupport.assertBalances(clients.get(8), 0, 0);
                 } else {
                     assertArrayEquals(root("quickjoin-fail"), quickReply);
-                    cash(clients.get(7));
+                    RoomIntegrationSupport.assertBalances(clients.get(7), 0, 0);
                 }
             } finally {
                 for (var client : clients) {
@@ -289,11 +289,5 @@ class QuickJoinIntegrationTest {
         var rooms = new LobbyRoomListCodec().initialize(client.read());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
         return rooms;
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

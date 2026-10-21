@@ -40,10 +40,10 @@ class RoomCaptainIntegrationTest {
                     var guest = new CharacterTestClient(config.port());
                     var observer = new CharacterTestClient(config.port())
                 ) {
-                    lobby(database, owner, a);
-                    lobby(database, guest, b);
+                    RoomIntegrationSupport.enterLobby(database, owner, a, 1);
+                    RoomIntegrationSupport.enterLobby(database, guest, b, 1);
                     owner.read();
-                    lobby(database, observer, c);
+                    RoomIntegrationSupport.enterLobby(database, observer, c, 1);
                     owner.read();
                     guest.read();
                     owner.send(root("create-unprotected"));
@@ -108,16 +108,16 @@ class RoomCaptainIntegrationTest {
                         var firstTurn = new TurnStartCodec().decode(owner.read());
                         assertEquals(firstTurn, new TurnStartCodec().decode(guest.read()));
                         owner.send(MatchFixtures.root("give-up-empty"));
-                        MatchResultAssertions.readEnd(owner::read, 0);
-                        MatchResultAssertions.readEnd(guest::read, 0);
+                        MatchResultAssertions.readEnd(owner::read, 2);
+                        MatchResultAssertions.readEnd(guest::read, 2);
                         assertFalse(wire.ready(owner.read()).ready());
                         assertFalse(wire.ready(guest.read()).ready());
                         assertEquals(1, lists.update(observer.read()).rooms().getFirst().state());
                         guest.send(RoomScenario.ready(1));
                         wire.ready(owner.read());
                         wire.ready(guest.read());
-                        cash(guest);
-                        cash(observer);
+                        RoomIntegrationSupport.assertBalances(database, guest, b);
+                        RoomIntegrationSupport.assertBalances(database, observer, c);
                     }
 
                     assertTrue(logs.text().contains("room.captain.finalized"));
@@ -136,25 +136,5 @@ class RoomCaptainIntegrationTest {
         var account = database.account(name + "@example.test", AccountGender.FEMALE);
         assertFalse(database.create(account.id(), "Hero" + name, AccountGender.FEMALE).catalog().isEmpty());
         return account;
-    }
-
-    private void lobby(CharacterTestDatabase database, CharacterTestClient client, Account account) throws Exception {
-        client.login(account.login().value());
-        var character = database.characters().findByAccount(account.id()).getFirst();
-        client.send(CharacterFixtures.select(character.id().value()));
-        client.read();
-        client.read();
-        client.send(ChannelFixtures.move(1));
-        client.read();
-        client.send(ChannelFixtures.enter(1));
-        client.read();
-        client.read();
-        client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

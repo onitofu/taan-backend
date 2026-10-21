@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
-import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
@@ -80,7 +79,7 @@ class MatchTerminationIntegrationTest {
                 owner.send(cards.encode(new PqResultSelectCard(5, 0)));
                 assertEquals(3, cards.selected(owner.read()).cardIndex());
                 owner.send(MatchFixtures.root("give-up-empty"));
-                cash(owner);
+                RoomIntegrationSupport.assertBalances(database, owner, a);
                 assertEquals(before, database.unrelatedDataFingerprint(true));
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
@@ -158,7 +157,7 @@ class MatchTerminationIntegrationTest {
 
             try (var client = new CharacterTestClient(config.port())) {
                 lobby(client, a);
-                cash(client);
+                RoomIntegrationSupport.assertBalances(database, client, a);
             }
         }
 
@@ -207,8 +206,8 @@ class MatchTerminationIntegrationTest {
                 );
                 assertEquals(1, awarded);
                 assertEquals(1, database.scalar("SELECT sum(force_medals) FROM characters"));
-                cash(owner);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(database, owner, a);
+                RoomIntegrationSupport.assertBalances(database, guest, b);
                 assertEquals(before, database.unrelatedDataFingerprint(true));
                 guest.send(RoomScenario.ready(1));
                 wire.ready(owner.read());
@@ -264,7 +263,7 @@ class MatchTerminationIntegrationTest {
                 awaitClosed(loser);
                 assertEquals(defeated.slotIndex(), wire.slot(winner.read()).slot().slotIndex());
                 wire.option(winner.read());
-                cash(winner);
+                RoomIntegrationSupport.assertBalances(database, winner, slot == 0 ? a : b);
                 assertTrue(matches.current(token).isEmpty());
                 assertTrue(rooms.membership(defeated.sessionId()).isEmpty());
                 assertEquals(shooter.sessionId(), RuntimeRoomTestAccess.room(rooms, 1).ownerSessionId());
@@ -357,12 +356,6 @@ class MatchTerminationIntegrationTest {
         assertEquals(0x22b60517, ChannelFixtures.type(client.read()));
         client.read();
         client.read();
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertTrue(new UpdateMoneyCodec().decode(client.read()).balance() >= 0);
     }
 
     private void awaitClosed(CharacterTestClient client) throws Exception {

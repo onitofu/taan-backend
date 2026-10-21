@@ -132,8 +132,8 @@ class RoomEntryIntegrationTest {
                 assertEquals(1, wire.leave(guest.read()).success());
                 observer.send(ChannelFixtures.enter(0));
                 assertTrue(bootstrap(observer).rooms().isEmpty());
-                cash(foreign);
-                cash(guest);
+                RoomIntegrationSupport.assertBalances(foreign, 0, 0);
+                RoomIntegrationSupport.assertBalances(guest, 0, 0);
             }
         }
     }
@@ -189,7 +189,7 @@ class RoomEntryIntegrationTest {
                 assertEquals(8, wire.initialize(accepted.getFirst()).info().details().playerCount());
                 assertEquals(5, wire.enterFail(rejected.getFirst()).reason());
                 int loser = ChannelFixtures.type(replies.getFirst()) == 0x6a8108f9 ? 7 : 8;
-                cash(clients.get(loser));
+                RoomIntegrationSupport.assertBalances(clients.get(loser), 0, 0);
             } finally {
                 for (var client : clients) {
                     client.close();
@@ -239,11 +239,5 @@ class RoomEntryIntegrationTest {
         var rooms = new LobbyRoomListCodec().initialize(client.read());
         assertEquals(0x501d07d9, ChannelFixtures.type(client.read()));
         return rooms;
-    }
-
-    private void cash(CharacterTestClient client) throws Exception {
-        client.send(SelectionFixtures.cash(0, 0));
-        assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
-        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

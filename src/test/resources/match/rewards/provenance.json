@@ -1,7 +1,7 @@
 {
   "fixtures": [
     {
-      "golden.csv": "9799f9e6f49c4feaee78f0610cf6028ecc6a2a67ddcf849d82b00f925b0462e3",
+      "golden.csv": "eff57499b9e07c13dd4f5ff2653ff027cccb736c24ecc8ab0a25c187cc5200b0",
       "original_file": "golden.csv",
       "origin": "DERIVED"
     }
