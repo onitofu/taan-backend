@@ -1,18 +1,17 @@
 package taan.online.match.model;
 
-import java.util.List;
 import java.util.Map;
 
 public record MatchDefinitionCatalog(
     String catalogVersion,
     Map<Integer, MatchMapDefinition> maps,
-    List<WeaponDefinition> weapons,
+    Map<Integer, WeaponDefinition> weapons,
     Map<WeaponAttackKey, WeaponAttackDefinition> attacks,
     Map<WeaponMissileKey, MissileTerrainDefinition> missiles
 ) {
     public MatchDefinitionCatalog {
         maps = Map.copyOf(maps);
-        weapons = List.copyOf(weapons);
+        weapons = Map.copyOf(weapons);
         missiles = Map.copyOf(missiles);
         attacks = Map.copyOf(attacks);
 

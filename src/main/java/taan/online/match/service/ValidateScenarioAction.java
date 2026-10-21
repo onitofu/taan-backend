@@ -5,6 +5,7 @@ import static taan.online.logging.LogField.attackKind;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.commandCount;
 import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.effectiveWeaponId;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomGeneration;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.AcceptedScenario;
@@ -85,6 +87,10 @@ public final class ValidateScenarioAction {
             case DUPLICATE -> MatchLogEvent.SCENARIO_DUPLICATE;
             case IGNORED -> MatchLogEvent.SCENARIO_IGNORED;
         };
+        var selection = match.attacks().getOrDefault(sender.sessionId(), MatchAttackSelection.NORMAL);
+        Integer effective = member.map(
+            value -> MatchItemSelectionRules.effectiveWeaponId(value.weaponId(), selection.selectedItems())
+        ).orElse(null);
         LOG.log(
             event,
             matchId(sender.matchId().value()),
@@ -98,7 +104,8 @@ public final class ValidateScenarioAction {
             rootBytes(root.length),
             commandCount(claims.commands().size()),
             weaponId(member.map(MatchParticipant::weaponId).orElse(null)),
-            attackKind(match.attacks().getOrDefault(sender.sessionId(), MatchAttackSelection.NORMAL).attackKind()),
+            effectiveWeaponId(effective),
+            attackKind(selection.attackKind()),
             reason(result.reason()),
             durationMs((System.nanoTime() - started) / 1000000)
         );

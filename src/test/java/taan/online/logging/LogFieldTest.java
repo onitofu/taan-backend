@@ -8,6 +8,7 @@ import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.attackKind;
 import static taan.online.logging.LogField.connectionId;
 import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.lootPickerScalar;
 import static taan.online.logging.LogField.operationId;
 import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.packetType;
@@ -34,6 +35,10 @@ class LogFieldTest {
         assertEquals(Map.of("event", "server.ready", "weaponId", 8, "attackKind", 2),
             fields(ServerLogEvent.READY, weaponId(8), attackKind(2)));
         assertEquals(Map.of("event", "server.ready"), fields(ServerLogEvent.READY, weaponId(null)));
+        assertEquals(
+            Map.of("event", "server.ready", "lootPickerScalar", 70),
+            fields(ServerLogEvent.READY, lootPickerScalar(70))
+        );
         assertEquals(
             Map.of("event", "server.startup.failed", "setting", "POSTGRES_PASSWORD"),
             fields(ServerLogEvent.INVALID_CONFIGURATION, setting("POSTGRES_PASSWORD"))

@@ -21,31 +21,31 @@ class MatchNativeLootRulesTest {
                 int weight = Integer.parseInt(fields[2]);
 
                 for (int draw = start; draw < start + weight; draw++) {
-                    MatchNativeLootRules.requirePickup(item, draw);
-                    MatchNativeLootRules.requirePickup(item, draw + 300);
+                    MatchNativeLootRules.requirePickup(item, draw, 0);
+                    MatchNativeLootRules.requirePickup(item, draw + 300, 0);
                 }
 
                 var rejected = assertThrows(
                     ScenarioWorldException.class,
-                    () -> MatchNativeLootRules.requirePickup(item == 1 ? 5 : 1, start)
+                    () -> MatchNativeLootRules.requirePickup(item == 1 ? 5 : 1, start, 0)
                 );
                 assertEquals("INVALID_PICKUP_REWARD", rejected.getMessage());
             }
         }
 
-        assertDoesNotThrow(() -> MatchNativeLootRules.requirePickup(5, Integer.MAX_VALUE));
+        assertDoesNotThrow(() -> MatchNativeLootRules.requirePickup(5, Integer.MAX_VALUE, 0));
     }
 
     @Test
     void rejectsDraftAndIneligibleItemsAndDrawsOutsideTheEmbeddedProducerRange() {
         for (int item : new int[]{0, 2, 3, 4, 6, 1006, 65535}) {
-            assertThrows(ScenarioWorldException.class, () -> MatchNativeLootRules.requirePickup(item, 225));
+            assertThrows(ScenarioWorldException.class, () -> MatchNativeLootRules.requirePickup(item, 225, 0));
         }
 
         for (int draw : new int[]{-1, Integer.MIN_VALUE}) {
             var rejected = assertThrows(
                 ScenarioWorldException.class,
-                () -> MatchNativeLootRules.requirePickup(5, draw)
+                () -> MatchNativeLootRules.requirePickup(5, draw, 0)
             );
             assertEquals("INVALID_PICKUP_DRAW", rejected.getMessage());
         }

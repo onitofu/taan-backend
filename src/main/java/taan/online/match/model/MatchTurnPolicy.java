@@ -64,7 +64,7 @@ public final class MatchTurnPolicy {
         return new MatchTurn(firstTurnSlot, 0, 0, 0, 0, rotated, 1, OptionalLong.empty());
     }
 
-    public MatchTurn initial(List<MatchParticipant> participants, long seed) {
+    public MatchTurn initial(List<MatchParticipant> participants, long seed, int lootPickerScalar) {
         var blue = new ArrayList<>(participants.stream().filter(p -> p.team() == RoomTeam.BLUE)
             .map(MatchParticipant::slotIndex).toList());
         var red = new ArrayList<>(participants.stream().filter(p -> p.team() == RoomTeam.RED)
@@ -92,7 +92,7 @@ public final class MatchTurnPolicy {
             wind.value() - 50,
             0,
             0,
-            0,
+            lootPickerScalar,
             order,
             1,
             OptionalLong.empty(),

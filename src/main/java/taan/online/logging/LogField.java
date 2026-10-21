@@ -15,6 +15,14 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField effectiveWeaponId(Integer value) {
+        return new LogField("effectiveWeaponId", value);
+    }
+
+    public static LogField lootPickerScalar(int value) {
+        return new LogField("lootPickerScalar", value);
+    }
+
     public static LogField energyBefore(int value) {
         return new LogField("energyBefore", value);
     }

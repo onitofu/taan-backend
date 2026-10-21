@@ -1,6 +1,7 @@
 package taan.online.match.service.model;
 
 import java.util.Set;
+import taan.online.match.model.MatchNativeLootRules;
 
 public record MatchLootPolicy(Set<Integer> allowedItemIds) {
     public MatchLootPolicy {
@@ -15,10 +16,13 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
         return new MatchLootPolicy(Set.of());
     }
 
-    public static MatchLootPolicy minimalCannon() {
+    public static MatchLootPolicy nativeItems() {
         return new MatchLootPolicy(
             Set.of(
                 1,
+                2,
+                3,
+                4,
                 5,
                 7,
                 1005,
@@ -40,7 +44,7 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
     }
 
     public boolean permits(int itemId, int scalar) {
-        return scalar == 0 && itemId != 2 && itemId != 3 && allowedItemIds.contains(itemId);
+        return allowedItemIds.contains(itemId) && MatchNativeLootRules.eligible(itemId, scalar);
     }
 
     public boolean allowsUse(int itemId) {
@@ -48,7 +52,6 @@ public record MatchLootPolicy(Set<Integer> allowedItemIds) {
     }
 
     private static boolean candidate(int item) {
-        return item == 1 || item == 2 || item == 3 || item == 5 || item == 7
-            || item >= 1005 && item <= 1050 && item % 5 == 0;
+        return MatchNativeLootRules.eligible(item, 100);
     }
 }

@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import static taan.online.logging.LogField.admissionId;
+import static taan.online.logging.LogField.lootPickerScalar;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.sessionId;
@@ -107,6 +108,7 @@ final class MatchLootExecution {
                 admissionId(context.admissionId()),
                 slotIndex(command.slotIndex()),
                 turnRevision(offer.turnRevision()),
+                lootPickerScalar(offer.pickerScalar()),
                 reason(inserted ? "INSERTED" : "INVENTORY_FULL")
             );
         }

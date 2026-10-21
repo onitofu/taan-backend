@@ -18,6 +18,7 @@ import taan.online.TestMatchScheduler;
 import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.channel.model.ChannelGroupDefinition;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.service.MatchRegistry;
@@ -31,7 +32,7 @@ import taan.online.session.service.SessionRegistry;
 
 final class RoomConnectionWorld implements AutoCloseable {
     final SessionRegistry sessions = new SessionRegistry();
-    final ChannelRegistry channels = SelectionFixtures.registry(new SessionChannelAccess(sessions));
+    final ChannelRegistry channels;
     final TestRoomSelectionScheduler timers = new TestRoomSelectionScheduler();
     final TestMatchScheduler matchTimers = new TestMatchScheduler();
     final MatchRegistry matches;
@@ -51,6 +52,17 @@ final class RoomConnectionWorld implements AutoCloseable {
     }
 
     RoomConnectionWorld(MatchExecutionMode mode, MatchLootPolicy policy, MatchBoxPolicy boxes) {
+        this(mode, policy, boxes, SelectionFixtures.directory().groups());
+    }
+
+    RoomConnectionWorld(
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        MatchBoxPolicy boxes,
+        List<ChannelGroupDefinition> groups
+    ) {
+        channels = new ChannelRegistry(new SessionChannelAccess(sessions), 2181);
+        channels.initialize(groups);
         matches = MatchFixtures.registry(
             MatchFixtures.catalog(),
             matchTimers,

@@ -66,6 +66,11 @@ public final class ChannelRegistry {
             .findFirst().orElseThrow().kind();
     }
 
+    public synchronized int lootPickerScalar(int channelId) {
+        return directory.channels().stream().filter(channel -> channel.id() == channelId)
+            .findFirst().orElseThrow().lootPickerScalar();
+    }
+
     public synchronized Optional<ChannelMembershipSnapshot> membership(UUID id) {
         var member = members.get(id);
 

@@ -12,10 +12,16 @@ import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.UseMatchItemCommand;
 
 final class MatchPowerFixture implements AutoCloseable {
-    final EnergyRuntimeFixture energy = new EnergyRuntimeFixture(new MatchLootPolicy(Set.of(5)));
-    final MatchRuntimeFixture f = energy.f;
+    final EnergyRuntimeFixture energy;
+    final MatchRuntimeFixture f;
 
     MatchPowerFixture() throws Exception {
+        this(new MatchLootPolicy(Set.of(5)));
+    }
+
+    MatchPowerFixture(MatchLootPolicy policy) throws Exception {
+        energy = new EnergyRuntimeFixture(policy);
+        f = energy.f;
     }
 
     void grant(int slot, int item, boolean confirmed) {

@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -136,7 +139,7 @@ class MatchDefinitionsTest {
     @Test
     void validatesVersionsAndOrderingWithoutAssumingOneMapOrSpawnCount() {
         var spawns = new ArrayList<>(spawns());
-        var weapons = new ArrayList<>(weapons());
+        var weapons = new HashMap<>(weapons());
         var map = new MatchMapDefinition(
             1,
             "jungle",
@@ -181,7 +184,7 @@ class MatchDefinitionsTest {
             () -> new MatchDefinitions(
                 "a".repeat(64),
                 map,
-                weapons.subList(0, 11),
+                Map.of(),
                 MatchFixtures.attacks(),
                 MatchFixtures.missileTerrain()
             )
@@ -210,9 +213,9 @@ class MatchDefinitionsTest {
             )
         );
 
-        var swapped = new ArrayList<>(weapons);
-        var weapon = swapped.set(0, swapped.get(1));
-        swapped.set(1, weapon);
+        var swapped = new HashMap<>(weapons);
+        var weapon = swapped.put(0, swapped.get(1));
+        swapped.put(1, weapon);
 
         assertThrows(
             IllegalArgumentException.class,
@@ -228,7 +231,7 @@ class MatchDefinitionsTest {
         weapons.clear();
 
         assertEquals(14, definitions.map().spawns().size());
-        assertEquals(12, definitions.weapons().size());
+        assertEquals(13, definitions.weapons().size());
         assertThrows(UnsupportedOperationException.class, () -> definitions.map().spawns().clear());
         assertThrows(UnsupportedOperationException.class, () -> definitions.weapons().clear());
     }
@@ -238,8 +241,11 @@ class MatchDefinitionsTest {
             .mapToObj(index -> new MapSpawnDefinition(index, 97, 686, 97, 685, 1, 0, true)).toList();
     }
 
-    private List<WeaponDefinition> weapons() {
-        return IntStream.range(0, 12)
-            .mapToObj(index -> new WeaponDefinition(index, "weapon", 1000, 100, 2500, 10)).toList();
+    private Map<Integer, WeaponDefinition> weapons() {
+        return IntStream.concat(IntStream.range(0, 12), IntStream.of(100)).boxed()
+            .collect(Collectors.toMap(
+                index -> index,
+                index -> new WeaponDefinition(index, "weapon", 1000, 100, 2500, 10)
+            ));
     }
 }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
@@ -23,6 +24,25 @@ import taan.online.lobby.service.EnterLobbyAction;
 import taan.online.lobby.service.LeaveLobbyAction;
 
 class ChannelRegistryTest {
+    @Test
+    void readsIndependentImmutableLootSettingsForTheRequestedChannel() {
+        var registry = new ChannelRegistry(new ChannelTestAccess(), 2181);
+        registry.initialize(List.of(new ChannelGroupDefinition(
+            1,
+            "Solar",
+            0,
+            List.of(
+                new ChannelDefinition(1, "Moon", true, 1, 109, 100, 0, 0),
+                new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0, 70)
+            )
+        )));
+        assertEquals(0, registry.lootPickerScalar(1));
+        assertEquals(70, registry.lootPickerScalar(2));
+        assertThrows(NoSuchElementException.class, () -> registry.lootPickerScalar(3));
+        assertThrows(IllegalStateException.class, () -> registry.initialize(List.of()));
+        assertEquals(70, registry.lootPickerScalar(2));
+    }
+
     @Test
     void checksTheCurrentSessionProfileAvailabilityLevelAndCapacityBeforeChangingMembership() {
         var access = new ChannelTestAccess();
@@ -188,8 +208,8 @@ class ChannelRegistryTest {
                     "Solar",
                     0,
                     List.of(
-                        new ChannelDefinition(1, "Moon", true, 1, 109, 100, 0),
-                        new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0)
+                        new ChannelDefinition(1, "Moon", true, 1, 109, 100, 0, 0),
+                        new ChannelDefinition(2, "Terra", true, 1, 109, 100, 0, 0)
                     )
                 )
             )
@@ -355,9 +375,9 @@ class ChannelRegistryTest {
                     "Solar",
                     0,
                     List.of(
-                        new ChannelDefinition(1, "Moon", true, 1, 10, 1, 0),
-                        new ChannelDefinition(2, "Terra", true, 20, 30, 1, 0),
-                        new ChannelDefinition(3, "Closed", false, 1, 109, 1, 0)
+                        new ChannelDefinition(1, "Moon", true, 1, 10, 1, 0, 0),
+                        new ChannelDefinition(2, "Terra", true, 20, 30, 1, 0, 0),
+                        new ChannelDefinition(3, "Closed", false, 1, 109, 1, 0, 0)
                     )
                 )
             )

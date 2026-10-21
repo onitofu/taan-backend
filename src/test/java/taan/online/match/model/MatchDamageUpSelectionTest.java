@@ -45,7 +45,7 @@ class MatchDamageUpSelectionTest {
             }
         }
 
-        for (int item : new int[]{-1, 0, 4, 1000, 1001, 1006, 1049, 1051, 1055, 65535}) {
+        for (int item : new int[]{-1, 0, 8, 1000, 1001, 1006, 1049, 1051, 1055, 65535}) {
             assertFalse(MatchItemSelectionRules.supports(item));
             assertFalse(MatchItemSelectionRules.isDamageUp(item));
             assertThrows(IllegalArgumentException.class, () -> new MatchAttackSelection(List.of(item), Map.of()));

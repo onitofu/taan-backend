@@ -10,6 +10,7 @@ import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.grantSequence;
 import static taan.online.logging.LogField.inventoryIndex;
 import static taan.online.logging.LogField.itemId;
+import static taan.online.logging.LogField.lootPickerScalar;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.processedDeaths;
 import static taan.online.logging.LogField.reason;
@@ -257,6 +258,7 @@ final class MatchScenarioExecution {
                     boxEntityId(pickup.entityId()),
                     slotIndex(pickup.header().slot()),
                     itemId(pickup.itemId()),
+                    lootPickerScalar(after.turn().pickerBase()),
                     inventoryIndex(receipt.map(value -> value.inventoryIndex()).orElse(null)),
                     grantSequence(inserted ? sequence : null),
                     reason(inserted ? "INSERTED" : "INVENTORY_FULL")
