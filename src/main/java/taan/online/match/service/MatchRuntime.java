@@ -22,6 +22,7 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchExitKind;
+import taan.online.match.model.MatchParticipationState;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
@@ -69,7 +70,7 @@ final class MatchRuntime {
     private volatile boolean closed;
     private volatile long publishedRevision = -1;
     private boolean startPublished;
-    private RoomMatchCallbacks callbacks;
+    RoomMatchCallbacks callbacks;
     private List<MatchSubscription> recipients = List.of();
     private volatile CompletionStage<Void> startDelivery = CompletableFuture.completedFuture(null);
 
@@ -125,6 +126,7 @@ final class MatchRuntime {
                 return Optional.empty();
             }
 
+            match.updateParticipation(match.participation().finish(clock.getAsLong(), false));
             items.clear();
             refresh();
             return Optional.of(snapshot);
@@ -207,7 +209,11 @@ final class MatchRuntime {
         return new RoomMatchProgressToken(token(), snapshot.phaseRevision());
     }
 
-    private RoomMatchToken token() {
+    MatchParticipationState participation() {
+        return match.participation();
+    }
+
+    RoomMatchToken token() {
         return new RoomMatchToken(snapshot.roomId(), snapshot.roomGeneration(), snapshot.id().value());
     }
 
@@ -331,7 +337,14 @@ final class MatchRuntime {
             case StartMatchCommand ignored -> match.commit(clock.getAsLong(), settings.loadingTimeoutNanos());
             case ConfirmMatchLoadingCommand c -> loaded(c);
             case ConfirmMatchPositionCommand c -> turns.position(c);
-            case ReportMatchEnemiesCommand c -> report(c);
+            case ReportMatchEnemiesCommand c -> MatchReportBudget.report(
+                match.phase(),
+                reportBudgets,
+                c.context().sessionId(),
+                clock,
+                settings.reportsPerSecond(),
+                warnings
+            );
             case MatchDeliveryCompletedCommand c -> delivered(c);
             case MatchDeadlineExpiredCommand ignored -> false;
         };
@@ -365,25 +378,6 @@ final class MatchRuntime {
         }
 
         turns.firstTurnIssued();
-        return true;
-    }
-
-    private boolean report(ReportMatchEnemiesCommand command) {
-        if (match.phase() == MatchPhase.RESERVED) {
-            return false;
-        }
-
-        long now = clock.getAsLong();
-        var budget = reportBudgets.computeIfAbsent(
-            command.context().sessionId(),
-            ignored -> new MatchReportBudget(now)
-        );
-
-        if (!budget.accept(now, settings.reportsPerSecond())) {
-            warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_REPORT_RATE_EXCEEDED");
-            return false;
-        }
-
         return true;
     }
 
@@ -462,6 +456,7 @@ final class MatchRuntime {
             }
 
             closed = true;
+            match.updateParticipation(match.participation().stop(clock.getAsLong()));
             return snapshot;
         }
     }

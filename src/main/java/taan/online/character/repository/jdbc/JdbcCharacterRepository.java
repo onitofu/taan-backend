@@ -3,9 +3,12 @@ package taan.online.character.repository.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import javax.sql.DataSource;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterBalanceSnapshot;
+import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
 import taan.online.character.model.GameCharacter;
 import taan.online.character.repository.CharacterRepository;
@@ -25,6 +28,29 @@ public final class JdbcCharacterRepository implements CharacterRepository {
         this.dataSource = dataSource;
         this.inventories = inventories;
         this.queryTimeoutSeconds = queryTimeoutSeconds;
+    }
+
+    @Override
+    public Optional<CharacterBalanceSnapshot> findBalances(AccountId accountId, CharacterId characterId) {
+        String sql = """
+            SELECT a.cash, c.gold
+            FROM characters c JOIN accounts a ON a.id = c.account_id
+            WHERE c.account_id = ? AND c.id = ? AND c.deleted_at IS NULL
+            """;
+
+        try (var connection = dataSource.getConnection(); var statement = connection.prepareStatement(sql)) {
+            statement.setQueryTimeout(queryTimeoutSeconds);
+            statement.setLong(1, accountId.value());
+            statement.setLong(2, characterId.value());
+
+            try (var rows = statement.executeQuery()) {
+                return rows.next() ? Optional.of(
+                    new CharacterBalanceSnapshot(characterId, rows.getLong("cash"), rows.getLong("gold"))
+                ) : Optional.empty();
+            }
+        } catch (SQLException | IllegalArgumentException failure) {
+            throw new CharacterPersistenceException("findBalances", failure);
+        }
     }
 
     @Override

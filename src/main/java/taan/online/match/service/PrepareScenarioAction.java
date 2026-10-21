@@ -41,6 +41,7 @@ public final class PrepareScenarioAction {
             snapshot.turn().boxAttemptBudget()
         );
 
+        draft.fired(scenario.sender().sessionId());
         var loot = new ScenarioLootDraft(snapshot.loot());
         var shooter = scenario.sender().sessionId();
         draft.grantEnergy(shooter, journal.headerEnergyGrant());
@@ -79,7 +80,7 @@ public final class PrepareScenarioAction {
                 }
                 case ScenarioActorClaim ignored -> {
                     if (header.kind() == 5 || header.kind() == 7) {
-                        draft.dead(session);
+                        draft.dead(shooter, session);
                     }
                 }
                 case ScenarioFireClaim ignored -> { }

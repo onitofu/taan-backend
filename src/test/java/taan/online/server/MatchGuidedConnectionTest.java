@@ -129,6 +129,7 @@ class MatchGuidedConnectionTest {
                     assertArrayEquals(use, read(sender));
                     assertArrayEquals(spend, read(sender));
                     assertArrayEquals(SelectionFixtures.cash(0, 0), read(sender));
+                    assertArrayEquals(SelectionFixtures.money(0), read(sender));
                     assertArrayEquals(use, read(observer));
                     assertArrayEquals(spend, read(observer));
                     assertArrayEquals(scenario, read(observer));

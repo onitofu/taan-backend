@@ -9,11 +9,13 @@ import taan.online.channel.protocol.packet.PqGetChannelList;
 import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.logging.CharacterLogEvent;
 import taan.online.character.protocol.codec.SelectCharacterResponseCodec;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.character.protocol.packet.PqSelectCharacter;
 import taan.online.logging.LogEvent;
 import taan.online.protocol.PacketOutput;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
+import taan.online.session.logging.SessionLogEvent;
 import taan.online.session.protocol.codec.PlayableTimeCodec;
 import taan.online.session.protocol.codec.UpdateCashCodec;
 import taan.online.session.protocol.packet.PcLogging;
@@ -66,16 +68,16 @@ public final class SelectedCharacterRequestDispatcher {
                 )
             ).orElseGet(() -> RequestCompletion.reply(output, ProtocolEvent.SELECTED_REQUEST_IGNORED, null));
             case PcUpdateCash.TYPE_ID -> cash.handle(sessionId, root).map(
-                reply -> RequestCompletion.reply(
+                reply -> RequestCompletion.batch(
                     output,
                     ProtocolEvent.SELECTED_REQUEST_COMPLETED,
-                    new UpdateCashCodec().encode(reply)
+                    List.of(new UpdateCashCodec().encode(reply.cash()), new UpdateMoneyCodec().encode(reply.gold()))
                 )
             ).orElseGet(() -> RequestCompletion.reply(output, ProtocolEvent.SELECTED_REQUEST_IGNORED, null));
             default -> RequestCompletion.reply(
                 output,
                 logging.handle(sessionId, root)
-                    ? ProtocolEvent.SELECTED_REQUEST_COMPLETED : ProtocolEvent.SELECTED_REQUEST_IGNORED,
+                ? ProtocolEvent.SELECTED_REQUEST_COMPLETED : ProtocolEvent.SELECTED_REQUEST_IGNORED,
                 null
             );
         };
@@ -87,6 +89,10 @@ public final class SelectedCharacterRequestDispatcher {
     }
 
     static LogEvent failureEvent(int type) {
+        if (type == PcUpdateCash.TYPE_ID) {
+            return SessionLogEvent.BALANCES_REFRESH_FAILED;
+        }
+
         return type == PqSelectCharacter.TYPE_ID ? CharacterLogEvent.SELECTION_FAILED : ChannelLogEvent.LIST_FAILED;
     }
 }

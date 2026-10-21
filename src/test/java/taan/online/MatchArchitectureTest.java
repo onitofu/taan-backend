@@ -93,6 +93,7 @@ class MatchArchitectureTest {
     static final ArchRule CONTROLLERS = classes().that().resideInAPackage("taan.online.match.controller..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
+            "taan.online.character.model..",
             "taan.online.match.controller..",
             "taan.online.match.service..",
             "taan.online.match.protocol..",
@@ -105,6 +106,7 @@ class MatchArchitectureTest {
     static final ArchRule VIEWS = classes().that().resideInAPackage("taan.online.match.view..")
         .should().onlyDependOnClassesThat().resideInAnyPackage(
             "java..",
+            "taan.online.character.protocol..",
             "taan.online.match.view..",
             "taan.online.match.service..",
             "taan.online.match.protocol..",
@@ -136,6 +138,7 @@ class MatchArchitectureTest {
     static final ArchRule MUTABLE_MATCH = classes().that().haveFullyQualifiedName("taan.online.match.model.Match")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.(model\\.Match|model\\.MatchTurnPolicy|model\\.MatchLoadingRules"
+                    + "|model\\.MatchMovementRules"
                     + "|service\\.MatchRegistry|service\\.MatchRuntime"
                     + "|service\\.MatchTurnExecution|service\\.MatchItemExecution|service\\.MatchMovementExecution"
                     + "|service\\.MatchLootExecution|service\\.MatchOutcomeExecution"
@@ -154,7 +157,7 @@ class MatchArchitectureTest {
             "taan\\.online\\.match\\.service\\."
                 + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
                 + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution|MatchItemExecution"
-                + "|MatchLootExecution|MatchOutcomeExecution)"
+                + "|MatchLootExecution|MatchOutcomeExecution|MatchProgressPublication)"
         );
 
     @ArchTest

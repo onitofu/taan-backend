@@ -247,5 +247,6 @@ class RoomWeaponIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

@@ -2,10 +2,31 @@ package taan.online.match.model;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 final class MatchMovementRules {
     private MatchMovementRules() {
+    }
+
+    static MatchMovementState admit(Match match, UUID session, int x, int y, int facing, long now) {
+        var next = admit(
+            match.movements().get(session),
+            match.world().actors().get(session),
+            x,
+            y,
+            facing,
+            match.definitions().map(),
+            match.world().terrain(),
+            now
+        );
+
+        if (match.closure().isPresent() && next.fall().isPresent()
+            && next.fall().orElseThrow().endsAtNanos() - match.closure().orElseThrow().landingDeadlineNanos() > 0) {
+            throw new ScenarioWorldException("MOVEMENT_LANDING_DEADLINE_EXCEEDED");
+        }
+
+        return next;
     }
 
     static MatchMovementState admit(

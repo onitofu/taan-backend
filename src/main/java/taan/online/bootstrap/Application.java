@@ -54,6 +54,7 @@ import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.controller.MatchItemPacketHandler;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchBoxPolicy;
+import taan.online.match.repository.jdbc.JdbcMatchResultRepository;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.ConfirmMatchLoadingAction;
@@ -62,14 +63,13 @@ import taan.online.match.service.ConfirmScenarioAction;
 import taan.online.match.service.ConsumeMatchResultAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.MatchRegistry;
-import taan.online.match.service.SettleMatchResultAction;
-import taan.online.match.repository.jdbc.JdbcMatchResultRepository;
 import taan.online.match.service.MoveMatchActorAction;
 import taan.online.match.service.PassMatchTurnAction;
 import taan.online.match.service.RecordMatchSpendAction;
 import taan.online.match.service.ReportMatchBonusAction;
 import taan.online.match.service.ReportMatchEnemiesAction;
 import taan.online.match.service.ReportMatchPickupAction;
+import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.UseMatchItemAction;
 import taan.online.match.service.model.MatchBootstrapSettings;
@@ -105,6 +105,7 @@ import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
 import taan.online.session.controller.UserLoginPacketHandler;
 import taan.online.session.service.LoginAction;
+import taan.online.session.service.RefreshBalancesAction;
 import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionInventoryAccess;
@@ -151,6 +152,7 @@ public final class Application implements AutoCloseable {
         var check = new CheckAccountPacketHandler(new CheckAccountAction(accounts));
         var create = new CreateAccountPacketHandler(new RegisterAccountAction(accounts, hasher));
 
+        var levels = new CharacterLevelLoader().load(Application.class.getResourceAsStream("/character/levels.csv"));
         var sessions = new SessionRegistry();
         var login = new LoginAction(accounts, hasher, sessions);
         var characters = new JdbcCharacterRepository(
@@ -168,7 +170,8 @@ public final class Application implements AutoCloseable {
         var confirmName = new ConfirmNamePacketHandler(new ConfirmNameAction(access, characters, names), access);
         var createCharacter = new CreateCharacterPacketHandler(
             new CreateCharacterAction(access, characters, names, options),
-            access
+            access,
+            levels
         );
 
         var channelAccess = new SessionChannelAccess(sessions);
@@ -224,7 +227,7 @@ public final class Application implements AutoCloseable {
             config.matchQueueCapacity(),
             new ChannelMatchAccess(channels),
             new SettleMatchResultAction(
-                new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds()),
+                new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds(), levels),
                 workers,
                 Clock.systemUTC()
             )
@@ -249,7 +252,8 @@ public final class Application implements AutoCloseable {
                     new ReportMatchPickupAction(matches),
                     new ConfirmMatchItemReceiptAction(matches),
                     new DiscardMatchItemAction(matches)
-                )
+                ),
+                levels
             )
         );
         var inventoryDispatcher = new InventoryRequestDispatcher(
@@ -302,9 +306,17 @@ public final class Application implements AutoCloseable {
             )
         );
         var selected = new SelectedCharacterRequestDispatcher(
-            new SelectCharacterPacketHandler(new SelectCharacterAction(access, characters, itemCatalog), access),
+            new SelectCharacterPacketHandler(
+                new SelectCharacterAction(
+                    access,
+                    characters,
+                    itemCatalog
+                ),
+                access,
+                levels
+            ),
             new GetChannelListPacketHandler(new GetChannelListAction(channelAccess, channels), channelAccess),
-            new CashRefreshPacketHandler(sessions),
+            new CashRefreshPacketHandler(sessions, new RefreshBalancesAction(sessions, characters)),
             new ClientLoggingPacketHandler(sessions),
             config.playableTimeSeconds()
         );
@@ -335,12 +347,12 @@ public final class Application implements AutoCloseable {
                 warnings,
                 config.maxPendingRequests(),
                 config.requestTimeoutSeconds(),
-                new UserLoginPacketHandler(login, sessions, new ListCharactersAction(characters, itemCatalog)),
+                new UserLoginPacketHandler(login, sessions, new ListCharactersAction(characters, itemCatalog), levels),
                 Clock.systemUTC(),
                 config.idleTimeoutSeconds(),
                 confirmName,
                 createCharacter,
-                new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
+                new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access, levels),
                 selected,
                 lobby,
                 inventoryDispatcher,

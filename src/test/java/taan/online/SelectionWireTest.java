@@ -52,7 +52,8 @@ class SelectionWireTest {
                     characters,
                     InventoryFixtures.catalog()
                 ),
-                access
+                access,
+                TestLevels.table()
             );
             var reply = handler.handle(UUID.randomUUID(), CharacterFixtures.select(id)).response();
 
@@ -65,7 +66,12 @@ class SelectionWireTest {
             );
 
             assertArrayEquals(
-                SelectionFixtures.fixture((male ? "male" : "female") + "-selected.root.hex"),
+                CharacterFixtures.withProgress(
+                    SelectionFixtures.fixture((male ? "male" : "female") + "-selected.root.hex"),
+                    0,
+                    0,
+                    940
+                ),
                 new SelectCharacterResponseCodec().encode(reference)
             );
             assertThrows(UnsupportedOperationException.class, () -> reply.inventories().clear());

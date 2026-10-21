@@ -35,7 +35,8 @@ public final class MatchTerminalFixture implements AutoCloseable {
             new ConsumeMatchResultAction(matches),
             new ConfirmMatchLoadingAction(matches),
             new ConfirmMatchPositionAction(matches),
-            new ReportMatchEnemiesAction(matches)
+            new ReportMatchEnemiesAction(matches),
+            TestLevels.table()
         );
 
         if (mode.requiresCaptainSelection()) {

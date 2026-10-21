@@ -23,6 +23,7 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomMatchCharacterProgress;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchDraft;
 import taan.online.room.service.model.RoomMatchEndReason;
@@ -66,6 +67,31 @@ final class RoomMatchOperations {
         this.lifecycle = lifecycle;
         this.changed = changed;
         this.maps = maps;
+    }
+
+    void progressCommitted(RoomMatchToken token, List<RoomMatchCharacterProgress> progress) {
+        var room = current(token);
+
+        if (room == null) {
+            return;
+        }
+
+        for (var update : progress) {
+            var subscription = memberships.get(update.sessionId());
+
+            var expected = new RoomMembership(
+                update.sessionId(),
+                token.roomId(),
+                token.generation(),
+                room.channelId(),
+                update.admissionId()
+            );
+
+            if (subscription != null && expected.equals(subscription.membership())
+                && channels.refreshProgress(update.sessionId(), update.progress())) {
+                room.refreshProgress(update.sessionId(), update.progress());
+            }
+        }
     }
 
     InventoryMoveContext inventoryContext(InventoryActor actor, RoomRegistryPhase phase) {

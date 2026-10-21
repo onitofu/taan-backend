@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.controller.CharacterCatalogMapper;
@@ -51,7 +52,7 @@ class CharacterCodecTest {
                 gender,
                 male ? "MaleHero" : "Luma"
             );
-            var catalog = new CharacterCatalogMapper().map(List.of(character));
+            var catalog = new CharacterCatalogMapper(TestLevels.table()).map(List.of(character));
             var encoded = new CreateCharacterResponseCodec().encode(new PrNewCharacter(0, 0, catalog));
 
             assertEquals(character.name().value(), request.name());
@@ -59,7 +60,12 @@ class CharacterCodecTest {
             assertFalse(request.toString().contains(request.name()));
             assertFalse(catalog.toString().contains(request.name()));
             assertArrayEquals(
-                CharacterFixtures.root(male ? "event-0025-reply.frame.hex" : "event-0083-reply.frame.hex"),
+                CharacterFixtures.withProgress(
+                    CharacterFixtures.root(male ? "event-0025-reply.frame.hex" : "event-0083-reply.frame.hex"),
+                    0,
+                    0,
+                    940
+                ),
                 encoded
             );
         }
@@ -143,7 +149,7 @@ class CharacterCodecTest {
             () -> new CharacterCatalog(List.of(), List.of(appearance))
         );
 
-        var empty = new CharacterCatalogMapper().map(List.of());
+        var empty = new CharacterCatalogMapper(TestLevels.table()).map(List.of());
 
         assertTrue(empty.info().isEmpty());
         assertEquals(12, new CharacterCatalogCodec().encode(empty).length);

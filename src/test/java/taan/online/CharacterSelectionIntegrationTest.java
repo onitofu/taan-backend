@@ -18,10 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
+import taan.online.character.protocol.packet.PrSelectCharacter;
 import taan.online.character.repository.jdbc.CharacterPersistenceException;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.model.DeleteCharacterOutcome;
 import taan.online.persistence.DatabaseMigrator;
+import taan.online.protocol.BinaryReader;
+import taan.online.session.protocol.codec.UpdateCashCodec;
 
 class CharacterSelectionIntegrationTest {
     private static CharacterTestDatabase database;
@@ -68,6 +72,7 @@ class CharacterSelectionIntegrationTest {
                     client.sendTogether(SelectionFixtures.logging(id), SelectionFixtures.cash(0xffff_ffffL, 0));
 
                     assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+                    assertArrayEquals(SelectionFixtures.money(0), client.read());
 
                     client.sendTogether(Arrays.copyOf(CharacterFixtures.select(id), 4), SelectionFixtures.channels());
 
@@ -104,6 +109,88 @@ class CharacterSelectionIntegrationTest {
 
         assertEquals(6, database.scalar("SELECT count(*) FROM inventories"));
         assertEquals(8, database.scalar("SELECT count(*) FROM inventory_items"));
+    }
+
+    @Test
+    void refreshesBalancesFromSqlInLobbyAndRoomAndRestoresProgressOnReconnect() throws Exception {
+        var owner = database.account("balances@example.test", AccountGender.MALE);
+        long character = database.create(
+            owner.id(),
+            "BalanceHero",
+            AccountGender.MALE
+        ).catalog().getFirst().id().value();
+        database.execute("UPDATE accounts SET cash = 123 WHERE id = " + owner.id().value());
+        database.execute("UPDATE characters SET gold = 456, level = 10, experience = 26000, "
+            + "force_medals = 4, kill_medals = 5, supply_medals = 6 WHERE id = " + character);
+        var config = database.configuration();
+
+        try (var application = new Application(config)) {
+            application.start();
+
+            try (var client = new CharacterTestClient(config.port())) {
+                client.login(owner.login().value());
+                client.send(CharacterFixtures.select(character));
+                assertProfile(client.read(), character, 456);
+                SelectionFixtures.assertPlayableTime(client.read());
+                client.send(ChannelFixtures.move(1));
+                client.read();
+                client.send(ChannelFixtures.enter(1));
+                client.read();
+                client.read();
+                client.read();
+
+                client.send(SelectionFixtures.cash(999, 0));
+
+                assertEquals(123, new UpdateCashCodec().decode(client.read()).balance());
+                assertEquals(456, new UpdateMoneyCodec().decode(client.read()).balance());
+
+                client.send(RoomFixtures.root("create-unprotected"));
+                client.read();
+                database.execute("UPDATE accounts SET cash = 4294967295 WHERE id = " + owner.id().value());
+                database.execute("UPDATE characters SET gold = 789 WHERE id = " + character);
+                client.send(SelectionFixtures.cash(999, 0));
+
+                assertEquals(4294967295L, new UpdateCashCodec().decode(client.read()).balance());
+                assertEquals(789, new UpdateMoneyCodec().decode(client.read()).balance());
+                client.disconnect();
+            }
+        }
+
+        try (var application = new Application(config)) {
+            application.start();
+
+            try (var client = new CharacterTestClient(config.port())) {
+                client.login(owner.login().value());
+                client.send(CharacterFixtures.select(character));
+
+                assertProfile(client.read(), character, 789);
+                SelectionFixtures.assertPlayableTime(client.read());
+                client.disconnect();
+            }
+        }
+    }
+
+    private void assertProfile(byte[] root, long character, long gold) {
+        var input = new BinaryReader(root, PrSelectCharacter.TYPE_ID);
+
+        assertEquals(1, input.unsignedInt());
+        assertEquals(0x22d40519, input.unsignedInt());
+        assertEquals(character, input.unsignedInt());
+        assertEquals("BalanceHero", input.wideString());
+        assertEquals(10, input.unsignedShort());
+        assertEquals(26000, input.unsignedInt());
+        assertEquals(25230, input.unsignedInt());
+        assertEquals(29550, input.unsignedInt());
+        assertEquals(gold, input.unsignedInt());
+        assertEquals(1, input.unsignedByte());
+
+        for (int field = 0; field < 6; field++) {
+            assertEquals(0, input.unsignedInt());
+        }
+
+        assertEquals(4, input.unsignedInt());
+        assertEquals(5, input.unsignedInt());
+        assertEquals(6, input.unsignedInt());
     }
 
     @Test

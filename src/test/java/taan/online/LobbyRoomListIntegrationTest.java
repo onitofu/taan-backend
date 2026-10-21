@@ -84,6 +84,7 @@ class LobbyRoomListIntegrationTest {
 
                 assertEquals(4, new RoomResponseCodec().enterFail(observer.read()).reason());
                 assertArrayEquals(SelectionFixtures.cash(0, 0), observer.read());
+                assertArrayEquals(SelectionFixtures.money(0), observer.read());
                 ownerA.disconnect();
 
                 assertEquals(List.of(roomB), ids(wire.initialize(observer.read()).rooms()));
@@ -207,5 +208,6 @@ class LobbyRoomListIntegrationTest {
         client.send(SelectionFixtures.cash(0, 0));
 
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

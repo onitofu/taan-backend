@@ -15,6 +15,7 @@ import taan.online.InventoryFixtures;
 import taan.online.LogCapture;
 import taan.online.SelectionFixtures;
 import taan.online.TestFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.controller.GetChannelListPacketHandler;
@@ -23,12 +24,14 @@ import taan.online.channel.service.GetChannelListAction;
 import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.character.controller.SelectCharacterPacketHandler;
 import taan.online.character.logging.CharacterLogEvent;
+import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.repository.jdbc.CharacterPersistenceException;
 import taan.online.character.service.SelectCharacterAction;
 import taan.online.session.controller.CashRefreshPacketHandler;
 import taan.online.session.controller.ClientLoggingPacketHandler;
 import taan.online.session.protocol.codec.UpdateCashCodec;
+import taan.online.session.service.RefreshBalancesAction;
 import taan.online.session.service.SessionCharacterAccess;
 import taan.online.session.service.SessionRegistry;
 
@@ -58,6 +61,7 @@ class SelectionConnectionTest {
             harness.run();
 
             assertEquals(0, new UpdateCashCodec().decode(read(harness)).balance());
+            assertEquals(0, new UpdateMoneyCodec().decode(read(harness)).balance());
 
             harness.channel().writeInbound(SelectionFixtures.logging(1001));
             harness.run();
@@ -195,13 +199,14 @@ class SelectionConnectionTest {
                     characters,
                     InventoryFixtures.catalog()
                 ),
-                access
+                access,
+                TestLevels.table()
             ),
             new GetChannelListPacketHandler(
                 new GetChannelListAction(broken, SelectionFixtures.registry(broken)),
                 broken
             ),
-            new CashRefreshPacketHandler(sessions),
+            new CashRefreshPacketHandler(sessions, new RefreshBalancesAction(sessions, characters)),
             new ClientLoggingPacketHandler(sessions),
             3600
         );

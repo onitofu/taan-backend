@@ -3,6 +3,7 @@ package taan.online.character.controller;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.protocol.codec.SelectCharacterRequestCodec;
 import taan.online.character.protocol.packet.PrSelectCharacter;
 import taan.online.character.service.CharacterSelectionAccess;
@@ -12,6 +13,8 @@ import taan.online.inventory.controller.InventoryMapper;
 import taan.online.inventory.model.InventoryKind;
 
 public final class SelectCharacterPacketHandler {
+    private final CharacterLevelTable levels;
+
     private static final List<InventoryKind> ORDER = List.of(
         InventoryKind.BAG,
         InventoryKind.EQUIPMENT,
@@ -21,7 +24,12 @@ public final class SelectCharacterPacketHandler {
     private final SelectCharacterAction action;
     private final CharacterSelectionAccess sessions;
 
-    public SelectCharacterPacketHandler(SelectCharacterAction action, CharacterSelectionAccess sessions) {
+    public SelectCharacterPacketHandler(
+        SelectCharacterAction action,
+        CharacterSelectionAccess sessions,
+        CharacterLevelTable levels
+    ) {
+        this.levels = levels;
         this.action = action;
         this.sessions = sessions;
     }
@@ -43,7 +51,7 @@ public final class SelectCharacterPacketHandler {
             return new SelectCharacterHandlingResult(SelectCharacterHandlingOutcome.REJECTED, null);
         }
 
-        var info = new CharacterCatalogMapper().map(List.of(result.character())).info().getFirst();
+        var info = new CharacterCatalogMapper(levels).map(List.of(result.character())).info().getFirst();
         var inventories = result.inventories().stream()
             .sorted(Comparator.comparingInt(value -> ORDER.indexOf(value.kind())))
             .map(new InventoryMapper()::map).toList();

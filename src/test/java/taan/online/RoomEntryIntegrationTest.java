@@ -87,6 +87,7 @@ class RoomEntryIntegrationTest {
                 assertEquals(joined.slot(), initialized.slots().get(2));
                 assertEquals(1, joined.resetWidget());
                 assertArrayEquals(SelectionFixtures.cash(0, 0), guest.read());
+                assertArrayEquals(SelectionFixtures.money(0), guest.read());
                 assertEquals(List.of(character(b)), ChannelFixtures.removed(observer.read()));
                 assertEquals(2, listings.update(observer.read()).rooms().getFirst().playerCount());
                 guest.send(ChannelFixtures.leave());
@@ -243,5 +244,6 @@ class RoomEntryIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

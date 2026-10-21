@@ -3,7 +3,13 @@ package taan.online.match.service;
 import static taan.online.logging.LogField.characterId;
 import static taan.online.logging.LogField.damage;
 import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.experienceAfter;
+import static taan.online.logging.LogField.experienceBefore;
+import static taan.online.logging.LogField.experienceDelta;
 import static taan.online.logging.LogField.forceMedal;
+import static taan.online.logging.LogField.killMedal;
+import static taan.online.logging.LogField.levelAfter;
+import static taan.online.logging.LogField.levelBefore;
 import static taan.online.logging.LogField.matchId;
 import static taan.online.logging.LogField.reason;
 
@@ -16,6 +22,7 @@ import taan.online.logging.EventLogger;
 import taan.online.logging.LogContext;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchParticipationState;
 import taan.online.match.model.MatchResult;
 import taan.online.match.repository.MatchResultRepository;
 import taan.online.match.service.model.MatchSnapshot;
@@ -34,13 +41,18 @@ public final class SettleMatchResultAction {
     }
 
     MatchResult prepare(MatchSnapshot snapshot, MatchOutcome outcome) {
+        return prepare(snapshot, outcome, MatchParticipationState.initial());
+    }
+
+    MatchResult prepare(MatchSnapshot snapshot, MatchOutcome outcome, MatchParticipationState participation) {
         return MatchResult.finish(
             snapshot.id(),
             clock.instant(),
             outcome,
             snapshot.participants(),
-            snapshot.world().damageStatistics(),
-            snapshot.resolution().exits()
+            snapshot.world().combatStatistics(),
+            snapshot.resolution().exits(),
+            participation
         );
     }
 
@@ -65,12 +77,19 @@ public final class SettleMatchResultAction {
             var event = stored.created() ? MatchLogEvent.REWARDS_COMMITTED : MatchLogEvent.REWARDS_DUPLICATE;
 
             for (var participant : stored.result().participants()) {
+                var reward = participant.experienceReward();
                 LOG.log(
                     event,
                     matchId(stored.result().matchId().value()),
                     characterId(participant.characterId().value()),
                     damage(participant.damage()),
                     forceMedal(participant.forceMedal()),
+                    killMedal(participant.killMedal()),
+                    experienceBefore(reward == null ? null : reward.experienceBefore()),
+                    experienceAfter(reward == null ? null : reward.after().progress().experience()),
+                    experienceDelta(reward == null ? null : reward.delta()),
+                    levelBefore(reward == null ? null : reward.levelBefore()),
+                    levelAfter(reward == null ? null : reward.after().level()),
                     durationMs(elapsed(started))
                 );
             }

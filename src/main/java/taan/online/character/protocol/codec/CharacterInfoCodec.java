@@ -7,7 +7,8 @@ final class CharacterInfoCodec {
     void encode(BinaryWriter output, CharacterInfo info) {
         output.unsignedInt(CharacterInfo.TYPE_ID).unsignedInt(info.characterId())
             .wideString(info.name()).unsignedShort(info.level())
-            .unsignedInt(0).unsignedInt(0).unsignedInt(0).unsignedInt(info.gold()).unsignedByte(info.gender());
+            .unsignedInt(info.currentExp()).unsignedInt(info.levelStartExp()).unsignedInt(info.nextLevelExp())
+            .unsignedInt(info.gold()).unsignedByte(info.gender());
 
         for (int field = 0; field < 6; field++) {
             output.unsignedInt(0);

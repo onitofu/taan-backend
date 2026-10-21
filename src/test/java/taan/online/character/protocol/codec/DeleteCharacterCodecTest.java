@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.controller.CharacterCatalogMapper;
@@ -41,8 +42,12 @@ class DeleteCharacterCodecTest {
         var remaining = CharacterFixtures.character(1002, new AccountId(102), AccountGender.FEMALE, "Luma");
 
         assertArrayEquals(
-            CharacterFixtures.root("event-0093-reply.frame.hex"),
-            encoder.encode(new PrDelCharacter(0, 0, new CharacterCatalogMapper().map(List.of(remaining))))
+            CharacterFixtures.withProgress(CharacterFixtures.root("event-0093-reply.frame.hex"), 0, 0, 940),
+            encoder.encode(new PrDelCharacter(
+                0,
+                0,
+                new CharacterCatalogMapper(TestLevels.table()).map(List.of(remaining))
+            ))
         );
     }
 

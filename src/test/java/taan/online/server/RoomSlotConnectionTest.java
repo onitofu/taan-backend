@@ -56,6 +56,7 @@ class RoomSlotConnectionTest {
             world.request(owner, SelectionFixtures.cash(0, 0));
 
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+            assertArrayEquals(SelectionFixtures.money(0), read(owner));
             assertTrue(logs.text().contains("room.slot.availability.rejected"));
             assertTrue(logs.events().stream().noneMatch(event -> event.getLevel().toString().equals("ERROR")));
             assertFalse(logs.text().contains("member1@example.test"));

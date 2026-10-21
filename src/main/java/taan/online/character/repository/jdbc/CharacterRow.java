@@ -25,6 +25,7 @@ final class CharacterRow {
     private final AccountGender gender;
     private final Instant createdAt;
     private final CharacterProgress progress;
+    private final long gold;
     private final List<AppearancePart> parts = IntStream.range(0, 16)
         .mapToObj(slot -> new AppearancePart(slot, 0, 0, 0, 0)).collect(Collectors.toCollection(ArrayList::new));
 
@@ -37,6 +38,7 @@ final class CharacterRow {
         owner = new AccountId(rows.getLong("account_id"));
         name = new CharacterName(rows.getString("name"));
         level = rows.getInt("level");
+        gold = rows.getLong("gold");
         gender = gender(rows.getShort("gender"));
         createdAt = rows.getObject("created_at", OffsetDateTime.class).toInstant();
         progress = new CharacterProgress(
@@ -61,7 +63,17 @@ final class CharacterRow {
     }
 
     GameCharacter character() {
-        return new GameCharacter(id, owner, name, level, gender, new CharacterAppearance(parts), createdAt, progress);
+        return new GameCharacter(
+            id,
+            owner,
+            name,
+            level,
+            gender,
+            new CharacterAppearance(parts),
+            createdAt,
+            progress,
+            gold
+        );
     }
 
     static AccountGender gender(short value) throws SQLException {

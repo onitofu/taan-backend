@@ -12,13 +12,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.TestLevels;
 import taan.online.match.model.MatchId;
+import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchWorldState;
 import taan.online.match.model.ScenarioCommitReceipt;
-import taan.online.match.model.MatchPhase;
 import taan.online.match.service.model.AcceptedScenario;
-import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.CommittedScenario;
+import taan.online.match.service.model.ScenarioApplicationOutcome;
 import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.view.ProtocolMatchView;
 import taan.online.room.model.RoomId;
@@ -34,7 +35,7 @@ class ScenarioRelayTest {
             var outsider = new TestMatchOutput();
             var subscriptions = List.of(
                 new MatchSubscription(world.sender.sessionId(), shooter),
-                new MatchSubscription(observer.sessionId(), new ProtocolMatchView(wire)),
+                new MatchSubscription(observer.sessionId(), new ProtocolMatchView(wire, TestLevels.table())),
                 new MatchSubscription(UUID.randomUUID(), outsider)
             );
             var relay = new ScenarioRelay((context, member) -> true);

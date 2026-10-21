@@ -14,7 +14,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.postgresql.ds.PGSimpleDataSource;
-import taan.online.persistence.DatabaseMigrator;
+import taan.online.account.model.AccountId;
+import taan.online.character.model.CharacterId;
 
 class CurrencyBalancePersistenceIntegrationTest {
     private static CharacterTestDatabase database;
@@ -47,11 +48,12 @@ class CurrencyBalancePersistenceIntegrationTest {
         execute(
             source,
             "UPDATE characters SET level = 42, experience = 700, "
-                + "force_medals = 5, kill_medals = 6, supply_medals = 7 WHERE id = 1"
+            + "force_medals = 5, kill_medals = 6, supply_medals = 7 WHERE id = 1"
         );
         execute(source, "UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE id = 2");
 
-        new DatabaseMigrator().migrate(source);
+        var migration = Flyway.configure().dataSource(source).defaultSchema("currency_upgrade").target("12").load();
+        migration.migrate();
 
         assertEquals(2, scalar(source, "SELECT count(*) FROM accounts WHERE cash = 0"));
         assertEquals(3, scalar(source, "SELECT count(*) FROM characters WHERE gold = 0"));
@@ -60,7 +62,7 @@ class CurrencyBalancePersistenceIntegrationTest {
             scalar(
                 source,
                 "SELECT count(*) FROM accounts WHERE id = 1 AND login = 'first' "
-                    + "AND credential_verifier = 'public-verifier' AND gender = 1"
+                + "AND credential_verifier = 'public-verifier' AND gender = 1"
             )
         );
         assertEquals(
@@ -68,15 +70,15 @@ class CurrencyBalancePersistenceIntegrationTest {
             scalar(
                 source,
                 "SELECT count(*) FROM characters WHERE id = 1 AND account_id = 1 AND name = 'FirstHero' "
-                    + "AND level = 42 AND experience = 700 AND force_medals = 5 AND kill_medals = 6 "
-                    + "AND supply_medals = 7 AND deleted_at IS NULL"
+                + "AND level = 42 AND experience = 700 AND force_medals = 5 AND kill_medals = 6 "
+                + "AND supply_medals = 7 AND deleted_at IS NULL"
             )
         );
         assertEquals(1, scalar(source, "SELECT count(*) FROM characters WHERE id = 2 AND deleted_at IS NOT NULL"));
 
         execute(source, "UPDATE accounts SET cash = 17 WHERE id = 1");
         execute(source, "UPDATE characters SET gold = 23 WHERE id = 1");
-        new DatabaseMigrator().migrate(source);
+        migration.migrate();
 
         assertEquals(17, scalar(source, "SELECT cash FROM accounts WHERE id = 1"));
         assertEquals(23, scalar(source, "SELECT gold FROM characters WHERE id = 1"));
@@ -142,16 +144,41 @@ class CurrencyBalancePersistenceIntegrationTest {
         assertEquals(33, scalar(reloaded, "SELECT gold FROM characters WHERE id = 3 AND account_id = 2"));
     }
 
+    @Test
+    void readsFreshOwnedBalancesWithoutReturningForeignOrArchivedCharacters() throws SQLException {
+        var repository = database.characters();
+        database.execute("UPDATE accounts SET cash = 123 WHERE id = 1");
+        database.execute("UPDATE characters SET gold = 456 WHERE id = 1");
+        var first = repository.findBalances(new AccountId(1), new CharacterId(1)).orElseThrow();
+
+        assertEquals(123, first.cash());
+        assertEquals(456, first.gold());
+        assertTrue(repository.findBalances(new AccountId(2), new CharacterId(1)).isEmpty());
+        assertTrue(repository.findBalances(new AccountId(1), new CharacterId(999)).isEmpty());
+
+        database.execute("UPDATE accounts SET cash = 4294967295 WHERE id = 1");
+        database.execute("UPDATE characters SET gold = 789 WHERE id = 1");
+        var second = database.characters().findBalances(new AccountId(1), new CharacterId(1)).orElseThrow();
+
+        assertEquals(4294967295L, second.cash());
+        assertEquals(789, second.gold());
+        assertEquals(789, scalar(database.source(), "SELECT gold FROM characters WHERE id = 1"));
+
+        database.execute("UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE id = 1");
+
+        assertTrue(repository.findBalances(new AccountId(1), new CharacterId(1)).isEmpty());
+    }
+
     private static void seed(PGSimpleDataSource source) throws SQLException {
         execute(
             source,
             "INSERT INTO accounts (login, credential_verifier, gender) "
-                + "VALUES ('first', 'public-verifier', 1), ('second', 'public-verifier', 2)"
+            + "VALUES ('first', 'public-verifier', 1), ('second', 'public-verifier', 2)"
         );
         execute(
             source,
             "INSERT INTO characters (account_id, name) "
-                + "VALUES (1, 'FirstHero'), (1, 'SecondHero'), (2, 'ThirdHero')"
+            + "VALUES (1, 'FirstHero'), (1, 'SecondHero'), (2, 'ThirdHero')"
         );
     }
 

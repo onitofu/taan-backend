@@ -22,7 +22,7 @@ public final class ScenarioWorldDraft {
     private final Map<Long, MatchItemBox> boxes;
     private final int boxBudget;
     private int creations;
-    private MatchDamageStatistics damageStatistics;
+    private MatchCombatStatistics combatStatistics;
 
     public ScenarioWorldDraft(MatchWorldState original, MatchDefinitions definitions, List<MatchParticipant> roster) {
         this(original, definitions, roster, 0);
@@ -45,7 +45,11 @@ public final class ScenarioWorldDraft {
         terrain = new ScenarioTerrainDraft(original.terrain());
         boxes = new HashMap<>(original.boxes());
         this.boxBudget = boxBudget;
-        damageStatistics = original.damageStatistics();
+        combatStatistics = original.combatStatistics();
+    }
+
+    public void fired(UUID session) {
+        combatStatistics = combatStatistics.fired(session);
     }
 
     public void createBox(long id, int x, int y) {
@@ -97,7 +101,20 @@ public final class ScenarioWorldDraft {
         damage(target, delta);
 
         if (participants.get(source).team() != participants.get(target).team()) {
-            damageStatistics = damageStatistics.credit(source, before - actor(target).hp());
+            combatStatistics = combatStatistics.credit(source, before - actor(target).hp());
+        }
+
+        if (before > 0 && actor(target).dead()) {
+            dead(source, target);
+        }
+    }
+
+    public void dead(UUID source, UUID session) {
+        boolean first = !deaths.contains(session);
+        dead(session);
+
+        if (first && participants.get(source).team() != participants.get(session).team()) {
+            combatStatistics = combatStatistics.killed(source);
         }
     }
 
@@ -165,7 +182,7 @@ public final class ScenarioWorldDraft {
             deaths,
             Optional.of(receipt),
             boxes,
-            damageStatistics
+            combatStatistics
         );
     }
 

@@ -1,0 +1,14 @@
+{
+  "fixtures": [
+    {
+      "golden.csv": "872eb47cafad40046a752a4f5ade483c6ed6934c80c0a7dd951e66cd043d6dd4",
+      "original_file": "golden.csv",
+      "origin": "DERIVED"
+    },
+    {
+      "levels.csv": "7e76b6c83024200269ab74e8f3faec8e72c7106e0153a4df58ce7cecc7a84303",
+      "original_file": "levels.csv",
+      "origin": "DERIVED"
+    }
+  ]
+}

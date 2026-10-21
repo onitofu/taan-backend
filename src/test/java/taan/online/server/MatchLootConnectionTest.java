@@ -54,13 +54,16 @@ class MatchLootConnectionTest {
             var sender = slot == 0 ? owner : guest;
             var observer = slot == 0 ? guest : owner;
             var actor = snapshot.actors().get(member.sessionId());
-            world.request(sender, new PassTurnCodec().encode(new PcGamePlayPassTurn(
-                slot,
-                actor.x(),
-                actor.y(),
-                actor.facing(),
-                0
-            )));
+            world.request(
+                sender,
+                new PassTurnCodec().encode(new PcGamePlayPassTurn(
+                    slot,
+                    actor.x(),
+                    actor.y(),
+                    actor.facing(),
+                    0
+                ))
+            );
             world.drainOutputs();
             assertTrue(world.matches.current(token).orElseThrow().loot().offers().containsKey(member.sessionId()));
             sender.channel().pipeline().addFirst(new FrameDecoder(16384, 10));
@@ -96,6 +99,7 @@ class MatchLootConnectionTest {
             assertArrayEquals(bonus, read(sender));
             assertArrayEquals(discard, read(sender));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(sender));
+            assertArrayEquals(SelectionFixtures.money(0), read(sender));
             assertArrayEquals(bonus, read(observer));
             assertArrayEquals(discard, read(observer));
             var inventory = world.matches.current(token).orElseThrow().loot().inventory(member.sessionId());
@@ -157,6 +161,7 @@ class MatchLootConnectionTest {
                 }
 
                 assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+                assertArrayEquals(SelectionFixtures.money(0), read(owner));
                 assertTrue(owner.channel().isActive());
                 assertTrue(guest.channel().isActive());
                 assertTrue(owner.channel().outboundMessages().isEmpty());

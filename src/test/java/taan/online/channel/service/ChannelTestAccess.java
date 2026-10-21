@@ -9,9 +9,12 @@ import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
 import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterName;
+import taan.online.character.model.CharacterProgressSnapshot;
 
 public final class ChannelTestAccess implements SelectedCharacterAccess {
     public final Map<UUID, ChannelParticipant> players = new HashMap<>();
+    public boolean allowRefresh;
+    public Runnable onRefresh = () -> { };
     public Runnable onAccess = () -> { };
 
     public UUID add(long id, int level) {
@@ -29,6 +32,28 @@ public final class ChannelTestAccess implements SelectedCharacterAccess {
             level,
             AccountGender.MALE
         );
+    }
+
+    @Override
+    public boolean refreshProgress(UUID sessionId, CharacterProgressSnapshot progress) {
+        if (!allowRefresh) {
+            return false;
+        }
+
+        var current = players.get(sessionId);
+        players.put(
+            sessionId,
+            new ChannelParticipant(
+                sessionId,
+                current.accountId(),
+                current.characterId(),
+                current.name(),
+                progress.level(),
+                current.gender()
+            )
+        );
+        onRefresh.run();
+        return true;
     }
 
     @Override

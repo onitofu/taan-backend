@@ -26,6 +26,22 @@ public final class CharacterFixtures {
     private CharacterFixtures() {
     }
 
+    public static byte[] withProgress(byte[] original, long experience, long start, long next) {
+        var changed = original.clone();
+        var bytes = ByteBuffer.wrap(changed).order(ByteOrder.LITTLE_ENDIAN);
+
+        for (int index = 0; index <= changed.length - 12; index++) {
+            if (bytes.getInt(index) == 0x22d40519) {
+                int offset = index + 14 + bytes.getInt(index + 8) * 2;
+                bytes.putInt(offset, Math.toIntExact(experience));
+                bytes.putInt(offset + 4, Math.toIntExact(start));
+                bytes.putInt(offset + 8, Math.toIntExact(next));
+            }
+        }
+
+        return changed;
+    }
+
     public static byte[] root(String filename) {
         try (var input = CharacterFixtures.class.getResourceAsStream("/character/" + filename)) {
             byte[] value = HexFormat.of().parseHex(

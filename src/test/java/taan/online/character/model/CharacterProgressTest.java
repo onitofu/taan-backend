@@ -9,9 +9,10 @@ class CharacterProgressTest {
     @Test
     void startsAtZeroAndPreservesEachUnsignedCounterWithoutWrapping() {
         assertEquals(new CharacterProgress(0, 0, 0, 0), CharacterProgress.initial());
-        var progress = new CharacterProgress(0xffffffffL, 12, 23, 34);
+        var progress = new CharacterProgress(1048576, 12, 23, 34);
 
-        assertEquals(0xffffffffL, progress.experience());
+        assertEquals(1048576, progress.experience());
+        assertThrows(IllegalArgumentException.class, () -> new CharacterProgress(1048577, 0, 0, 0));
         assertEquals(12, progress.forceMedals());
         assertEquals(23, progress.killMedals());
         assertEquals(34, progress.supplyMedals());

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.character.repository.TestCharacterRepository;
 import taan.online.character.service.DeleteCharacterAction;
@@ -68,6 +69,13 @@ class DeleteCharacterPacketHandlerTest {
     }
 
     private DeleteCharacterPacketHandler handler(TestAccountAccess access, TestCharacterRepository repository) {
-        return new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, repository), access);
+        return new DeleteCharacterPacketHandler(
+            new DeleteCharacterAction(
+                access,
+                repository
+            ),
+            access,
+            TestLevels.table()
+        );
     }
 }

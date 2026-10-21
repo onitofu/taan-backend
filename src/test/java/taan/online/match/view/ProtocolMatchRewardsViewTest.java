@@ -7,8 +7,10 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.ExperienceTestFixtures;
 import taan.online.MatchBootstrapFixture;
-import taan.online.match.model.MatchDamageStatistics;
+import taan.online.TestLevels;
+import taan.online.match.model.MatchCombatStatistics;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchResult;
 import taan.online.match.protocol.codec.EndGameCodec;
@@ -31,11 +33,12 @@ class ProtocolMatchRewardsViewTest {
                 Instant.EPOCH,
                 new MatchOutcome(Set.of(RoomTeam.BLUE), false),
                 snapshot.participants(),
-                new MatchDamageStatistics(Map.of(blue.sessionId(), 400L, red.sessionId(), 400L)),
-                Map.of()
+                new MatchCombatStatistics(Map.of(blue.sessionId(), 400L, red.sessionId(), 400L)),
+                Map.of(),
+                ExperienceTestFixtures.participation(snapshot.participants().getFirst().sessionId())
             );
             var output = new CollectingPacketOutput();
-            new ProtocolMatchView(output).end(new MatchEndResult(result, snapshot.participants()));
+            new ProtocolMatchView(output, TestLevels.table()).end(new MatchEndResult(result, snapshot.participants()));
             var batch = output.batches.getFirst();
             var cards = new SetRewardCodec().decode(batch.getFirst());
             var end = new EndGameCodec().decode(batch.getLast());

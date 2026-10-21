@@ -18,6 +18,7 @@ import taan.online.RoomScenario;
 import taan.online.SelectionFixtures;
 import taan.online.TestCredentialHasher;
 import taan.online.TestFixtures;
+import taan.online.TestLevels;
 import taan.online.TestRoomSelectionScheduler;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
@@ -169,7 +170,8 @@ final class ConnectionContextTestHarness implements AutoCloseable {
         login = new UserLoginPacketHandler(
             new LoginAction(repository, hasher, sessions),
             sessions,
-            new ListCharactersAction(characters, InventoryFixtures.catalog())
+            new ListCharactersAction(characters, InventoryFixtures.catalog()),
+            TestLevels.table()
         );
         var access = new SessionCharacterAccess(sessions);
         characters.inventoryData = SelectionFixtures.inventories(AccountGender.FEMALE);
@@ -206,9 +208,10 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             new ConfirmNamePacketHandler(new ConfirmNameAction(access, characters, CharacterFixtures.filter()), access),
             new CreateCharacterPacketHandler(
                 new CreateCharacterAction(access, characters, CharacterFixtures.filter(), CharacterFixtures.options()),
-                access
+                access,
+                TestLevels.table()
             ),
-            new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access),
+            new DeleteCharacterPacketHandler(new DeleteCharacterAction(access, characters), access, TestLevels.table()),
             selectedOverride == null ? SelectionFixtures.dispatcher(sessions, characters) : selectedOverride,
             lobbyOverride == null ? SelectionFixtures.lobby(sessions, channels, rooms) : lobbyOverride,
             InventoryFixtures.dispatcher(sessions, inventories, new RoomInventoryMoveContextAccess(rooms)),

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import taan.online.CollectingPacketOutput;
+import taan.online.TestLevels;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.protocol.codec.LeaveUserCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
@@ -120,9 +121,12 @@ class TeamLoadingBoundaryTest {
             ).toCompletableFuture().join());
             f.scenario.rooms.release(missing.sessionId(), "PEER_CLOSED");
             var output = new CollectingPacketOutput();
-            new ProtocolMatchView(output).firstTurn(f.snapshot(), f.players.getLast());
-            assertEquals(missing.slotIndex(), new LeaveUserCodec().decode(output.batches.getFirst().getFirst())
-                .slotIndex());
+            new ProtocolMatchView(output, TestLevels.table()).firstTurn(f.snapshot(), f.players.getLast());
+            assertEquals(
+                missing.slotIndex(),
+                new LeaveUserCodec().decode(output.batches.getFirst().getFirst())
+                .slotIndex()
+            );
             new TurnStartCodec().decode(output.batches.getFirst().getLast());
 
             f.outputs.values().forEach(o -> o.turnDelivery.complete(null));

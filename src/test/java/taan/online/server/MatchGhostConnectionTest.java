@@ -9,9 +9,9 @@ import static taan.online.server.RoomConnectionWorld.read;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import taan.online.MatchResultAssertions;
 import taan.online.LogCapture;
 import taan.online.MatchFixtures;
+import taan.online.MatchResultAssertions;
 import taan.online.MatchScenarioTestPackets;
 import taan.online.RoomFixtures;
 import taan.online.RoomScenario;
@@ -79,6 +79,7 @@ class MatchGhostConnectionTest {
                 world.request(dead, ghost);
                 world.request(dead, SelectionFixtures.cash(0, 0));
                 assertArrayEquals(SelectionFixtures.cash(0, 0), read(dead));
+                assertArrayEquals(SelectionFixtures.money(0), read(dead));
                 assertTrue(owner.channel().isActive());
                 assertTrue(guest.channel().isActive());
                 assertTrue(owner.channel().outboundMessages().isEmpty());

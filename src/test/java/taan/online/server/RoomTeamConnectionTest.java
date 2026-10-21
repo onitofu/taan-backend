@@ -49,6 +49,7 @@ class RoomTeamConnectionTest {
             world.request(guest, SelectionFixtures.cash(0, 0));
 
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(guest));
+            assertArrayEquals(SelectionFixtures.money(0), read(guest));
             assertTrue(guest.channel().isActive());
         }
     }

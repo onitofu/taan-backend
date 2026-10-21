@@ -31,6 +31,7 @@ import taan.online.channel.service.model.MoveToCommand;
 import taan.online.channel.service.model.MoveToOutcome;
 import taan.online.channel.service.model.MoveToResult;
 import taan.online.character.model.CharacterId;
+import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.logging.EventLogger;
 
 public final class ChannelRegistry {
@@ -44,6 +45,34 @@ public final class ChannelRegistry {
     public ChannelRegistry(SelectedCharacterAccess sessions, int port) {
         this.sessions = sessions;
         this.port = port;
+    }
+
+    public synchronized boolean refreshProgress(UUID sessionId, CharacterProgressSnapshot progress) {
+        var previous = members.get(sessionId);
+
+        if (previous == null || !previous.participant.characterId().equals(progress.characterId())
+            || !sessions.refreshProgress(sessionId, progress)) {
+            return false;
+        }
+
+        var selected = sessions.selectedCharacter(sessionId)
+            .filter(value -> value.characterId().equals(progress.characterId()));
+
+        if (selected.isEmpty()) {
+            return false;
+        }
+
+        var participant = selected.orElseThrow();
+        var changed = new ChannelMembership(participant, previous.channelId);
+        changed.phase = previous.phase;
+        changed.output = previous.output;
+        members.put(sessionId, changed);
+
+        if (changed.phase == ChannelPresencePhase.LOBBY) {
+            publish(changed, List.of(participant), List.of());
+        }
+
+        return true;
     }
 
     public synchronized void initialize(List<ChannelGroupDefinition> groups) {

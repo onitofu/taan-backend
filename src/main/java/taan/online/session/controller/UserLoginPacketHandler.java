@@ -14,6 +14,7 @@ import taan.online.account.model.AccountGender;
 import taan.online.account.model.LoginName;
 import taan.online.account.service.model.ClientCredential;
 import taan.online.character.controller.CharacterCatalogMapper;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.service.ListCharactersAction;
 import taan.online.logging.EventLogger;
 import taan.online.session.logging.SessionLogEvent;
@@ -30,6 +31,8 @@ import taan.online.session.service.model.LoginResult;
 import taan.online.session.service.model.LoginSucceeded;
 
 public final class UserLoginPacketHandler {
+    private final CharacterLevelTable levels;
+
     private static final EventLogger LOG = EventLogger.forClass(UserLoginPacketHandler.class);
 
     private final LoginAction login;
@@ -38,7 +41,13 @@ public final class UserLoginPacketHandler {
     private SessionId id;
     private UUID connection;
 
-    public UserLoginPacketHandler(LoginAction login, SessionRegistry sessions, ListCharactersAction characters) {
+    public UserLoginPacketHandler(
+        LoginAction login,
+        SessionRegistry sessions,
+        ListCharactersAction characters,
+        CharacterLevelTable levels
+    ) {
+        this.levels = levels;
         this.login = login;
         this.sessions = sessions;
         this.characters = characters;
@@ -82,7 +91,7 @@ public final class UserLoginPacketHandler {
 
         if (result instanceof LoginSucceeded success) {
             var principal = success.principal();
-            var catalog = new CharacterCatalogMapper().map(characters.execute(principal.accountId()));
+            var catalog = new CharacterCatalogMapper(levels).map(characters.execute(principal.accountId()));
 
             if (sessions.phase(id) == SessionPhase.CLOSED) {
                 LOG.log(SessionLogEvent.LOGIN_IGNORED, reason("SESSION_CLOSED"));

@@ -3,11 +3,12 @@ package taan.online.match.controller;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.match.protocol.codec.EndScenarioCodec;
 import taan.online.match.protocol.codec.GiveUpCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
-import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.MakeGhostRequestCodec;
+import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ReportEnemiesCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
@@ -26,8 +27,8 @@ import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
-import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqGamePlayMakeGhost;
+import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.match.service.ApplyScenarioAction;
@@ -58,6 +59,8 @@ import taan.online.protocol.PacketOutput;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 public final class MatchPacketHandler {
+    private final CharacterLevelTable levels;
+
     private final MatchRegistry matches;
     private final ReportMatchGhostAction ghosts;
     private final MatchItemPacketHandler items;
@@ -77,7 +80,8 @@ public final class MatchPacketHandler {
         ConsumeMatchResultAction consume,
         ConfirmMatchLoadingAction loading,
         ConfirmMatchPositionAction position,
-        ReportMatchEnemiesAction reports
+        ReportMatchEnemiesAction reports,
+        CharacterLevelTable levels
     ) {
         this(
             matches,
@@ -87,7 +91,8 @@ public final class MatchPacketHandler {
             position,
             reports,
             new ApplyScenarioPacketHandler(new ApplyScenarioAction(matches)),
-            new ConfirmScenarioAction(matches)
+            new ConfirmScenarioAction(matches),
+            levels
         );
     }
 
@@ -99,7 +104,8 @@ public final class MatchPacketHandler {
         ConfirmMatchPositionAction position,
         ReportMatchEnemiesAction reports,
         ApplyScenarioPacketHandler scenarios,
-        ConfirmScenarioAction acknowledgements
+        ConfirmScenarioAction acknowledgements,
+        CharacterLevelTable levels
     ) {
         this(
             matches,
@@ -111,7 +117,8 @@ public final class MatchPacketHandler {
             scenarios,
             acknowledgements,
             new MoveMatchActorAction(matches),
-            new PassMatchTurnAction(matches)
+            new PassMatchTurnAction(matches),
+            levels
         );
     }
 
@@ -125,7 +132,8 @@ public final class MatchPacketHandler {
         ApplyScenarioPacketHandler scenarios,
         ConfirmScenarioAction acknowledgements,
         MoveMatchActorAction movement,
-        PassMatchTurnAction passing
+        PassMatchTurnAction passing,
+        CharacterLevelTable levels
     ) {
         this(
             matches,
@@ -145,7 +153,8 @@ public final class MatchPacketHandler {
                 new ReportMatchPickupAction(matches),
                 new ConfirmMatchItemReceiptAction(matches),
                 new DiscardMatchItemAction(matches)
-            )
+            ),
+            levels
         );
     }
 
@@ -160,8 +169,10 @@ public final class MatchPacketHandler {
         ConfirmScenarioAction acknowledgements,
         MoveMatchActorAction movement,
         PassMatchTurnAction passing,
-        MatchItemPacketHandler items
+        MatchItemPacketHandler items,
+        CharacterLevelTable levels
     ) {
+        this.levels = levels;
         this.items = items;
         this.movement = movement;
         this.passing = passing;
@@ -177,7 +188,7 @@ public final class MatchPacketHandler {
     }
 
     public void open(UUID id, PacketOutput output) {
-        matches.subscribe(id, new ProtocolMatchView(output));
+        matches.subscribe(id, new ProtocolMatchView(output, levels));
     }
 
     public void close(UUID id) {

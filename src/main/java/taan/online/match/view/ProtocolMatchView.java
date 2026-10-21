@@ -2,11 +2,15 @@ package taan.online.match.view;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
-import taan.online.character.controller.CharacterCatalogMapper;
+import taan.online.character.controller.CharacterAppearanceMapper;
+import taan.online.character.model.CharacterLevelTable;
+import taan.online.character.protocol.codec.UpdateExpCodec;
+import taan.online.character.protocol.packet.PcUpdateExp;
 import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
@@ -22,6 +26,7 @@ import taan.online.match.protocol.codec.StartGameCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
 import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.match.protocol.codec.UseItemCodec;
+import taan.online.match.protocol.packet.ExpResult;
 import taan.online.match.protocol.packet.GameResult;
 import taan.online.match.protocol.packet.GameResultSlot;
 import taan.online.match.protocol.packet.GameRewardExp;
@@ -39,6 +44,7 @@ import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGameSessionEndGame;
 import taan.online.match.protocol.packet.PcGameSessionStartGame;
 import taan.online.match.protocol.packet.PcResultSetReward;
+import taan.online.match.protocol.packet.ResultBonus;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
 import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
 import taan.online.match.protocol.packet.SpentItem;
@@ -62,9 +68,12 @@ import taan.online.room.protocol.packet.GameSlotOccupant;
 import taan.online.room.protocol.packet.PcGameSessionUpdateSlot;
 
 public final class ProtocolMatchView implements MatchOutput {
+    private final CharacterLevelTable levels;
+
     private final PacketOutput output;
 
-    public ProtocolMatchView(PacketOutput output) {
+    public ProtocolMatchView(PacketOutput output, CharacterLevelTable levels) {
+        this.levels = levels;
         this.output = output;
     }
 
@@ -72,7 +81,7 @@ public final class ProtocolMatchView implements MatchOutput {
     public CompletionStage<Void> start(MatchSnapshot snapshot) {
         var roots = new ArrayList<byte[]>();
         var roomCodec = new RoomResponseCodec();
-        var appearance = new CharacterCatalogMapper();
+        var appearance = new CharacterAppearanceMapper();
 
         for (var member : snapshot.participants()) {
             var character = member.character();
@@ -283,12 +292,20 @@ public final class ProtocolMatchView implements MatchOutput {
                 return new GameRewardExp("", characterId, 0);
             }
         ).toList();
-        return output.send(
-            List.of(
-                new SetRewardCodec().encode(new PcResultSetReward(rewards)),
-                new EndGameCodec().encode(new PcGameSessionEndGame(result, 0))
-            )
-        );
+        var roots = new ArrayList<byte[]>();
+        end.participants().stream().filter(p -> p.sessionId().equals(end.recipientSessionId()))
+            .flatMap(p -> end.result().participants().stream().filter(v -> v.characterId().equals(p.character().id())))
+            .map(MatchParticipantResult::experienceReward).filter(Objects::nonNull).findFirst()
+            .ifPresent(reward -> roots.add(new UpdateExpCodec().encode(new PcUpdateExp(
+                0,
+                reward.after().level(),
+                reward.after().progress().experience(),
+                levels.displayStart(reward.after().level()),
+                levels.displayNext(reward.after().level())
+            ))));
+        roots.add(new SetRewardCodec().encode(new PcResultSetReward(rewards)));
+        roots.add(new EndGameCodec().encode(new PcGameSessionEndGame(result, 0)));
+        return output.send(roots);
     }
 
     private GameResultSlot resultSlot(MatchEndResult end, int index) {
@@ -301,20 +318,35 @@ public final class ProtocolMatchView implements MatchOutput {
         MatchParticipantResult statistics = participant.orElseThrow();
         int level = end.participants().stream().filter(value -> value.character().id().equals(statistics.characterId()))
             .findFirst().orElseThrow().character().level();
+        var reward = statistics.experienceReward();
+        var snapshots = reward == null ? List.<ExpResult>of() : List.of(
+            experience(reward.levelBefore(), reward.experienceBefore()),
+            experience(reward.after().level(), reward.after().progress().experience())
+        );
+        var bonuses = reward == null ? List.<ResultBonus>of() : List.of(
+            new ResultBonus(0, Math.toIntExact(reward.pcroomDelta()), 0),
+            new ResultBonus(4, Math.toIntExact(reward.medalDelta()), 0)
+        );
         return new GameResultSlot(
             index,
-            level,
+            reward == null ? level : reward.after().level(),
+            reward == null ? 0 : Integer.toUnsignedLong(Math.toIntExact(reward.delta())),
             0,
-            0,
-            0,
+            statistics.kills(),
             statistics.damage(),
             0,
             0,
-            List.of(statistics.forceMedal() ? 1 : 0, 0, 0),
+            List.of(statistics.forceMedal() ? 1 : 0, statistics.killMedal() ? 1 : 0, 0),
             0,
             0,
-            0
+            0,
+            snapshots,
+            bonuses
         );
+    }
+
+    private ExpResult experience(int level, long current) {
+        return new ExpResult(level, current, levels.displayStart(level), levels.displayNext(level));
     }
 
     @Override

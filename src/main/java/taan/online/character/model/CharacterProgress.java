@@ -3,6 +3,11 @@ package taan.online.character.model;
 public record CharacterProgress(long experience, long forceMedals, long killMedals, long supplyMedals) {
     public CharacterProgress {
         requireCounter(experience);
+
+        if (experience > CharacterLevelTable.EXPERIENCE_CAP) {
+            throw new IllegalArgumentException("Experience exceeds the progression cap");
+        }
+
         requireCounter(forceMedals);
         requireCounter(killMedals);
         requireCounter(supplyMedals);

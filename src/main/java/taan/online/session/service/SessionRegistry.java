@@ -8,6 +8,7 @@ import java.util.UUID;
 import taan.online.account.model.AccountId;
 import taan.online.channel.model.ChannelParticipant;
 import taan.online.character.model.CharacterId;
+import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.character.model.GameCharacter;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.session.model.AuthenticatedPrincipal;
@@ -56,6 +57,24 @@ public final class SessionRegistry {
             character.gender()
         );
         session.phase = SessionPhase.CHARACTER_SELECTED;
+        return true;
+    }
+
+    public synchronized boolean refreshProgress(SessionId id, CharacterProgressSnapshot progress) {
+        var session = sessions.get(id);
+
+        if (session == null || session.selectedCharacter == null
+            || !session.selectedCharacter.id().equals(progress.characterId())) {
+            return false;
+        }
+
+        var previous = session.selectedCharacter;
+        session.selectedCharacter = new SelectedCharacterProfile(
+            previous.id(),
+            previous.name(),
+            progress.level(),
+            previous.gender()
+        );
         return true;
     }
 

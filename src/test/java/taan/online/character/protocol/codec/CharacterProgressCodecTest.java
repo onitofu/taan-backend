@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.CharacterFixtures;
 import taan.online.PostmatchFixtures;
+import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.character.controller.CharacterCatalogMapper;
@@ -28,7 +29,7 @@ class CharacterProgressCodecTest {
             original.createdAt(),
             new CharacterProgress(700, 1, 2, 3)
         );
-        var info = new CharacterCatalogMapper().map(List.of(character)).info().getFirst();
+        var info = new CharacterCatalogMapper(TestLevels.table()).map(List.of(character)).info().getFirst();
         var output = new BinaryWriter();
         new CharacterInfoCodec().encode(output, info);
 
@@ -36,6 +37,14 @@ class CharacterProgressCodecTest {
         assertEquals(2, info.killMedals());
         assertEquals(3, info.supplyMedals());
         assertEquals(700, character.progress().experience());
-        assertArrayEquals(PostmatchFixtures.bytes("character-info-progress.root.hex"), output.toByteArray());
+        assertArrayEquals(
+            CharacterFixtures.withProgress(
+                PostmatchFixtures.bytes("character-info-progress.root.hex"),
+                700,
+                0,
+                940
+            ),
+            output.toByteArray()
+        );
     }
 }

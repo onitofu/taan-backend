@@ -55,6 +55,7 @@ class RoomCaptainConnectionTest {
             drain(owner);
             world.request(owner, SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(owner));
+            assertArrayEquals(SelectionFixtures.money(0), read(owner));
             assertTrue(owner.channel().isActive());
             assertEquals(1, world.rooms.forChannel(1).getFirst().playerCount());
         }

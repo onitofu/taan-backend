@@ -7,18 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.RoomFixtures.integer;
 import static taan.online.RoomFixtures.root;
 
-import java.util.concurrent.TimeUnit;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.lobby.protocol.codec.LobbyRoomListCodec;
+import taan.online.match.protocol.codec.SetPosCodec;
+import taan.online.match.protocol.codec.StartGameCodec;
+import taan.online.match.protocol.codec.TurnStartCodec;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
-import taan.online.match.protocol.codec.StartGameCodec;
-import taan.online.match.protocol.codec.SetPosCodec;
-import taan.online.match.protocol.codec.TurnStartCodec;
 
 class RoomCaptainIntegrationTest {
     @Test
@@ -72,6 +72,7 @@ class RoomCaptainIntegrationTest {
                         assertEquals(2, lists.update(observer.read()).rooms().getFirst().state());
                         owner.sendTogether(root("PqGameSession_ChiefDecision-native"), SelectionFixtures.cash(0, 0));
                         assertArrayEquals(SelectionFixtures.cash(0, 0), owner.read());
+                        assertArrayEquals(SelectionFixtures.money(0), owner.read());
                         owner.sendTogether(
                             root("PqGameSession_ChallengeChief-native"),
                             root("PqGameSession_CancelChief-native")
@@ -154,5 +155,6 @@ class RoomCaptainIntegrationTest {
     private void cash(CharacterTestClient client) throws Exception {
         client.send(SelectionFixtures.cash(0, 0));
         assertArrayEquals(SelectionFixtures.cash(0, 0), client.read());
+        assertArrayEquals(SelectionFixtures.money(0), client.read());
     }
 }

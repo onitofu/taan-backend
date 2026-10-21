@@ -57,6 +57,7 @@ class RoomDisconnectTest {
                 assertEquals(1, world.channels.catalog().fills().get(1));
                 world.request(guest, SelectionFixtures.cash(0, 0));
                 assertArrayEquals(SelectionFixtures.cash(0, 0), read(guest));
+                assertArrayEquals(SelectionFixtures.money(0), read(guest));
                 assertNull(guest.channel().readOutbound());
                 assertEquals(1, count(logs, "room.owner.changed"));
                 assertEquals(1, count(logs, "room.left"));
@@ -156,6 +157,7 @@ class RoomDisconnectTest {
                 world.sessions.close(claimant);
                 world.request(current, SelectionFixtures.cash(0, 0));
                 assertArrayEquals(SelectionFixtures.cash(0, 0), read(current));
+                assertArrayEquals(SelectionFixtures.money(0), read(current));
                 assertNull(guest.channel().readOutbound());
             }
         }

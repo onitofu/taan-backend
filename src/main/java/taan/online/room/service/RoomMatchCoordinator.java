@@ -1,8 +1,10 @@
 package taan.online.room.service;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import taan.online.room.service.model.RoomMatchCharacterProgress;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
 import taan.online.room.service.model.RoomMatchTerminationResult;
@@ -30,6 +32,13 @@ final class RoomMatchCoordinator implements RoomMatchCallbacks {
         this.starts = starts;
         this.phase = phase;
         this.rejection = rejection;
+    }
+
+    @Override
+    public void progressCommitted(RoomMatchToken token, List<RoomMatchCharacterProgress> progress) {
+        synchronized (monitor) {
+            matches.progressCommitted(token, progress);
+        }
     }
 
     RoomStartResult start(UUID id) {

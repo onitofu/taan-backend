@@ -6,12 +6,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 import taan.online.logging.LogContext;
-import taan.online.match.model.MatchResult;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchResult;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.service.model.RoomMatchTermination;
-import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchTerminationMode;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchToken;
 
 record MatchTerminationDispatch(
@@ -32,7 +32,7 @@ record MatchTerminationDispatch(
             runtime,
             delivery,
             settlements,
-            settlements.prepare(snapshot, outcome),
+            settlements.prepare(snapshot, outcome, runtime.participation()),
             runtime.live() && delivery.terminal().mode() == RoomMatchTerminationMode.RETURN_TO_ROOM
         );
     }
@@ -83,6 +83,7 @@ record MatchTerminationDispatch(
                             return CompletableFuture.<Void>completedFuture(null);
                         }
 
+                        MatchProgressPublication.publish(runtime, stored);
                         return delivery.dispatch(requester, stored);
                     } finally {
                         queued.run();
