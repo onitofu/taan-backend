@@ -22,6 +22,7 @@ import taan.online.match.model.MatchMapDefinition;
 import taan.online.match.model.WeaponAttackDefinition;
 import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.model.WeaponDefinition;
+import taan.online.match.model.WeaponFireDefinition;
 
 public final class MatchDefinitionLoader {
     public MatchDefinitionCatalog load(
@@ -132,22 +133,44 @@ public final class MatchDefinitionLoader {
                 Integer.parseInt(row[5])
             )
         );
+        var fires = new HashMap<WeaponAttackKey, List<WeaponFireDefinition>>();
+
+        try (var stream = Objects.requireNonNull(resources.apply("weapon-fires.csv"))) {
+            for (var row : csv(
+                stream,
+                "weapon_id,attack_kind,fire_index,missile_variant,missile_type_id",
+                Function.identity()
+            )) {
+                var key = new WeaponAttackKey(Integer.parseInt(row[0]), Integer.parseInt(row[1]));
+                var profiles = fires.computeIfAbsent(key, ignored -> new ArrayList<>());
+
+                if (Integer.parseInt(row[2]) != profiles.size()) {
+                    throw new IllegalArgumentException("Invalid weapon fire order");
+                }
+
+                profiles.add(new WeaponFireDefinition(Integer.parseInt(row[3]), Integer.parseInt(row[4])));
+            }
+        }
+
         var shots = csv(
             attacks,
-            "weapon_id,attack_kind,min_power,max_power,missile_variant,missile_type_id,animation_type,"
-                + "intrinsic_guidance",
+            "weapon_id,attack_kind,min_power,max_power,animation_type,intrinsic_guidance",
             row -> new WeaponAttackDefinition(
                 new WeaponAttackKey(Integer.parseInt(row[0]), Integer.parseInt(row[1])),
                 Integer.parseInt(row[2]),
                 Integer.parseInt(row[3]),
+                fires.getOrDefault(
+                    new WeaponAttackKey(Integer.parseInt(row[0]), Integer.parseInt(row[1])),
+                    List.of()
+                ),
                 Integer.parseInt(row[4]),
-                Integer.parseInt(row[5]),
-                Integer.parseInt(row[6]),
-                valid(row[7])
+                valid(row[5])
             )
         );
 
-        if (shots.size() != 14) {
+        if (shots.size() != 23 || !fires.keySet().equals(
+            shots.stream().map(WeaponAttackDefinition::key).collect(Collectors.toSet())
+        )) {
             throw new IllegalArgumentException("Incomplete match attack definitions");
         }
 

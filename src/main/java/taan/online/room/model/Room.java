@@ -271,7 +271,8 @@ public final class Room {
     }
 
     public static boolean isSelectableWeapon(int weaponId) {
-        return weaponId == 0 || weaponId == 3 || weaponId == 8 || weaponId == 10;
+        return weaponId == 0 || weaponId == 1 || weaponId == 2 || weaponId == 3
+            || weaponId == 6 || weaponId == 8 || weaponId == 10;
     }
 
     public boolean changeWeapon(UUID sessionId, int weaponId) {

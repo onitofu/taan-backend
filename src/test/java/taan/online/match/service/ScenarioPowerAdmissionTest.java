@@ -3,11 +3,13 @@ package taan.online.match.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.match.model.MatchDefinitions;
 import taan.online.match.model.WeaponAttackDefinition;
 import taan.online.match.model.WeaponAttackKey;
+import taan.online.match.model.WeaponFireDefinition;
 import taan.online.match.service.model.ScenarioAdmissionOutcome;
 import taan.online.match.service.model.ScenarioClaims;
 
@@ -18,7 +20,17 @@ class ScenarioPowerAdmissionTest {
             var original = world.definitions;
             var attacks = new HashMap<>(original.attacks());
             var key = new WeaponAttackKey(0, 0);
-            attacks.put(key, new WeaponAttackDefinition(key, 25, 75, 0, 0, 9, false));
+            attacks.put(
+                key,
+                new WeaponAttackDefinition(
+                    key,
+                    25,
+                    75,
+                    List.of(new WeaponFireDefinition(0, 0)),
+                    9,
+                    false
+                )
+            );
             world.definitions = new MatchDefinitions(
                 original.catalogVersion(),
                 original.map(),

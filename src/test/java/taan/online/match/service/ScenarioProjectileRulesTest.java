@@ -8,8 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import taan.online.MatchFixtures;
 import taan.online.match.model.WeaponAttackDefinition;
 import taan.online.match.model.WeaponAttackKey;
+import taan.online.match.model.WeaponFireDefinition;
 import taan.online.match.model.WeaponMissileKey;
 import taan.online.match.service.model.ScenarioEventTime;
 import taan.online.match.service.model.ScenarioFireClaim;
@@ -90,9 +94,63 @@ class ScenarioProjectileRulesTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 6})
+    void boundsPhysicalSequencesAndRejectsVariantAliasesBeforeRegisteringAnyProjectile(int weapon) {
+        var definition = MatchFixtures.attacks().get(new WeaponAttackKey(weapon, 2));
+        int count = definition.fires().size();
+        var first = definition.fires().getFirst();
+        var last = definition.fires().getLast();
+
+        for (var invalid : List.of(
+            profileFire(weapon, -1, first.missileVariant()),
+            profileFire(weapon, count * 3, first.missileVariant()),
+            profileFire(weapon, 0, first.missileVariant() + 1),
+            profileFire(0, 0, first.missileVariant())
+        )) {
+            var rules = new ScenarioProjectileRules(definition, 3);
+            assertEquals(
+                "INVALID_FIRE",
+                assertThrows(ScenarioRejectedException.class, () -> rules.fire(invalid)).getMessage()
+            );
+            assertFalse(rules.hasFire());
+            assertTrue(rules.missiles().isEmpty());
+        }
+
+        var rules = new ScenarioProjectileRules(definition, 3);
+        rules.fire(profileFire(weapon, count * 3 - 1, last.missileVariant()));
+        rules.fire(profileFire(weapon, 0, first.missileVariant()));
+        assertEquals(
+            Map.of(count * 3 - 1, last.missileKey(weapon), 0, first.missileKey(weapon)),
+            rules.missiles()
+        );
+    }
+
+    private ScenarioFireClaim profileFire(int weapon, int sequence, int variant) {
+        return new ScenarioFireClaim(
+            new ScenarioEventTime(0, 0, 700, 0),
+            sequence,
+            variant,
+            700,
+            weapon,
+            2,
+            1,
+            2,
+            3,
+            4
+        );
+    }
+
     private ScenarioProjectileRules rules() {
         return new ScenarioProjectileRules(
-            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9, false),
+            new WeaponAttackDefinition(
+                new WeaponAttackKey(0, 0),
+                0,
+                100,
+                List.of(new WeaponFireDefinition(0, 0)),
+                9,
+                false
+            ),
             3
         );
     }

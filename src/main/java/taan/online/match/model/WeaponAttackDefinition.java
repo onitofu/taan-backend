@@ -1,27 +1,25 @@
 package taan.online.match.model;
 
+import java.util.List;
 import java.util.Objects;
 
 public record WeaponAttackDefinition(
     WeaponAttackKey key,
     int minPower,
     int maxPower,
-    int missileVariant,
-    int missileTypeId,
+    List<WeaponFireDefinition> fires,
     int animationType,
     boolean intrinsicGuidance
 ) {
     public WeaponAttackDefinition {
         Objects.requireNonNull(key);
+        fires = List.copyOf(fires);
 
-        if (minPower < 0 || maxPower > 100 || minPower > maxPower || missileVariant < 0 || missileVariant > 255
-            || missileTypeId < 0 || missileTypeId > 65535 || animationType < 0 || animationType > 255) {
+        if (minPower < 0 || maxPower > 100 || minPower > maxPower || animationType < 0 || animationType > 255
+            || fires.isEmpty() || fires.stream().map(WeaponFireDefinition::missileVariant).distinct().count()
+                != fires.size()) {
             throw new IllegalArgumentException("Invalid weapon attack definition");
         }
-    }
-
-    public WeaponMissileKey missileKey() {
-        return new WeaponMissileKey(key.weaponId(), missileTypeId);
     }
 
     public int specialAnimation() {
