@@ -236,6 +236,7 @@ class MatchBootstrapIntegrationTest {
                         new TurnStartCodec().decode(owner.read()),
                         new TurnStartCodec().decode(guest.read())
                     );
+                    RuntimeRoomTestAccess.awaitMatchAction(app, 1);
                     owner.send(MatchFixtures.root("give-up-empty"));
                     ended(owner);
                     ended(guest);
