@@ -29,8 +29,15 @@ import taan.online.match.service.SettleMatchResultAction;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomIdPool;
+import taan.online.room.protocol.codec.GameSessionInfoCodec;
+import taan.online.room.protocol.codec.PeerMetaCodec;
 import taan.online.room.protocol.codec.RoomResponseCodec;
+import taan.online.room.protocol.packet.GameSessionDetails;
+import taan.online.room.protocol.packet.GameSessionInfo;
+import taan.online.room.protocol.packet.PeerMeta;
+import taan.online.room.protocol.packet.PqGameSessionCreate;
 import taan.online.room.service.RoomRegistry;
 import taan.online.session.service.SessionChannelAccess;
 import taan.online.session.service.SessionRegistry;
@@ -143,6 +150,17 @@ final class RoomConnectionWorld implements AutoCloseable {
     int create(ConnectionContextTestHarness owner) throws Exception {
         request(owner, RoomFixtures.root("create-unprotected"));
         return new RoomResponseCodec().initialize(read(owner)).info().roomId();
+    }
+
+    int create(ConnectionContextTestHarness owner, String title) {
+        var writer = new BinaryWriter().unsignedInt(PqGameSessionCreate.TYPE_ID);
+        var details = new GameSessionDetails(0, title, 0, 0, 2, 0, 8, null, 0);
+        new GameSessionInfoCodec().encode(writer, new GameSessionInfo(0, 5, details));
+        new PeerMetaCodec().encode(writer, new PeerMeta(0, 0, 0, 0, 0, 0));
+        request(owner, writer.toByteArray());
+        var initialized = new RoomResponseCodec().initialize(read(owner));
+        assertEquals(1, initialized.info().details().rule());
+        return initialized.info().roomId();
     }
 
     void join(ConnectionContextTestHarness client, int room) {

@@ -87,6 +87,11 @@ public enum MatchLogEvent implements LogEvent {
     TERMINAL_DELIVERY_FAILED("match.terminal.delivery.failed", Level.ERROR, "Match terminal delivery failed"),
     OPERATION_FAILED("match.operation.failed", Level.ERROR, "Match operation failed"),
     REQUEST_CANCELLED("match.request.cancelled", Level.DEBUG, "Queued match request cancelled"),
+    POWER_QUIZ_ENABLED("match.powerquiz.enabled", Level.DEBUG, "Power quiz rule enabled"),
+    POWER_QUIZ_OPENED("match.powerquiz.opportunity.opened", Level.DEBUG, "Power quiz opportunity opened"),
+    POWER_QUIZ_CLOSED("match.powerquiz.opportunity.closed", Level.DEBUG, "Power quiz opportunity closed"),
+    POWER_QUIZ_ACCEPTED("match.powerquiz.grant.accepted", Level.DEBUG, "Power quiz grant accepted"),
+    POWER_QUIZ_IGNORED("match.powerquiz.grant.ignored", Level.DEBUG, "Power quiz grant ignored"),
     RESERVATION_FAILED("match.reservation.failed", Level.ERROR, "Match reservation failed");
 
     private final String eventName;

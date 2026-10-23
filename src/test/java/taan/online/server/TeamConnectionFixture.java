@@ -44,6 +44,17 @@ final class TeamConnectionFixture implements AutoCloseable {
         boolean captain,
         int... weapons
     ) throws Exception {
+        this(world, blue, red, captain, null, weapons);
+    }
+
+    TeamConnectionFixture(
+        RoomConnectionWorld world,
+        int blue,
+        int red,
+        boolean captain,
+        String title,
+        int... weapons
+    ) throws Exception {
         this.world = world;
         int room = 0;
 
@@ -53,7 +64,7 @@ final class TeamConnectionFixture implements AutoCloseable {
             world.drainOutputs();
 
             if (i == 0) {
-                room = world.create(client);
+                room = title == null ? world.create(client) : world.create(client, title);
             } else {
                 world.join(client, room);
             }

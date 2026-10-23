@@ -193,7 +193,9 @@ final class MatchRuntime {
     }
 
     void refresh() {
+        var before = snapshot;
         snapshot = MatchSnapshot.from(match);
+        MatchLootExecution.logQuizChanges(before, snapshot);
         publishedRevision = snapshot.phaseRevision();
     }
 

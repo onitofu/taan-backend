@@ -15,6 +15,7 @@ import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomRulePolicy;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
@@ -248,7 +249,7 @@ final class RoomControlOperations {
             case CAPTAIN_ITEM -> 2;
             case CAPTAIN_NO_ITEM -> 3;
         } : gameType;
-        int desiredRule = rule == null ? (current.rule() == RoomRule.BONUS ? 2 : 0) : rule;
+        int desiredRule = rule == null ? ((desiredType & 1) == 0 ? 2 : 0) : rule;
 
         if (!room.ownerSessionId().equals(id)) {
             rejection = "NOT_OWNER";
@@ -256,7 +257,9 @@ final class RoomControlOperations {
             rejection = "ROOM_UNAVAILABLE";
         } else if (!maps.contains(mapId)) {
             rejection = "UNSUPPORTED_MAP";
-        } else if ((desiredType < 0 || desiredType > 3) || desiredRule != ((desiredType & 1) == 0 ? 2 : 0)) {
+        } else if ((desiredType < 0 || desiredType > 3) || desiredRule != ((desiredType & 1) == 0 ? 2 : 0)
+            && !(desiredRule == 1 && (desiredType & 1) == 0
+                && RoomRulePolicy.select(current.title(), RoomMode.ITEM) == RoomRule.POWER_QUIZ)) {
             rejection = "UNSUPPORTED_MODE_OR_RULE";
         }
 
@@ -264,17 +267,13 @@ final class RoomControlOperations {
             return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.REJECTED, rejection, current);
         }
 
-        boolean changed = room.changeSettings(
-            switch (desiredType) {
-                case 0 -> RoomMode.ITEM;
-                case 1 -> RoomMode.NO_ITEM;
-                case 2 -> RoomMode.CAPTAIN_ITEM;
-                default -> RoomMode.CAPTAIN_NO_ITEM;
-            },
-            desiredRule == 2 ? RoomRule.BONUS : RoomRule.BASIC,
-            mapId,
-            maps
-        );
+        var mode = switch (desiredType) {
+            case 0 -> RoomMode.ITEM;
+            case 1 -> RoomMode.NO_ITEM;
+            case 2 -> RoomMode.CAPTAIN_ITEM;
+            default -> RoomMode.CAPTAIN_NO_ITEM;
+        };
+        boolean changed = room.changeSettings(mode, RoomRulePolicy.select(current.title(), mode), mapId, maps);
         var outcome = changed ? ChangeRoomSettingsOutcome.CHANGED : ChangeRoomSettingsOutcome.UNCHANGED;
         return new ChangeRoomSettingsResult(outcome, outcome.name(), room.settings());
     }

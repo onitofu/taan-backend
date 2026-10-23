@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import taan.online.room.model.RoomTeam;
 import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomTeam;
 
 public final class MatchTurnPolicy {
     private static final long MASK = 0xffffffffffffL;
@@ -23,7 +23,7 @@ public final class MatchTurnPolicy {
         var definitions = match.definitions();
 
         if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
-            || mode.usesItems() != (rule == RoomRule.BONUS)) {
+            || mode.usesItems() != (rule != RoomRule.BASIC)) {
             throw new IllegalArgumentException("Invalid match setup");
         }
 

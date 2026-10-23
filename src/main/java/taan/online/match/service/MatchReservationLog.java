@@ -12,6 +12,7 @@ import static taan.online.logging.LogField.sessionId;
 
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.room.model.RoomRule;
 import taan.online.room.service.model.RoomMatchDraft;
 import taan.online.room.service.model.RoomMatchToken;
 
@@ -22,6 +23,10 @@ final class MatchReservationLog {
     }
 
     static void log(MatchLogEvent event, RoomMatchDraft draft, String result) {
+        if (event == MatchLogEvent.RESERVED && draft.settings().rule() == RoomRule.POWER_QUIZ) {
+            log(MatchLogEvent.POWER_QUIZ_ENABLED, draft, "TITLE_POLICY");
+        }
+
         LOG.log(
             event,
             matchId(draft.token().matchId()),

@@ -1,9 +1,9 @@
 package taan.online.lobby.view;
 
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomState;
 import taan.online.room.protocol.packet.GameSessionInfoPack;
 import taan.online.room.service.model.RoomListing;
+import taan.online.room.view.RoomRuleMapper;
 
 public final class LobbyRoomListMapper {
     public GameSessionInfoPack map(RoomListing room) {
@@ -24,7 +24,7 @@ public final class LobbyRoomListMapper {
                 case CAPTAIN_ITEM -> 2;
                 case CAPTAIN_NO_ITEM -> 3;
             },
-            room.rule() == RoomRule.BONUS ? 2 : 0,
+            new RoomRuleMapper().map(room.rule()),
             room.playerCount(),
             room.capacity(),
             room.mapId(),

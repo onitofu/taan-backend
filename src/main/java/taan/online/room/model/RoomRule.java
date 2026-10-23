@@ -1,5 +1,5 @@
 package taan.online.room.model;
 
 public enum RoomRule {
-    BASIC, BONUS
+    BASIC, POWER_QUIZ, BONUS
 }

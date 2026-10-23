@@ -17,6 +17,7 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
 import taan.online.room.service.model.RoomMatchToken;
 
 final class MatchRuntimeFixture implements AutoCloseable {
@@ -56,6 +57,17 @@ final class MatchRuntimeFixture implements AutoCloseable {
         RoomMode roomMode,
         MatchBoxPolicy boxes
     ) {
+        this(capacity, mode, policy, roomMode, boxes, roomMode.usesItems() ? RoomRule.BONUS : RoomRule.BASIC);
+    }
+
+    MatchRuntimeFixture(
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        RoomMode roomMode,
+        MatchBoxPolicy boxes,
+        RoomRule rule
+    ) {
         room = new MatchRoomFixture(2, roomMode);
         var definitions = MatchFixtures.definitions();
         var draft = room.draft();
@@ -67,7 +79,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
             draft.channelId(),
             draft.ownerSessionId(),
             draft.settings().mode(),
-            draft.settings().rule(),
+            rule,
             definitions,
             new MatchPreparation(MatchFixtures.catalog()).participants(draft),
             draft.captains(),
