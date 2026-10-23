@@ -1,7 +1,6 @@
 package taan.online.room.view;
 
 import taan.online.character.controller.CharacterAppearanceMapper;
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
@@ -22,7 +21,7 @@ public final class RoomSnapshotMapper {
             settings.title().value(),
             0,
             new RoomModeMapper().map(settings.mode()),
-            settings.rule() == RoomRule.BONUS ? 2 : 0,
+            new RoomRuleMapper().map(settings.rule()),
             count,
             settings.capacity(),
             room.protectedRoom() ? "" : null,

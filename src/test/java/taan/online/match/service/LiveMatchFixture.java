@@ -11,6 +11,7 @@ import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
+import taan.online.room.model.RoomRule;
 
 final class LiveMatchFixture implements AutoCloseable {
     final ScenarioRuntimeFixture scenario;
@@ -25,7 +26,11 @@ final class LiveMatchFixture implements AutoCloseable {
     }
 
     LiveMatchFixture(MatchLootPolicy policy, MatchBoxPolicy boxes) throws IOException {
-        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO, policy, boxes);
+        this(policy, boxes, RoomRule.BONUS);
+    }
+
+    LiveMatchFixture(MatchLootPolicy policy, MatchBoxPolicy boxes, RoomRule rule) throws IOException {
+        scenario = new ScenarioRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO, policy, boxes, rule);
         f = scenario.f;
     }
 

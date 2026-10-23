@@ -8,7 +8,6 @@ import taan.online.character.model.CharacterId;
 import taan.online.protocol.PacketOutput;
 import taan.online.protocol.connection.codec.NoticeMessageCodec;
 import taan.online.protocol.connection.packet.PcNoticeMsg;
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
@@ -97,7 +96,7 @@ public final class ProtocolRoomView implements RoomPresenceOutput {
         var response = new PcGameSessionChangeGameOption(
             settings.mapId(),
             new RoomModeMapper().map(settings.mode()),
-            settings.rule() == RoomRule.BONUS ? 2 : 0,
+            new RoomRuleMapper().map(settings.rule()),
             255
         );
         var batch = new ArrayList<byte[]>();

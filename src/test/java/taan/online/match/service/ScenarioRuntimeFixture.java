@@ -19,6 +19,7 @@ import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
 
 final class ScenarioRuntimeFixture implements AutoCloseable {
     final MatchRuntimeFixture f;
@@ -42,7 +43,17 @@ final class ScenarioRuntimeFixture implements AutoCloseable {
         MatchLootPolicy policy,
         MatchBoxPolicy boxes
     ) throws IOException {
-        f = new MatchRuntimeFixture(capacity, mode, policy, RoomMode.ITEM, boxes);
+        this(capacity, mode, policy, boxes, RoomRule.BONUS);
+    }
+
+    ScenarioRuntimeFixture(
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        MatchBoxPolicy boxes,
+        RoomRule rule
+    ) throws IOException {
+        f = new MatchRuntimeFixture(capacity, mode, policy, RoomMode.ITEM, boxes, rule);
         nativePacket = new ScenarioCodec().decode(MatchFixtures.root("native-cannon-0-0"));
         f.activate();
         f.runtime.submit(new StartMatchCommand(f.token));

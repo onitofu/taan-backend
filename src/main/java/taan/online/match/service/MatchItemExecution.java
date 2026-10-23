@@ -68,7 +68,7 @@ final class MatchItemExecution {
         this.clock = clock;
         this.policy = policy;
         this.warnings = warnings;
-        loot = new MatchLootExecution(owner, match, admission, policy);
+        loot = new MatchLootExecution(owner, match, admission, policy, clock);
     }
 
     static CompletionStage<Boolean> reportBonus(MatchRuntime runtime, ReportMatchBonusCommand command) {

@@ -8,7 +8,7 @@ public record RoomSettings(RoomTitle title, RoomMode mode, RoomRule rule, int ma
         Objects.requireNonNull(mode);
         Objects.requireNonNull(rule);
 
-        if (capacity != 8 || mapId < 1 || mapId > 65535 || mode.usesItems() != (rule == RoomRule.BONUS)) {
+        if (capacity != 8 || mapId < 1 || mapId > 65535 || mode.usesItems() != (rule != RoomRule.BASIC)) {
             throw new IllegalArgumentException("Unsupported room settings");
         }
     }

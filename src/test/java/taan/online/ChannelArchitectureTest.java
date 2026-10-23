@@ -1,5 +1,7 @@
 package taan.online;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
@@ -8,6 +10,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import taan.online.room.view.RoomRuleMapper;
 
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class ChannelArchitectureTest {
@@ -145,21 +148,23 @@ class ChannelArchitectureTest {
     @ArchTest
     static final ArchRule LOBBY_VIEW_DEPENDENCIES = classes().that()
         .resideInAPackage("taan.online.lobby.view..")
-        .should().onlyDependOnClassesThat().resideInAnyPackage(
-            "java..",
-            "taan.online.lobby.view..",
-            "taan.online.account.model..",
-            "taan.online.channel.service..",
-            "taan.online.channel.model..",
-            "taan.online.character.model..",
-            "taan.online.lobby.protocol..",
-            "taan.online.protocol",
-            "taan.online.room.model..",
-            "taan.online.room.service.model..",
-            "taan.online.room.protocol.packet..",
-            "taan.online.lobby.service..",
-            "taan.online.lobby.logging..",
-            "taan.online.logging.."
+        .should().onlyDependOnClassesThat(
+            resideInAnyPackage(
+                "java..",
+                "taan.online.lobby.view..",
+                "taan.online.account.model..",
+                "taan.online.channel.service..",
+                "taan.online.channel.model..",
+                "taan.online.character.model..",
+                "taan.online.lobby.protocol..",
+                "taan.online.protocol",
+                "taan.online.room.model..",
+                "taan.online.room.service.model..",
+                "taan.online.room.protocol.packet..",
+                "taan.online.lobby.service..",
+                "taan.online.lobby.logging..",
+                "taan.online.logging.."
+            ).or(equivalentTo(RoomRuleMapper.class))
         );
 
     @ArchTest

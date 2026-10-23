@@ -133,7 +133,7 @@ public final class Match {
         var next = new MatchTurnPolicy().next(turn, alive, now);
         turn = next.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
         var member = participants.stream().filter(p -> p.slotIndex() == next.activeSlot()).findFirst().orElseThrow();
-        loot = loot.expired(member.sessionId());
+        loot = loot.closeQuiz(world).expired(member.sessionId());
         world = world.grantEnergy(member, next.energyGrant());
         completion = Optional.empty();
         phase = MatchPhase.ACTION;
@@ -281,8 +281,9 @@ public final class Match {
         movements.put(active, MatchScenarioCommitRules.movement(world, prepared, active, movements.get(active)));
         attacks.remove(activeSession());
         attacks.keySet().removeIf(session -> prepared.actors().get(session).dead());
+        loot = rule == RoomRule.POWER_QUIZ
+            ? preparedLoot.openQuiz(participants, world, resolution, turn, prepared) : preparedLoot;
         world = prepared;
-        loot = preparedLoot;
         resolution = resolution.evaluate(participants, world, turn.activeSlot(), captains);
         completion = pending;
         pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());

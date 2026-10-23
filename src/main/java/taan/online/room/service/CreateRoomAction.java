@@ -17,6 +17,7 @@ import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
 import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomRulePolicy;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
@@ -90,6 +91,19 @@ public final class CreateRoomAction {
             return rejected(id, "TITLE_FORBIDDEN", started);
         }
 
+        var mode = switch (command.gameType()) {
+            case 0 -> RoomMode.ITEM;
+            case 1 -> RoomMode.NO_ITEM;
+            case 2 -> RoomMode.CAPTAIN_ITEM;
+            default -> RoomMode.CAPTAIN_NO_ITEM;
+        };
+        var rule = RoomRulePolicy.select(title, mode);
+
+        if (command.rule() != (mode.usesItems() ? 2 : 0)
+            && !(command.rule() == 1 && rule == RoomRule.POWER_QUIZ)) {
+            return rejected(id, "UNSUPPORTED_SETTINGS", started);
+        }
+
         RoomPassword password;
 
         try {
@@ -110,13 +124,8 @@ public final class CreateRoomAction {
 
         var settings = new RoomSettings(
             title,
-            switch (command.gameType()) {
-                case 0 -> RoomMode.ITEM;
-                case 1 -> RoomMode.NO_ITEM;
-                case 2 -> RoomMode.CAPTAIN_ITEM;
-                default -> RoomMode.CAPTAIN_NO_ITEM;
-            },
-            command.rule() == 2 ? RoomRule.BONUS : RoomRule.BASIC,
+            mode,
+            rule,
             maps.initialMap(context.orElseThrow().kind(), defaults.mapId()),
             8
         );
@@ -128,7 +137,6 @@ public final class CreateRoomAction {
     private boolean supported(CreateRoomCommand command) {
         return command.state() == 5 && command.roomGrade() == 0 && command.gameKind() == 0
             && (command.gameType() >= 0 && command.gameType() <= 3)
-            && command.rule() == ((command.gameType() & 1) == 0 ? 2 : 0)
             && command.playerCount() == 0 && command.capacity() == 8
             && (command.mapId() == 0 || command.mapId() == 1);
     }
