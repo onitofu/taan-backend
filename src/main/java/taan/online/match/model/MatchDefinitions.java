@@ -23,10 +23,13 @@ public record MatchDefinitions(
         var terrain = missiles;
         var supported = attacks.keySet().stream().map(WeaponAttackKey::weaponId).collect(Collectors.toSet());
 
-        if (!supported.equals(Set.of(0, 3, 8, 10, 100)) || attacks.size() != 14 || missiles.size() != 14
+        if (!supported.equals(Set.of(0, 1, 2, 3, 6, 8, 10, 100)) || attacks.size() != 23 || missiles.size() != 25
+            || attacks.values().stream().mapToInt(attack -> attack.fires().size()).sum() != 41
             || attacks.containsKey(new WeaponAttackKey(100, 2))
             || attacks.entrySet().stream().anyMatch(e -> !e.getKey().equals(e.getValue().key())
-                || !terrain.containsKey(e.getValue().missileKey()))
+                || e.getValue().fires().stream().anyMatch(
+                    fire -> !terrain.containsKey(fire.missileKey(e.getKey().weaponId()))
+                ))
             || missiles.entrySet().stream().anyMatch(e -> !e.getKey().equals(
                 new WeaponMissileKey(e.getValue().weaponId(), e.getValue().missileTypeId())))) {
             throw new IllegalArgumentException("Missing or inconsistent weapon attack and terrain definitions");

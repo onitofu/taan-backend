@@ -38,7 +38,7 @@ class NuclearRulesTest {
 
         for (int kind : new int[]{0, 1}) {
             var attack = definitions.attacks().get(new WeaponAttackKey(100, kind));
-            var missile = definitions.missiles().get(attack.missileKey());
+            var missile = definitions.missiles().get(attack.fires().getFirst().missileKey(100));
             assertEquals(512, missile.mask().width());
             assertEquals(512, missile.mask().height());
             assertEquals(256, missile.centerX());

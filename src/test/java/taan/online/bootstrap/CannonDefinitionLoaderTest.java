@@ -2,6 +2,7 @@ package taan.online.bootstrap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.match.model.WeaponAttackDefinition;
 import taan.online.match.model.WeaponAttackKey;
+import taan.online.match.model.WeaponFireDefinition;
 
 class CannonDefinitionLoaderTest {
     @Test
@@ -27,7 +29,14 @@ class CannonDefinitionLoaderTest {
         }
 
         assertEquals(
-            new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, 9, false),
+            new WeaponAttackDefinition(
+                new WeaponAttackKey(0, 0),
+                0,
+                100,
+                List.of(new WeaponFireDefinition(0, 0)),
+                9,
+                false
+            ),
             catalog.attacks().get(new WeaponAttackKey(0, 0))
         );
         assertEquals(
@@ -35,7 +44,14 @@ class CannonDefinitionLoaderTest {
             catalog.select(1).attacks().get(new WeaponAttackKey(0, 0))
         );
         assertEquals(
-            new WeaponAttackDefinition(new WeaponAttackKey(0, 1), 0, 100, 1, 1, 10, false),
+            new WeaponAttackDefinition(
+                new WeaponAttackKey(0, 1),
+                0,
+                100,
+                List.of(new WeaponFireDefinition(1, 1)),
+                10,
+                false
+            ),
             catalog.attacks().get(new WeaponAttackKey(0, 1))
         );
         assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
@@ -45,8 +61,8 @@ class CannonDefinitionLoaderTest {
             csv.lines().findFirst().orElseThrow() + "\n",
             csv + "0,0,0,100,0,0\n",
             csv.replace("weapon_id", "wrong"),
-            csv.replace("0,0,0,100,0,0", "0,0"),
-            csv.replace("0,0,0,100,0,0", "x,0,0,100,0,0")
+            csv.replace("0,0,0,100,9,false", "0,0"),
+            csv.replace("0,0,0,100,9,false", "x,0,0,100,0,0")
         }) {
             assertThrows(
                 IllegalArgumentException.class,
@@ -84,8 +100,7 @@ class CannonDefinitionLoaderTest {
                     new WeaponAttackKey(row[0], row[1]),
                     row[2],
                     row[3],
-                    row[4],
-                    row[5],
+                    List.of(new WeaponFireDefinition(row[4], row[5])),
                     9 + row[1],
                     false
                 )

@@ -26,9 +26,11 @@ final class ScenarioProjectileRules {
         require(!fires.containsKey(fire.sequence()), "DUPLICATE_FIRE");
         require(
             fire.weaponId() == definition.key().weaponId() && fire.attackKind() == definition.key().attackKind()
-                && fire.sequence() >= 0 && fire.sequence() < shotLimit && fire.variant() == definition.missileVariant(),
+                && fire.sequence() >= 0 && fire.sequence() < shotLimit * definition.fires().size(),
             "INVALID_FIRE"
         );
+        var profile = definition.fires().get(fire.sequence() % definition.fires().size());
+        require(fire.variant() == profile.missileVariant(), "INVALID_FIRE");
         require(
             Float.isFinite(fire.velocityX()) && Float.isFinite(fire.velocityY())
                 && Float.isFinite(fire.accelerationX()) && Float.isFinite(fire.accelerationY()),
@@ -69,7 +71,11 @@ final class ScenarioProjectileRules {
 
     Map<Integer, WeaponMissileKey> missiles() {
         return fires.keySet().stream().collect(
-            Collectors.toUnmodifiableMap(value -> value, value -> definition.missileKey())
+            Collectors.toUnmodifiableMap(
+                value -> value,
+                value -> definition.fires().get(value % definition.fires().size())
+                    .missileKey(definition.key().weaponId())
+            )
         );
     }
 

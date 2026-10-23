@@ -45,7 +45,7 @@ class MatchTerrainDefinitionLoaderTest {
             }
         }
 
-        assertEquals(14, catalog.missiles().size());
+        assertEquals(25, catalog.missiles().size());
         assertTrue(provenance.contains(hash(cannon.mask().cells())));
     }
 

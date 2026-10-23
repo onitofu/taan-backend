@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 
@@ -15,18 +16,42 @@ class WeaponDefinitionInvariantTest {
         }
 
         assertEquals(65535, new WeaponMissileKey(11, 65535).missileTypeId());
-        assertThrows(NullPointerException.class, () -> new WeaponAttackDefinition(null, 0, 100, 0, 0, 0, false));
+        assertThrows(
+            NullPointerException.class,
+            () -> new WeaponAttackDefinition(
+                null,
+                0,
+                100,
+                List.of(new WeaponFireDefinition(0, 0)),
+                0,
+                false
+            )
+        );
 
         for (int animation : new int[]{-1, 256}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation, false)
+                () -> new WeaponAttackDefinition(
+                    new WeaponAttackKey(0, 0),
+                    0,
+                    100,
+                    List.of(new WeaponFireDefinition(0, 0)),
+                    animation,
+                    false
+                )
             );
         }
 
         for (int animation : new int[]{0, 8, 15, 255}) {
-            assertEquals(38, new WeaponAttackDefinition(new WeaponAttackKey(0, 0), 0, 100, 0, 0, animation, false)
-                .specialAnimation());
+            var definition = new WeaponAttackDefinition(
+                new WeaponAttackKey(0, 0),
+                0,
+                100,
+                List.of(new WeaponFireDefinition(0, 0)),
+                animation,
+                false
+            );
+            assertEquals(38, definition.specialAnimation());
         }
 
         for (int energy : new int[]{-1, 10923}) {
