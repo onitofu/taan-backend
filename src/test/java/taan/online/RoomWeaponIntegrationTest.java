@@ -94,7 +94,17 @@ class RoomWeaponIntegrationTest {
                 assertEquals(0, selected.weaponId());
                 assertEquals(selected, wire.changeWeapon(guest.read()));
                 guest.sendTogether(weapon(2, 0), weapon(1001, 0));
-                for (int unsupported : new int[]{1, 4, 11, 200, 100, 300}) {
+
+                for (int supported : new int[]{1, 2, 3, 6, 8, 10, 0}) {
+                    guest.send(weapon(1002, supported));
+                    var changed = wire.changeWeapon(guest.read());
+
+                    assertEquals(1002, changed.characterId());
+                    assertEquals(supported, changed.weaponId());
+                    assertEquals(changed, wire.changeWeapon(owner.read()));
+                }
+
+                for (int unsupported : new int[]{4, 5, 7, 9, 11, 200, 100, 300}) {
                     guest.send(weapon(1002, unsupported));
 
                     assertEquals(0, wire.changeWeapon(guest.read()).weaponId());
