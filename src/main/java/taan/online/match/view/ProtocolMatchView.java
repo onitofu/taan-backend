@@ -353,8 +353,12 @@ public final class ProtocolMatchView implements MatchOutput {
             0,
             0,
             snapshots,
-            bonuses
+            activeBonuses(bonuses)
         );
+    }
+
+    static List<ResultBonus> activeBonuses(List<ResultBonus> bonuses) {
+        return bonuses.stream().filter(bonus -> bonus.expBonus() != 0 || bonus.goldBonus() != 0).toList();
     }
 
     private GameReward rewardCard(MatchEndResult end, int index) {

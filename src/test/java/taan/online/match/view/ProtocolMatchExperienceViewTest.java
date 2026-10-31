@@ -6,11 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import taan.online.CollectingPacketOutput;
 import taan.online.ExperienceTestFixtures;
 import taan.online.MatchBootstrapFixture;
 import taan.online.TestLevels;
+import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.protocol.codec.UpdateExpCodec;
 import taan.online.match.model.MatchOutcomeCause;
 import taan.online.match.model.MatchParticipantResult;
@@ -24,8 +26,9 @@ import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomTeam;
 
 class ProtocolMatchExperienceViewTest {
-    @Test
-    void deliversAnAbsoluteLocalUpdateBeforeTheSingleResultAndShowsOnlyCommittedComponents() {
+    @ParameterizedTest
+    @ValueSource(longs = {900, CharacterLevelTable.EXPERIENCE_CAP})
+    void deliversCommittedComponentsAndKeepsMedalsVisibleWhenBothBonusAmountsAreZero(long before) {
         try (var f = new MatchBootstrapFixture(2, RoomMode.ITEM)) {
             f.start();
             var snapshot = f.snapshot();
@@ -54,8 +57,10 @@ class ProtocolMatchExperienceViewTest {
                     members,
                     60000L
                 ),
-                900
+                before
             );
+
+            boolean capped = before == CharacterLevelTable.EXPERIENCE_CAP;
 
             for (var recipient : snapshot.participants()) {
                 var output = new CollectingPacketOutput();
@@ -71,17 +76,31 @@ class ProtocolMatchExperienceViewTest {
 
                 assertEquals(3, batch.size());
                 assertEquals(0, update.localIndex());
-                assertEquals(recipient.team() == RoomTeam.BLUE ? 2060 : 1054, update.currentExp());
+                assertEquals(
+                    capped ? CharacterLevelTable.EXPERIENCE_CAP : recipient.team() == RoomTeam.BLUE ? 2060 : 1054,
+                    update.currentExp()
+                );
                 assertTrue(update.nextLevelExp() > update.levelStartExp());
                 assertTrue(cards.rewards().stream().allMatch(card -> card.amount() == 0));
                 var winner = end.result().slots().stream().filter(slot -> slot.kills() == 2).findFirst().orElseThrow();
-                assertEquals(2, winner.level());
-                assertEquals(1160, winner.expDeltaFallback());
+                assertEquals(capped ? 109 : 2, winner.level());
+                assertEquals(capped ? 0 : 1160, winner.expDeltaFallback());
                 assertEquals(List.of(1, 1, 0), winner.medals());
-                assertEquals(900, winner.expSnapshots().getFirst().currentExp());
-                assertEquals(2060, winner.expSnapshots().getLast().currentExp());
-                assertEquals(List.of(new ResultBonus(0, 100, 0), new ResultBonus(4, 60, 0)), winner.bonuses());
+                assertEquals(before, winner.expSnapshots().getFirst().currentExp());
+                assertEquals(
+                    capped ? CharacterLevelTable.EXPERIENCE_CAP : 2060,
+                    winner.expSnapshots().getLast().currentExp()
+                );
+                assertEquals(
+                    capped ? List.of() : List.of(new ResultBonus(0, 100, 0), new ResultBonus(4, 60, 0)),
+                    winner.bonuses()
+                );
                 assertEquals(0, winner.displayedGold());
+
+                var loser = end.result().slots().stream().filter(slot -> slot.damage() == 200)
+                    .findFirst().orElseThrow();
+                assertEquals(List.of(0, 0, 0), loser.medals());
+                assertEquals(capped ? List.of() : List.of(new ResultBonus(0, 14, 0)), loser.bonuses());
             }
         }
     }
