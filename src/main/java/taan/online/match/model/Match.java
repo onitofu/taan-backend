@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,9 +38,7 @@ public final class Match {
     private Optional<MatchCompletion> completion = Optional.empty();
     private final Set<UUID> loaded = new HashSet<>();
     private final Set<UUID> delivered = new HashSet<>();
-    private long phaseRevision;
-    private long deadlineNanos;
-    private MatchPhase phase = MatchPhase.RESERVED;
+    private final MatchStateMachine lifecycle = new MatchStateMachine();
 
     public Match(
         MatchId id,
@@ -107,7 +106,7 @@ public final class Match {
     }
 
     public boolean acknowledgeScenario(UUID session) {
-        if (phase != MatchPhase.COMPLETION || completion.isEmpty()
+        if (phase() != MatchPhase.COMPLETION || completion.isEmpty()
             || !completion.orElseThrow().awaitingSessions().contains(session)) {
             return false;
         }
@@ -117,13 +116,13 @@ public final class Match {
     }
 
     public boolean nextTurn(long now, long timeoutNanos) {
-        if (phase != MatchPhase.SETTLING && (phase != MatchPhase.COMPLETION || completion.isEmpty()
+        if (phase() != MatchPhase.SETTLING && (phase() != MatchPhase.COMPLETION || completion.isEmpty()
             || !completion.orElseThrow().awaitingSessions().isEmpty()
             || now - completion.orElseThrow().settleNotBeforeNanos() < 0)) {
             return false;
         }
 
-        if (phase == MatchPhase.SETTLING && now - settleAt() < 0) {
+        if (phase() == MatchPhase.SETTLING && now - settleAt() < 0) {
             return false;
         }
 
@@ -136,9 +135,7 @@ public final class Match {
         loot = loot.closeQuiz(world).expired(member.sessionId());
         world = world.grantEnergy(member, next.energyGrant());
         completion = Optional.empty();
-        phase = MatchPhase.ACTION;
-        phaseRevision++;
-        deadlineNanos = now + timeoutNanos;
+        lifecycle.on(MatchLifecycleEvent.NEXT_TURN, OptionalLong.of(now + timeoutNanos));
         closure = Optional.empty();
         startMovement(now);
         return true;
@@ -161,7 +158,7 @@ public final class Match {
         attacks.remove(session);
         resolution = resolution.exit(session, kind, participants, world, turn.activeSlot(), captains);
 
-        if (phase == MatchPhase.ACTION && resolution.pendingOutcome().isEmpty()) {
+        if (phase() == MatchPhase.ACTION && resolution.pendingOutcome().isEmpty()) {
             movements.computeIfPresent(
                 session,
                 (id, value) -> new MatchMovementState(value.allowance(), Optional.empty())
@@ -183,7 +180,7 @@ public final class Match {
     }
 
     public boolean useItem(UUID session, int index, int itemId) {
-        if (phase != MatchPhase.ACTION || !activeSession().equals(session) || world.actors().get(session).dead()) {
+        if (phase() != MatchPhase.ACTION || !activeSession().equals(session) || world.actors().get(session).dead()) {
             return false;
         }
 
@@ -249,7 +246,7 @@ public final class Match {
     }
 
     public MatchPhase phase() {
-        return phase;
+        return lifecycle.phase();
     }
 
     public Set<UUID> loadedSessions() {
@@ -273,7 +270,7 @@ public final class Match {
         MatchLootState preparedLoot
     ) {
         if (loot != expectedLoot || world.revision() != expectedWorldRevision || turn.revision() != expectedTurnRevision
-            || !MatchScenarioCommitRules.permits(phase, world, turn, prepared, participants)) {
+            || !MatchScenarioCommitRules.permits(phase(), world, turn, prepared, participants)) {
             return false;
         }
 
@@ -286,20 +283,19 @@ public final class Match {
         world = prepared;
         resolution = resolution.evaluate(participants, world, turn.activeSlot(), captains);
         completion = pending;
-        pending.ifPresent(value -> deadlineNanos = value.deadlineNanos());
-        phase = MatchPhase.COMPLETION;
-        phaseRevision++;
+        lifecycle.on(
+            MatchLifecycleEvent.SCENARIO_ACCEPTED,
+            pending.isPresent() ? OptionalLong.of(pending.orElseThrow().deadlineNanos()) : OptionalLong.empty()
+        );
         return true;
     }
 
     public boolean actionStarted(long now, long timeoutNanos) {
-        if (phase != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
+        if (phase() != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
             return false;
         }
 
-        phase = MatchPhase.ACTION;
-        phaseRevision++;
-        deadlineNanos = now + timeoutNanos;
+        lifecycle.on(MatchLifecycleEvent.START_ACTION, OptionalLong.of(now + timeoutNanos));
         startMovement(now);
         delivered.clear();
         return true;
@@ -310,39 +306,37 @@ public final class Match {
     }
 
     public long phaseRevision() {
-        return phaseRevision;
+        return lifecycle.revision();
     }
 
     public long deadlineNanos() {
-        return deadlineNanos;
+        return lifecycle.deadlineNanos();
     }
 
     public boolean expired(long now) {
-        return phase != MatchPhase.RESERVED && now - deadlineNanos >= 0;
+        return phase() != MatchPhase.RESERVED && now - deadlineNanos() >= 0;
     }
 
     public boolean commit(long now, long timeoutNanos) {
-        if (phase != MatchPhase.RESERVED) {
+        if (phase() != MatchPhase.RESERVED) {
             return false;
         }
 
-        phase = MatchPhase.LOADING;
-        phaseRevision++;
-        deadlineNanos = now + timeoutNanos;
+        lifecycle.on(MatchLifecycleEvent.START, OptionalLong.of(now + timeoutNanos));
         return true;
     }
 
-    public String loadingDone(UUID session, int slot, int x, int y) {
-        String result = MatchLoadingRules.validate(this, session, slot, x, y);
+    public MatchLoadingOutcome loadingDone(UUID session, int slot, int x, int y) {
+        var result = MatchLoadingRules.validate(this, session, slot, x, y);
 
-        if (!result.equals("ACCEPTED")) {
+        if (result != MatchLoadingOutcome.ACCEPTED) {
             return result;
         }
 
         var actor = participants.stream().filter(p -> p.sessionId().equals(session)).findFirst().orElseThrow();
         world = world.placed(session, new MatchActorState(x, y, actor.facing(), actor.hp(), actor.energy()));
         loaded.add(session);
-        return "ACCEPTED";
+        return MatchLoadingOutcome.ACCEPTED;
     }
 
     public Set<UUID> loadingReadySessions() {
@@ -350,7 +344,7 @@ public final class Match {
     }
 
     public boolean deliveryCompleted(UUID session) {
-        if (phase != MatchPhase.LOADING && phase != MatchPhase.SYNCHRONIZING
+        if (phase() != MatchPhase.LOADING && phase() != MatchPhase.SYNCHRONIZING
             || participants.stream().noneMatch(value -> value.sessionId().equals(session))) {
             return false;
         }
@@ -363,32 +357,31 @@ public final class Match {
     }
 
     public boolean beginSynchronization(long now, long deliveryTimeoutNanos) {
-        if (phase != MatchPhase.LOADING || !MatchLoadingRules.ready(this, delivered)) {
+        if (phase() != MatchPhase.LOADING || !MatchLoadingRules.ready(this, delivered)) {
             return false;
         }
 
         turn = MatchLoadingRules.turn(this, now);
-        deadlineNanos = Math.max(deadlineNanos, now + deliveryTimeoutNanos);
-        phase = MatchPhase.SYNCHRONIZING;
-        phaseRevision++;
+        lifecycle.on(
+            MatchLifecycleEvent.LOADING_READY,
+            OptionalLong.of(Math.max(deadlineNanos(), now + deliveryTimeoutNanos))
+        );
         delivered.clear();
         return true;
     }
 
     public boolean previewStarted(long now, long timeoutNanos) {
-        if (phase != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
+        if (phase() != MatchPhase.SYNCHRONIZING || !MatchLoadingRules.delivered(this, delivered)) {
             return false;
         }
 
-        phase = MatchPhase.PREVIEW;
-        phaseRevision++;
-        deadlineNanos = now + timeoutNanos;
+        lifecycle.on(MatchLifecycleEvent.START_PREVIEW, OptionalLong.of(now + timeoutNanos));
         delivered.clear();
         return true;
     }
 
     public boolean confirmsPosition(UUID session, int slot, int x, int y, int facing) {
-        if (phase != MatchPhase.SYNCHRONIZING && phase != MatchPhase.PREVIEW && phase != MatchPhase.ACTION) {
+        if (phase() != MatchPhase.SYNCHRONIZING && phase() != MatchPhase.PREVIEW && phase() != MatchPhase.ACTION) {
             return false;
         }
 
@@ -444,10 +437,8 @@ public final class Match {
         long landing = reason == MatchTurnClosureReason.ACTION_TIMEOUT
             ? drain + (3L * (definitions.map().height() + 200) + 3) * 1000000L
             : movements.get(activeSession()).fall().map(MatchWalkingFall::endsAtNanos).orElse(now);
-        closure = Optional.of(new MatchTurnClosure(reason, turn.revision(), phaseRevision, drain, landing));
-        phase = MatchPhase.SETTLING;
-        phaseRevision++;
-        deadlineNanos = settleAt();
+        closure = Optional.of(new MatchTurnClosure(reason, turn.revision(), phaseRevision(), drain, landing));
+        lifecycle.on(MatchLifecycleEvent.CLOSE_TURN, OptionalLong.of(settleAt()));
     }
 
     public long settleAt() {
@@ -471,27 +462,33 @@ public final class Match {
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
     }
 
-    public boolean beginTermination() {
-        if (phase == MatchPhase.CANCELLED || phase == MatchPhase.TERMINATING) {
-            return false;
+    public MatchLifecycleEvent lastLifecycleEvent() {
+        return lifecycle.lastEvent();
+    }
+
+    public MatchLifecycleTransition transition(MatchLifecycleEvent event) {
+        var transition = lifecycle.on(event, OptionalLong.empty());
+
+        if (transition.effects().contains(MatchLifecycleEffect.STOP_GAMEPLAY)) {
+            loot = MatchLootState.empty();
+            world = world.withoutBoxes();
         }
 
-        loot = MatchLootState.empty();
-        world = world.withoutBoxes();
-        phase = MatchPhase.TERMINATING;
-        return true;
+        if (transition.effects().contains(MatchLifecycleEffect.CLEANUP)) {
+            attacks.clear();
+            world = world.withoutBoxes();
+            loot = MatchLootState.empty();
+            resolution = MatchResolutionState.initial();
+        }
+
+        return transition;
+    }
+
+    public boolean beginTermination() {
+        return transition(MatchLifecycleEvent.TERMINATE).decision() == MatchTransitionDecision.APPLIED;
     }
 
     public boolean cancel() {
-        if (phase == MatchPhase.CANCELLED) {
-            return false;
-        }
-
-        attacks.clear();
-        world = world.withoutBoxes();
-        loot = MatchLootState.empty();
-        resolution = MatchResolutionState.initial();
-        phase = MatchPhase.CANCELLED;
-        return true;
+        return transition(MatchLifecycleEvent.CLOSE).decision() == MatchTransitionDecision.APPLIED;
     }
 }

@@ -1,6 +1,7 @@
 package taan.online.room.service;
 
 import java.util.UUID;
+import taan.online.room.service.model.ChangeRoomSettingsCommand;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
 
 public final class ChangeRoomSettingsAction {
@@ -10,8 +11,8 @@ public final class ChangeRoomSettingsAction {
         this.rooms = rooms;
     }
 
-    public ChangeRoomSettingsResult execute(UUID id, int mapId, int gameType, int rule) {
-        return rooms.changeSettings(id, mapId, gameType, rule);
+    public ChangeRoomSettingsResult execute(UUID id, ChangeRoomSettingsCommand command) {
+        return rooms.changeSettings(id, command);
     }
 
     public ChangeRoomSettingsResult changeMap(UUID id, int mapId) {

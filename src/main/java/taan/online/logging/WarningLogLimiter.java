@@ -23,7 +23,11 @@ public final class WarningLogLimiter {
         warn(event, reason, null);
     }
 
-    public synchronized void warn(WarningEvent event, String reason, String connectionId) {
+    public void warn(WarningEvent event, String reason, String connectionId) {
+        warn(event, reason, connectionId, new LogField[0]);
+    }
+
+    public synchronized void warn(WarningEvent event, String reason, String connectionId, LogField... fields) {
         long now = clock.getAsLong();
         WarningWindow window = windows.computeIfAbsent(event, ignored -> new WarningWindow(now));
 
@@ -43,6 +47,10 @@ public final class WarningLogLimiter {
 
             if (connectionId != null) {
                 entry.addKeyValue("connectionId", connectionId);
+            }
+
+            for (var field : fields) {
+                field.addTo(entry);
             }
 
             entry.log("Request rejected");

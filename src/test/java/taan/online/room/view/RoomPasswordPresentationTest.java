@@ -15,7 +15,6 @@ import taan.online.lobby.protocol.packet.PcLobbyInitRoomList;
 import taan.online.lobby.view.LobbyRoomListMapper;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.protocol.codec.GameSessionInfoCodec;
-import taan.online.room.service.model.CreateRoomCommand;
 
 class RoomPasswordPresentationTest {
     @Test
@@ -25,7 +24,7 @@ class RoomPasswordPresentationTest {
                 var owner = scenario.player(1, 1);
                 var created = scenario.create.execute(
                     owner,
-                    new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, protectedRoom ? "secret" : null, 0),
+                    RoomScenario.command(5, 0, "Room", 0, 0, 2, 0, 8, protectedRoom ? "secret" : null, 0),
                     new RecordingRoomOutput()
                 );
                 var info = new RoomSnapshotMapper().map(created.room()).info();

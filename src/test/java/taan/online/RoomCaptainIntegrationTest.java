@@ -8,7 +8,6 @@ import static taan.online.RoomFixtures.integer;
 import static taan.online.RoomFixtures.root;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
@@ -89,7 +88,7 @@ class RoomCaptainIntegrationTest {
                             "The room is not ready to start.",
                             new NoticeMessageCodec().decode(owner.read()).message()
                         );
-                        TimeUnit.MILLISECONDS.sleep(5100);
+                        RuntimeRoomTestAccess.awaitCaptainFinalization(app, room);
                         owner.send(root("PqGameSession_ChallengeChief-native"));
                         assertEquals(1001, wire.cancelChief(owner.read()).characterId());
                         owner.sendTogether(root("start-empty"), root("start-empty"));

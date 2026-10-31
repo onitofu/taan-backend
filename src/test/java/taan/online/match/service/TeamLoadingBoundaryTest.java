@@ -28,14 +28,14 @@ class TeamLoadingBoundaryTest {
     void rejectsPrematureStaleWrongPhaseAndStoppedLoadingTimers() {
         try (var f = new MatchRuntimeFixture(8, MatchExecutionMode.CLIENT_SCENARIO)) {
             var before = f.runtime.progress();
-            assertFalse(f.runtime.turns.loadingExpired(before));
+            assertFalse(f.runtime.lifecycle.loadingExpired(before));
             f.activate();
             f.runtime.submit(new StartMatchCommand(f.token));
             f.run();
-            assertFalse(f.runtime.turns.loadingExpired(f.runtime.progress()));
-            assertFalse(f.runtime.turns.loadingExpired(new RoomMatchProgressToken(f.token, -1)));
+            assertFalse(f.runtime.lifecycle.loadingExpired(f.runtime.progress()));
+            assertFalse(f.runtime.lifecycle.loadingExpired(new RoomMatchProgressToken(f.token, -1)));
             f.runtime.stop();
-            assertFalse(f.runtime.turns.loadingExpired(f.runtime.progress()));
+            assertFalse(f.runtime.lifecycle.loadingExpired(f.runtime.progress()));
         }
     }
 

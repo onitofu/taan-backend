@@ -19,6 +19,7 @@ import taan.online.character.model.CharacterProgress;
 import taan.online.character.protocol.codec.UpdateExpCodec;
 import taan.online.character.protocol.codec.UpdateMoneyCodec;
 import taan.online.match.model.MatchResult;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.model.MatchRewardRules;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
@@ -40,7 +41,7 @@ class MatchRewardConnectionTest {
         var saved = new AtomicReference<MatchResult>();
         var rules = new MatchRewardRules(TestLevels.table());
         var action = new SettleMatchResultAction(
-            input -> {
+            (input, policy) -> {
                 calls.incrementAndGet();
                 var stored = input.rewarded(input.participants().stream().map(p -> rules.calculate(
                     input,
@@ -53,7 +54,8 @@ class MatchRewardConnectionTest {
             },
             Runnable::run,
             Clock.systemUTC(),
-            new FixedRewardRandom(99)
+            new FixedRewardRandom(99),
+            new MatchRewardPolicies(TestLevels.table())
         );
 
         try (var world = new RoomConnectionWorld(MatchExecutionMode.CLIENT_SCENARIO, action)) {

@@ -26,6 +26,7 @@ import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchAttackSelection;
+import taan.online.match.model.MatchItemRejection;
 import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
@@ -133,7 +134,7 @@ final class MatchItemExecution {
             return reject("INVALID_ITEM_ACTIVATION", command.itemId());
         }
 
-        String refusal = null;
+        MatchItemRejection refusal = null;
         boolean duplicate;
         int before;
         int after;
@@ -153,9 +154,10 @@ final class MatchItemExecution {
 
             if (!duplicate) {
                 if (selected.activeItems().size() >= MatchAttackSelection.MAX_ACTIVATIONS) {
-                    refusal = "ACTIVE_ITEM_LIMIT";
+                    refusal = MatchItemRejection.ACTIVE_ITEM_LIMIT;
                 } else if (!match.useItem(member.sessionId(), command.inventoryIndex(), command.itemId())) {
-                    refusal = card ? "INVALID_INVENTORY_ITEM" : "INSUFFICIENT_SPECIAL_ENERGY";
+                    refusal = card ? MatchItemRejection.INVALID_INVENTORY_ITEM
+                        : MatchItemRejection.INSUFFICIENT_SPECIAL_ENERGY;
                 } else {
                     owner.refresh();
                 }
@@ -165,11 +167,11 @@ final class MatchItemExecution {
         }
 
         if (refusal != null) {
-            if (refusal.equals("ACTIVE_ITEM_LIMIT")) {
+            if (refusal == MatchItemRejection.ACTIVE_ITEM_LIMIT) {
                 warnings.warn(WarningEvent.LIMIT_EXCEEDED, "MATCH_ACTIVE_ITEM_LIMIT");
             }
 
-            return reject(refusal, command.itemId());
+            return reject(refusal.name(), command.itemId());
         }
 
         var event = switch (command.itemId()) {

@@ -7,8 +7,14 @@ import taan.online.match.service.MatchCommandExecutor;
 
 public final class BoundedMatchExecutor implements MatchCommandExecutor, AutoCloseable {
     private final ThreadPoolExecutor executor;
+    private final int quantum;
 
     public BoundedMatchExecutor(int workers, int maxConnections) {
+        this(workers, maxConnections, 32);
+    }
+
+    public BoundedMatchExecutor(int workers, int maxConnections, int quantum) {
+        this.quantum = quantum;
         executor = new ThreadPoolExecutor(
             workers,
             workers,
@@ -18,6 +24,11 @@ public final class BoundedMatchExecutor implements MatchCommandExecutor, AutoClo
             Thread.ofPlatform().daemon(true).name("match-command-", 0).factory(),
             new ThreadPoolExecutor.AbortPolicy()
         );
+    }
+
+    @Override
+    public int quantum() {
+        return quantum;
     }
 
     @Override

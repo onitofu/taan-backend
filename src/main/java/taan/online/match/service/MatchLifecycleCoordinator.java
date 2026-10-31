@@ -3,8 +3,11 @@ package taan.online.match.service;
 import static taan.online.logging.LogField.admissionId;
 import static taan.online.logging.LogField.awaitingCount;
 import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.commandType;
+import static taan.online.logging.LogField.durationMs;
 import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.matchId;
+import static taan.online.logging.LogField.matchRevision;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomId;
 import static taan.online.logging.LogField.round;
@@ -15,11 +18,15 @@ import static taan.online.logging.LogField.turnRevision;
 import static taan.online.logging.LogField.windRaw;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import taan.online.logging.EventLogger;
@@ -29,24 +36,38 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchCompletion;
+import taan.online.match.model.MatchLifecycleEffect;
+import taan.online.match.model.MatchLifecycleEvent;
+import taan.online.match.model.MatchLoadingOutcome;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchResult;
+import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
+import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchDeadline;
+import taan.online.match.service.model.MatchDeadlineExpiredCommand;
+import taan.online.match.service.model.MatchDeliveryCompletedCommand;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.match.service.model.MatchLifecycleToken;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.match.service.model.MatchStateCommand;
 import taan.online.match.service.model.MatchTurnToken;
 import taan.online.match.service.model.MatchTurnTransition;
 import taan.online.match.service.model.PreparedScenario;
+import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.ScenarioFallClaim;
+import taan.online.match.service.model.StartMatchCommand;
+import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchProgressToken;
+import taan.online.room.service.model.RoomMatchTerminationResult;
 
-final class MatchTurnExecution {
-    private static final EventLogger LOG = EventLogger.forClass(MatchTurnExecution.class);
+final class MatchLifecycleCoordinator {
+    private static final EventLogger LOG = EventLogger.forClass(MatchLifecycleCoordinator.class);
     private final MatchRuntime owner;
     private final Match match;
     private final Object admission;
@@ -54,8 +75,9 @@ final class MatchTurnExecution {
     private final MatchScheduler scheduler;
     private final LongSupplier clock;
     private final WarningLogLimiter warnings;
+    private final Map<UUID, MatchReportBudget> reportBudgets = new HashMap<>();
 
-    MatchTurnExecution(
+    MatchLifecycleCoordinator(
         MatchRuntime owner,
         Match match,
         Object admission,
@@ -71,6 +93,176 @@ final class MatchTurnExecution {
         this.scheduler = scheduler;
         this.clock = clock;
         this.warnings = warnings;
+    }
+
+    boolean execute(MatchCommand command) {
+        long started = clock.getAsLong();
+
+        try {
+            if (
+                command instanceof StartMatchCommand && owner.callbacks != null && !owner.callbacks.startCurrent(
+                    owner.token()
+                )
+            ) {
+                owner.terminate(RoomMatchEndReason.PREPARATION_FAILED);
+                return false;
+            }
+
+            if (command instanceof TerminateMatchCommand end) {
+                synchronized (admission) {
+                    if (!owner.running() || !owner.admits(end.context())) {
+                        return false;
+                    }
+                }
+
+                return owner.outcomes.end(end);
+            }
+
+            RoomMatchEndReason ending = null;
+            MatchSnapshot publication = null;
+            boolean accepted;
+
+            synchronized (admission) {
+                if (
+                    !owner.running() || !owner.token().equals(command.token()) || !current((MatchStateCommand) command)
+                ) {
+                    LOG.log(
+                        MatchLogEvent.COMMAND_REJECTED,
+                        matchId(owner.snapshot().id().value()),
+                        reason("STALE_CONTEXT")
+                    );
+                    return false;
+                }
+
+                if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())
+                    && !(settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
+                        && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
+                            || match.phase() == MatchPhase.COMPLETION))) {
+                    ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
+                        ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
+                    warnings.warn(WarningEvent.LIMIT_EXCEEDED, ending.name());
+                    accepted = false;
+                } else {
+                    accepted = apply((MatchStateCommand) command);
+                }
+
+                owner.bootstrapRefresh();
+
+                if (ending == null && owner.callbacks != null && owner.snapshot().phase() != MatchPhase.RESERVED
+                    && owner.publishedRevision != owner.snapshot().phaseRevision()) {
+                    owner.publishedRevision = owner.snapshot().phaseRevision();
+                    publication = owner.snapshot();
+                }
+            }
+
+            if (ending != null) {
+                owner.terminate(ending);
+            } else if (publication != null) {
+                owner.startDelivery = new MatchBootstrapDelivery(
+                    publication,
+                    owner.recipients(),
+                    owner,
+                    scheduler,
+                    owner.progress(),
+                    warnings
+                ).dispatch(MatchBootstrapDelivery.requester(command, owner.snapshot(), true));
+            }
+
+            LOG.log(
+                MatchLogEvent.COMMAND_PROCESSED,
+                matchId(owner.snapshot().id().value()),
+                commandType(command.getClass().getSimpleName()),
+                matchRevision(owner.snapshot().phaseRevision()),
+                durationMs(TimeUnit.NANOSECONDS.toMillis(clock.getAsLong() - started))
+            );
+            return accepted;
+        } catch (RuntimeException failure) {
+            LOG.failure(MatchLogEvent.COMMAND_FAILED, failure, matchId(owner.snapshot().id().value()));
+            owner.terminate(RoomMatchEndReason.PREPARATION_FAILED);
+            return false;
+        }
+    }
+
+    private boolean current(MatchStateCommand command) {
+        return switch (command) {
+            case ConfirmMatchLoadingCommand c -> owner.admits(c.context());
+            case ConfirmMatchPositionCommand c -> owner.admits(c.context());
+            case ReportMatchEnemiesCommand c -> owner.admits(c.context());
+            case MatchDeliveryCompletedCommand c -> c.progress().equals(owner.progress())
+                && owner.snapshot().participants().stream().anyMatch(p -> p.sessionId().equals(c.recipient()));
+            case MatchDeadlineExpiredCommand c -> c.progress().equals(owner.progress());
+            default -> true;
+        };
+    }
+
+    private boolean apply(MatchStateCommand command) {
+        return switch (command) {
+            case StartMatchCommand ignored -> match.commit(clock.getAsLong(), settings.loadingTimeoutNanos());
+            case ConfirmMatchLoadingCommand c -> loaded(c);
+            case ConfirmMatchPositionCommand c -> position(c);
+            case ReportMatchEnemiesCommand c -> MatchReportBudget.report(
+                match.phase(),
+                reportBudgets,
+                c.context().sessionId(),
+                clock,
+                settings.reportsPerSecond(),
+                warnings
+            );
+            case MatchDeliveryCompletedCommand c -> delivered(c);
+            case MatchDeadlineExpiredCommand ignored -> false;
+        };
+    }
+
+    private boolean loaded(ConfirmMatchLoadingCommand command) {
+        var result = match.loadingDone(command.context().sessionId(), command.slot(), command.x(), command.y());
+
+        if (result != MatchLoadingOutcome.ACCEPTED && result != MatchLoadingOutcome.UNCHANGED) {
+            warnings.warn(WarningEvent.FRAME_REJECTED, result.name());
+            return false;
+        }
+
+        LOG.log(MatchLogEvent.LOADING_ACK, matchId(owner.snapshot().id().value()), reason(result.name()));
+        beginSynchronization();
+        return true;
+    }
+
+    private boolean beginSynchronization() {
+        if (!match.beginSynchronization(clock.getAsLong())) {
+            return false;
+        }
+
+        firstTurnIssued();
+        return true;
+    }
+
+    private boolean delivered(MatchDeliveryCompletedCommand command) {
+        if (!command.success()) {
+            return true;
+        }
+
+        if (!match.deliveryCompleted(command.recipient())) {
+            return false;
+        }
+
+        if (!beginSynchronization()) {
+            boolean started = settings.executionMode() == MatchExecutionMode.PREVIEW
+                ? match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())
+                : match.actionStarted(
+                    clock.getAsLong(),
+                    settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
+                    ? settings.actionTimeoutNanos() : settings.previewTimeoutNanos()
+                );
+
+            if (started) {
+                LOG.log(
+                    MatchLogEvent.STARTED,
+                    matchId(owner.snapshot().id().value()),
+                    reason(settings.executionMode().name())
+                );
+            }
+        }
+
+        return true;
     }
 
     boolean loadingExpired(RoomMatchProgressToken progress) {
@@ -410,7 +602,7 @@ final class MatchTurnExecution {
         }
     }
 
-    private boolean deliveryFailed(MatchTurnToken token, Throwable failure) {
+    boolean deliveryFailed(MatchTurnToken token, Throwable failure) {
         if (!owner.running() || token.turnRevision() != owner.snapshot().turn().revision()) {
             return false;
         }
@@ -434,4 +626,124 @@ final class MatchTurnExecution {
     private boolean current(MatchTurnToken token) {
         return owner.running() && token.equals(token(owner.snapshot()));
     }
+
+    CompletionStage<Void> finish(MatchTerminationDispatch pending, UUID requester, Runnable queued) {
+        var completed = new CompletableFuture<Void>();
+        var returnClaim = new AtomicBoolean();
+        Runnable returnOnce = () -> {
+            if (returnClaim.compareAndSet(false, true)) {
+                queued.run();
+            }
+        };
+        owner.outcomes.complete(new RoomMatchTerminationResult(pending.delivery().terminal(), completed));
+        owner.control(
+            () -> begin(pending, requester, returnOnce, completed),
+            () -> fail(pending, returnOnce, completed)
+        );
+        return completed;
+    }
+
+    private boolean begin(
+        MatchTerminationDispatch pending,
+        UUID requester,
+        Runnable queued,
+        CompletableFuture<Void> completed
+    ) {
+        owner.beginTermination();
+        return switch (pending.delivery().terminal().mode()) {
+            case ROLLBACK -> {
+                queued.run();
+                close(completed);
+                yield true;
+            }
+            case RETURN_TO_ROOM -> {
+                if (pending.persistent()) {
+                    owner.transition(MatchLifecycleEvent.SETTLE_RESULT);
+                    var token = token(MatchLifecycleEffect.SETTLE_RESULT);
+                    pending.settlements().execute(pending.result()).handle(LogContext.propagate(
+                        (stored, failure) -> {
+                            complete(
+                                token,
+                                () -> publish(pending, requester, queued, stored, failure, completed),
+                                () -> fail(pending, queued, completed)
+                            );
+                            return null;
+                        }
+                    ));
+                } else {
+                    publish(pending, requester, queued, pending.result(), null, completed);
+                }
+                yield true;
+            }
+            case DISCONNECT -> {
+                publish(pending, requester, queued, pending.result(), null, completed);
+                yield true;
+            }
+        };
+    }
+
+    private void publish(
+        MatchTerminationDispatch pending,
+        UUID requester,
+        Runnable queued,
+        MatchResult stored,
+        Throwable failure,
+        CompletableFuture<Void> completed
+    ) {
+        owner.transition(MatchLifecycleEvent.DELIVER_RESULT);
+        CompletionStage<Void> delivery;
+
+        if (failure != null) {
+            pending.delivery().settlementFailed();
+            delivery = CompletableFuture.completedFuture(null);
+        } else {
+            MatchProgressPublication.publish(owner, stored);
+            delivery = pending.delivery().dispatch(requester, stored);
+        }
+
+        owner.transition(MatchLifecycleEvent.RETURN_ROOM);
+        queued.run();
+        var token = token(MatchLifecycleEffect.RETURN_ROOM);
+        delivery.handle(LogContext.propagate(
+            (ignored, deliveryFailure) -> {
+                complete(token, () -> close(completed), () -> fail(pending, () -> { }, completed));
+                return null;
+            }
+        ));
+    }
+
+    private MatchLifecycleToken token(MatchLifecycleEffect effect) {
+        var snapshot = owner.snapshot();
+        return new MatchLifecycleToken(
+            owner.token(),
+            snapshot.phaseRevision(),
+            snapshot.turn().revision(),
+            snapshot.world().revision(),
+            effect
+        );
+    }
+
+    void complete(MatchLifecycleToken token, Runnable command, Runnable rejected) {
+        owner.control(
+            () -> {
+                if (token.matches(owner.snapshot())) {
+                    command.run();
+                } else {
+                    owner.ignoredLifecycle(token.effect().name(), "STALE_CONTEXT");
+                }
+            },
+            rejected
+        );
+    }
+
+    private void close(CompletableFuture<Void> completed) {
+        owner.finish(() -> { }).thenRun(() -> completed.complete(null));
+    }
+
+    private void fail(MatchTerminationDispatch pending, Runnable queued, CompletableFuture<Void> completed) {
+        pending.delivery().settlementFailed();
+        queued.run();
+        close(completed);
+    }
+
 }

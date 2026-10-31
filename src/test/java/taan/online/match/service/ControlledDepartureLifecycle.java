@@ -15,6 +15,7 @@ import taan.online.room.service.model.RoomMembership;
 final class ControlledDepartureLifecycle implements RoomMatchLifecycle {
     private final RoomMatchLifecycle delegate;
     RuntimeException directFailure;
+    Runnable onDeparture = () -> { };
     final CompletableFuture<Boolean> departure = new CompletableFuture<>();
 
     ControlledDepartureLifecycle(RoomMatchLifecycle delegate) {
@@ -27,6 +28,8 @@ final class ControlledDepartureLifecycle implements RoomMatchLifecycle {
         RoomMembership expected,
         RoomMatchEndReason reason
     ) {
+        onDeparture.run();
+
         if (directFailure != null) {
             throw directFailure;
         }

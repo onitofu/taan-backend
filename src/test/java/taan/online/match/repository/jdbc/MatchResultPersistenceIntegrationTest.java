@@ -116,7 +116,7 @@ class MatchResultPersistenceIntegrationTest {
         for (int index = 0; index < 4; index++) {
             tasks.add(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(proposal);
+                return new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(proposal);
             });
         }
 
@@ -147,7 +147,7 @@ class MatchResultPersistenceIntegrationTest {
         assertEquals(0, reloaded.progress().supplyMedals());
         assertEquals(246, database.scalar("SELECT sum(gold) FROM characters"));
         assertEquals(912, database.scalar("SELECT sum(cash) FROM accounts"));
-        var repository = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(database.source(), 5, TestLevels.table());
         var replayed = repository.settle(proposal);
         assertFalse(replayed.created());
         assertEquals(1160, replayed.result().participants().getFirst().experienceReward().delta());
@@ -166,9 +166,9 @@ class MatchResultPersistenceIntegrationTest {
 
         HistoricalMatchResultSeed.insert(database, proposal, first.id().value(), second.id().value());
 
-        var repository = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(database.source(), 5, TestLevels.table());
         var replayed = repository.settle(proposal);
-        var again = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(proposal);
+        var again = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(proposal);
 
         assertFalse(replayed.created());
         assertFalse(again.created());
@@ -189,14 +189,14 @@ class MatchResultPersistenceIntegrationTest {
         var second = character("BravoHero");
         var proposal = MatchExperienceJdbcTest.result(first.id().value(), second.id().value());
         database.execute("UPDATE characters SET kill_medals = 4294967295 WHERE id = " + second.id().value());
-        var repository = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(database.source(), 5, TestLevels.table());
 
         assertThrows(RuntimeException.class, () -> repository.settle(proposal));
         assertEquals(0, database.scalar("SELECT sum(experience) FROM characters"));
         assertEquals(0, database.scalar("SELECT sum(force_medals) FROM characters"));
         assertEquals(0, database.scalar("SELECT count(*) FROM match_results"));
         database.execute("UPDATE characters SET kill_medals = 0");
-        var lost = new JdbcMatchResultRepository(
+        var lost = new RewardTestRepository(
             LostCommitReplyDataSource.wrap(database.source()),
             5,
             TestLevels.table()
@@ -222,7 +222,7 @@ class MatchResultPersistenceIntegrationTest {
         for (var proposal : proposals) {
             tasks.add(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(proposal);
+                return new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(proposal);
             });
         }
 
@@ -270,7 +270,7 @@ class MatchResultPersistenceIntegrationTest {
             members,
             60000L
         );
-        var repository = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(database.source(), 5, TestLevels.table());
         var reward = repository.settle(proposal).result().participants().getLast().experienceReward();
 
         assertEquals(-5, reward.delta());
@@ -333,7 +333,7 @@ class MatchResultPersistenceIntegrationTest {
         for (int index = 0; index < 4; index++) {
             tasks.add(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+                return new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
             });
         }
 
@@ -365,14 +365,14 @@ class MatchResultPersistenceIntegrationTest {
             "different-policy",
             List.of()
         );
-        var replay = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(changedProposal);
+        var replay = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(changedProposal);
 
         assertFalse(replay.created());
         assertEquals(result, replay.result());
         assertEquals(6, database.characters().findByAccount(second.accountId()).getFirst().progress().forceMedals());
 
         var nextMatch = MatchResultFixtures.result(second.id().value(), first.id().value());
-        new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(nextMatch);
+        new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(nextMatch);
 
         assertEquals(7, database.characters().findByAccount(first.accountId()).getFirst().progress().forceMedals());
         assertEquals(7, database.characters().findByAccount(second.accountId()).getFirst().progress().forceMedals());
@@ -387,7 +387,7 @@ class MatchResultPersistenceIntegrationTest {
 
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result)
+            () -> new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result)
         );
         assertEquals(0, database.scalar("SELECT count(*) FROM match_results"));
         assertEquals(0, database.scalar("SELECT count(*) FROM match_participant_results"));
@@ -397,12 +397,12 @@ class MatchResultPersistenceIntegrationTest {
 
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(invalid)
+            () -> new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(invalid)
         );
         assertEquals(0, database.scalar("SELECT count(*) FROM match_results"));
         database.execute("UPDATE characters SET force_medals = 0");
 
-        assertTrue(new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result).created());
+        assertTrue(new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result).created());
         assertEquals(1, database.characters().findByAccount(first.accountId()).getFirst().progress().forceMedals());
 
         for (String column : List.of("experience", "force_medals", "kill_medals", "supply_medals")) {
@@ -424,12 +424,12 @@ class MatchResultPersistenceIntegrationTest {
         try (var workers = Executors.newFixedThreadPool(2)) {
             var a = workers.submit(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table())
+                return new RewardTestRepository(database.source(), 5, TestLevels.table())
                     .settle(MatchResultFixtures.result(first.id().value(), second.id().value()));
             });
             var b = workers.submit(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table())
+                return new RewardTestRepository(database.source(), 5, TestLevels.table())
                     .settle(MatchResultFixtures.result(second.id().value(), first.id().value()));
             });
 
@@ -446,7 +446,7 @@ class MatchResultPersistenceIntegrationTest {
         var first = character("AlphaHero");
         var second = character("BravoHero");
         var result = MatchResultFixtures.result(first.id().value(), second.id().value());
-        var repository = new JdbcMatchResultRepository(
+        var repository = new RewardTestRepository(
             LostCommitReplyDataSource.wrap(database.source()),
             5,
             TestLevels.table()

@@ -15,6 +15,26 @@ public final class LogField {
         this.value = value;
     }
 
+    public static LogField lifecycleEvent(String value) {
+        return new LogField("lifecycleEvent", value);
+    }
+
+    public static LogField fromPhase(String value) {
+        return new LogField("fromPhase", value);
+    }
+
+    public static LogField toPhase(String value) {
+        return new LogField("toPhase", value);
+    }
+
+    public static LogField phaseRevision(long value) {
+        return new LogField("phaseRevision", value);
+    }
+
+    public static LogField executorClass(String value) {
+        return new LogField("executorClass", value);
+    }
+
     public static LogField goldBefore(Long value) {
         return new LogField("goldBefore", value);
     }

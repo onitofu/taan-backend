@@ -28,6 +28,7 @@ import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.service.model.ChangeRoomSettingsCommand;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.ChangeRoomTeamResult;
@@ -38,6 +39,7 @@ import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.EnterRoomResult;
 import taan.online.room.service.model.ExpelRoomParticipantResult;
 import taan.online.room.service.model.LeaveRoomResult;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomEntryTarget;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomListing;
@@ -397,19 +399,26 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         );
     }
 
-    public synchronized ChangeRoomSettingsResult changeSettings(UUID id, int mapId, int gameType, int rule) {
-        return updateSettings(id, mapId, gameType, rule);
+    public synchronized ChangeRoomSettingsResult changeSettings(UUID id, ChangeRoomSettingsCommand command) {
+        return updateSettings(id, command);
     }
 
     public synchronized ChangeRoomSettingsResult changeMap(UUID id, int mapId) {
-        return updateSettings(id, mapId, null, null);
-    }
-
-    private ChangeRoomSettingsResult updateSettings(UUID id, int mapId, Integer gameType, Integer rule) {
-        String rejection = controlRejection(id);
+        var rejection = controlRejection(id);
 
         if (rejection != null) {
-            return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.IGNORED, rejection, null);
+            return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.IGNORED, rejection.name(), null);
+        }
+
+        var room = rooms.get(memberships.get(id).membership().roomId());
+        return updateSettings(id, new ChangeRoomSettingsCommand(mapId, room.settings().mode(), room.settings().rule()));
+    }
+
+    private ChangeRoomSettingsResult updateSettings(UUID id, ChangeRoomSettingsCommand command) {
+        var rejection = controlRejection(id);
+
+        if (rejection != null) {
+            return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.IGNORED, rejection.name(), null);
         }
 
         var subscription = memberships.get(id);
@@ -420,9 +429,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
             id,
             maps.forKind(kind),
             kind,
-            mapId,
-            gameType,
-            rule,
+            command,
             List.copyOf(memberships.values()),
             subscription,
             this::changed
@@ -473,7 +480,7 @@ public final class RoomRegistry implements RoomListingAccess, AutoCloseable {
         return subscription;
     }
 
-    private String controlRejection(UUID id) {
+    private RoomControlRejection controlRejection(UUID id) {
         starts.advance(departures.room(id));
         var subscription = memberships.get(id);
         return RoomControlChecks.rejection(

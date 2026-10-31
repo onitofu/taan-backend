@@ -220,7 +220,7 @@ final class MatchMovementExecution {
         }
 
         settled();
-        owner.turns.advance(match.closure().orElseThrow().reason() != MatchTurnClosureReason.ACTION_TIMEOUT);
+        owner.lifecycle.advance(match.closure().orElseThrow().reason() != MatchTurnClosureReason.ACTION_TIMEOUT);
     }
 
     void settled() {
@@ -248,7 +248,9 @@ final class MatchMovementExecution {
         scheduler.schedule(
             new MatchDeadline(owner.progress(), match.settleAt()),
             () -> owner.turnDeadlineExpired(token, Optional.empty()),
-            () -> owner.turnWork(() -> failed(token.turnRevision(), new IllegalStateException("SCHEDULER_UNAVAILABLE")))
+            () -> owner.turnWork(
+                () -> deliveryFailed(token.turnRevision(), new IllegalStateException("SCHEDULER_UNAVAILABLE"))
+            )
         );
     }
 
@@ -277,7 +279,10 @@ final class MatchMovementExecution {
                         ? recipient.output().stopTurn(match.turn().activeSlot()) : recipient.output().movement(notice);
                     delivery.handle(LogContext.propagate((ignored, failure) -> {
                         if (failure != null) {
-                            owner.turnWork(() -> failed(revision, failure), () -> failed(revision, failure));
+                            owner.turnWork(
+                                () -> deliveryFailed(revision, failure),
+                                () -> deliveryFailed(revision, failure)
+                            );
                         }
 
                         return null;
@@ -285,11 +290,11 @@ final class MatchMovementExecution {
                 }
             }
         } catch (RuntimeException failure) {
-            failed(revision, failure);
+            deliveryFailed(revision, failure);
         }
     }
 
-    private boolean failed(long revision, Throwable failure) {
+    boolean deliveryFailed(long revision, Throwable failure) {
         if (!owner.running() || match.turn().revision() != revision) {
             return false;
         }

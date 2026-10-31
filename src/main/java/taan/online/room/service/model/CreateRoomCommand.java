@@ -1,17 +1,9 @@
 package taan.online.room.service.model;
 
-public record CreateRoomCommand(
-    int state,
-    int roomGrade,
-    String title,
-    int gameKind,
-    int gameType,
-    int rule,
-    int playerCount,
-    int capacity,
-    String password,
-    int mapId
-) {
+import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
+
+public record CreateRoomCommand(String title, RoomMode mode, RoomRule rule, String password) {
     @Override
     public String toString() {
         return "CreateRoomCommand[REDACTED]";

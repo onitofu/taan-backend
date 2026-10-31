@@ -20,6 +20,7 @@ import taan.online.character.model.CharacterId;
 import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.model.MatchRewardRules;
 import taan.online.match.repository.MatchSettlement;
 import taan.online.match.service.model.MatchExecutionMode;
@@ -115,9 +116,10 @@ class MatchProgressPublicationTest {
     @Test
     void publishesTheCommittedLevelBeforeEndGameAndPreservesItForTheNextRoomSnapshot() throws Exception {
         var action = new SettleMatchResultAction(
-            input -> new MatchSettlement(ExperienceTestFixtures.settle(input, 939), true),
+            (input, policy) -> new MatchSettlement(ExperienceTestFixtures.settle(input, 939), true),
             Runnable::run,
-            Clock.systemUTC()
+            Clock.systemUTC(),
+            new MatchRewardPolicies(TestLevels.table())
         );
 
         try (var f = new MatchOutcomeFixture(new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO, action))) {
@@ -146,7 +148,7 @@ class MatchProgressPublicationTest {
         var random = new FixedRewardRandom(99);
         var rules = new MatchRewardRules(TestLevels.table());
         var action = new SettleMatchResultAction(
-            input -> new MatchSettlement(
+            (input, policy) -> new MatchSettlement(
                 input.rewarded(input.participants().stream().map(p -> rules.calculate(
                     input,
                     p,
@@ -157,7 +159,8 @@ class MatchProgressPublicationTest {
             ),
             Runnable::run,
             Clock.systemUTC(),
-            random
+            random,
+            new MatchRewardPolicies(TestLevels.table())
         );
 
         try (var fixture = new MatchOutcomeFixture(); var logs = new LogCapture()) {
@@ -189,9 +192,10 @@ class MatchProgressPublicationTest {
         try (var logs = new LogCapture()) {
             for (boolean created : new boolean[]{true, false}) {
                 var action = new SettleMatchResultAction(
-                    input -> new MatchSettlement(result, created),
+                    (input, policy) -> new MatchSettlement(result, created),
                     Runnable::run,
-                    Clock.systemUTC()
+                    Clock.systemUTC(),
+                    new MatchRewardPolicies(TestLevels.table())
                 );
                 assertEquals(result, action.execute(result).toCompletableFuture().join());
             }

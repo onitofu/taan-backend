@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
@@ -86,12 +85,7 @@ class MatchEnergyIntegrationTest {
                     assertTrue(matches.current(token).orElseThrow().actors().values().stream()
                         .allMatch(p -> p.energy() == 0));
 
-                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-
-                    while (matches.current(token).orElseThrow().phase() != MatchPhase.ACTION
-                        && System.nanoTime() < deadline) {
-                        Thread.sleep(1);
-                    }
+                    RuntimeRoomTestAccess.awaitMatchAction(app, roomId);
 
                     assertEquals(MatchPhase.ACTION, matches.current(token).orElseThrow().phase());
                     lootMessages(matches, token, owner, 0);

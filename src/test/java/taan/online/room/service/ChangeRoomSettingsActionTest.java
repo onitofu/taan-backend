@@ -17,6 +17,7 @@ import taan.online.LogCapture;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.channel.service.model.MoveToCommand;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
@@ -53,9 +54,12 @@ class ChangeRoomSettingsActionTest {
             for (int map : RoomScenario.maps().mapIds()) {
                 for (int type : new int[]{0, 1}) {
                     int rule = type == 0 ? 2 : 0;
-                    action.execute(owner, map, type, rule);
+                    action.execute(owner, RoomSettingsMapper.settings(map, type, rule));
                     var listings = scenario.rooms.forChannel(1);
-                    assertEquals(UNCHANGED, action.execute(owner, map, type, rule).outcome());
+                    assertEquals(
+                        UNCHANGED,
+                        action.execute(owner, RoomSettingsMapper.settings(map, type, rule)).outcome()
+                    );
                     assertSame(listings, scenario.rooms.forChannel(1));
                     assertEquals(slots, scenario.rooms.current(owner).orElseThrow().slots());
                 }
@@ -66,11 +70,11 @@ class ChangeRoomSettingsActionTest {
             assertTrue(c.settings.isEmpty());
             assertTrue(d.settings.isEmpty());
             assertEquals(List.of(true), b.readyValues);
-            action.execute(owner, 1, 1, 0);
+            action.execute(owner, RoomSettingsMapper.settings(1, 1, 0));
             assertEquals(CHANGED, action.changeMap(owner, 2).outcome());
             assertEquals(RoomMode.NO_ITEM, a.settings.getLast().mode());
             assertEquals(RoomRule.BASIC, a.settings.getLast().rule());
-            action.execute(owner, 1, 0, 2);
+            action.execute(owner, RoomSettingsMapper.settings(1, 0, 2));
             action.changeMap(owner, 2);
 
             assertEquals(RoomMode.ITEM, a.settings.getLast().mode());
@@ -94,7 +98,7 @@ class ChangeRoomSettingsActionTest {
             var original = scenario.rooms.current(owner).orElseThrow().settings();
             var listings = scenario.rooms.forChannel(1);
 
-            assertEquals("NOT_OWNER", action.execute(guest, 2, 1, 0).reason());
+            assertEquals("NOT_OWNER", action.execute(guest, RoomSettingsMapper.settings(2, 1, 0)).reason());
             assertEquals(List.of(original), b.settings);
             assertEquals(List.of(true), b.settingsRejections);
             assertTrue(a.settings.isEmpty());
@@ -104,12 +108,15 @@ class ChangeRoomSettingsActionTest {
             }
 
             for (int[] pair : new int[][]{{-1, 0}, {0, 0}, {0, 1}, {1, 2}, {2, 0}, {3, 2}, {4, 2}, {65535, 255}}) {
-                assertEquals("UNSUPPORTED_MODE_OR_RULE", action.execute(owner, 1, pair[0], pair[1]).reason());
+                assertEquals(
+                    "UNSUPPORTED_MODE_OR_RULE",
+                    action.execute(owner, RoomSettingsMapper.settings(1, pair[0], pair[1])).reason()
+                );
             }
 
             rooms(scenario.rooms).get(new RoomId(1)).close();
 
-            assertEquals("ROOM_UNAVAILABLE", action.execute(owner, 2, 1, 0).reason());
+            assertEquals("ROOM_UNAVAILABLE", action.execute(owner, RoomSettingsMapper.settings(2, 1, 0)).reason());
             assertSame(listings, scenario.rooms.forChannel(1));
             assertEquals(original, scenario.rooms.current(owner).orElseThrow().settings());
             assertTrue(a.settings.stream().allMatch(original::equals));
@@ -126,13 +133,13 @@ class ChangeRoomSettingsActionTest {
             var output = new RecordingRoomOutput();
             var action = new ChangeRoomSettingsAction(scenario.rooms);
 
-            assertEquals(IGNORED, action.execute(UUID.randomUUID(), 2, 1, 0).outcome());
+            assertEquals(IGNORED, action.execute(UUID.randomUUID(), RoomSettingsMapper.settings(2, 1, 0)).outcome());
             scenario.create.execute(owner, RoomScenario.command(), output);
             scenario.channels.move(owner, new MoveToCommand(0, 2, 0, 929));
 
             assertEquals(IGNORED, action.changeMap(owner, 2).outcome());
             scenario.channels.release(owner, "DISCONNECTED");
-            assertEquals(IGNORED, action.execute(owner, 2, 1, 0).outcome());
+            assertEquals(IGNORED, action.execute(owner, RoomSettingsMapper.settings(2, 1, 0)).outcome());
             scenario.rooms.close();
             assertEquals(IGNORED, action.changeMap(owner, 2).outcome());
             assertTrue(output.settings.isEmpty());
@@ -152,10 +159,10 @@ class ChangeRoomSettingsActionTest {
                 throw new IllegalStateException("secret@example.test");
             };
             var action = new ChangeRoomSettingsAction(scenario.rooms);
-            var rejected = action.execute(guest, 2, 1, 0);
+            var rejected = action.execute(guest, RoomSettingsMapper.settings(2, 1, 0));
             rejected.delivery().toCompletableFuture().join();
             b.onSettingsChanged = a.onSettingsChanged;
-            var changed = action.execute(owner, 2, 1, 0);
+            var changed = action.execute(owner, RoomSettingsMapper.settings(2, 1, 0));
 
             assertThrows(RuntimeException.class, () -> changed.delivery().toCompletableFuture().join());
             assertEquals(CHANGED, changed.outcome());

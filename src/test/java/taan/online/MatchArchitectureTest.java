@@ -12,6 +12,20 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "taan.online", importOptions = ImportOption.DoNotIncludeTests.class)
 class MatchArchitectureTest {
     @ArchTest
+    static final ArchRule STATE_MACHINE_OWNER = classes().that().haveSimpleName("MatchStateMachine")
+        .should().onlyBeAccessed().byClassesThat().haveNameMatching(
+            "taan\\.online\\.match\\.model\\.(Match|MatchStateMachine)"
+        );
+
+    @ArchTest
+    static final ArchRule JDBC_DOES_NOT_SELECT_REWARD_POLICY = noClasses().that()
+        .resideInAPackage("taan.online.match.repository.jdbc..")
+        .should().dependOnClassesThat().haveNameMatching(
+            "taan\\.online\\.match\\.model\\.(MatchRewardPolicies|MatchExperienceRules|MatchRewardRules"
+                + "|Pvp110RewardPolicy|LegacyMatchRewardPolicy)"
+        );
+
+    @ArchTest
     static final ArchRule SCENARIO_STAGING = noClasses().that().resideInAnyPackage(
         "taan.online.bootstrap..",
         "taan.online.server.."
@@ -123,7 +137,8 @@ class MatchArchitectureTest {
     @ArchTest
     static final ArchRule TERMINAL_OWNER = classes().that().haveSimpleName("MatchTerminationDelivery")
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
-            "taan\\.online\\.match\\.service\\.(MatchRegistry|MatchTerminationDelivery|MatchTerminationDispatch)"
+            "taan\\.online\\.match\\.service\\.(MatchRegistry|MatchTerminationDelivery|MatchTerminationDispatch"
+                + "|MatchLifecycleCoordinator)"
         );
 
     @ArchTest
@@ -140,7 +155,8 @@ class MatchArchitectureTest {
             "taan\\.online\\.match\\.(model\\.Match|model\\.MatchTurnPolicy|model\\.MatchLoadingRules"
                     + "|model\\.MatchMovementRules"
                     + "|service\\.MatchRegistry|service\\.MatchRuntime"
-                    + "|service\\.MatchTurnExecution|service\\.MatchItemExecution|service\\.MatchMovementExecution"
+                    + "|service\\.MatchLifecycleCoordinator|service\\.MatchItemExecution"
+                    + "|service\\.MatchMovementExecution"
                     + "|service\\.MatchLootExecution|service\\.MatchOutcomeExecution"
                     + "|service\\.model\\.MatchSnapshot)"
         );
@@ -156,7 +172,7 @@ class MatchArchitectureTest {
         .should().onlyBeAccessed().byClassesThat().haveNameMatching(
             "taan\\.online\\.match\\.service\\."
                 + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
-                + "|MatchScenarioExecution|MatchTurnExecution|MatchMovementExecution|MatchItemExecution"
+                + "|MatchScenarioExecution|MatchLifecycleCoordinator|MatchMovementExecution|MatchItemExecution"
                 + "|MatchLootExecution|MatchOutcomeExecution|MatchProgressPublication)"
         );
 

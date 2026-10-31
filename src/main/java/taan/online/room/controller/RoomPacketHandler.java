@@ -52,7 +52,6 @@ import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomWeaponOutcome;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.ExpelRoomParticipantOutcome;
@@ -156,7 +155,10 @@ public final class RoomPacketHandler {
                 result = settings.changeMap(id, codec.changeMap(root).mapId());
             } else {
                 var request = codec.settings(root);
-                result = settings.execute(id, request.mapId(), request.gameType(), request.rule());
+                result = settings.execute(
+                    id,
+                    RoomSettingsMapper.settings(request.mapId(), request.gameType(), request.rule())
+                );
             }
 
             if (result.outcome() == ChangeRoomSettingsOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {
@@ -213,7 +215,7 @@ public final class RoomPacketHandler {
                 return ignored();
             }
 
-            if (result.reason().equals("NO_OPEN_TEAM_SLOT")) {
+            if (result.outcome() == ChangeRoomTeamOutcome.NO_OPEN_SLOT) {
                 var notice = new PcNoticeMsg("No open slots on the requested team.");
                 return new RoomReply(
                     RoomReplyOutcome.TEAM_REJECTED,
@@ -293,21 +295,7 @@ public final class RoomPacketHandler {
 
         if (type == PqGameSessionCreate.TYPE_ID) {
             var request = codec.create(root);
-            var info = request.info();
-            var settings = info.details();
-            var command = settings == null ? new CreateRoomCommand(info.state(), 0, null, 0, 0, 0, 0, 0, null, 0)
-                : new CreateRoomCommand(
-                    info.state(),
-                    settings.roomGrade(),
-                    settings.title(),
-                    settings.gameKind(),
-                    settings.gameType(),
-                    settings.rule(),
-                    settings.playerCount(),
-                    settings.capacity(),
-                    settings.password(),
-                    settings.mapId()
-                );
+            var command = RoomSettingsMapper.create(request.info());
             var result = create.execute(id, command, new ProtocolRoomView(output));
 
             if (result.outcome() == CreateRoomOutcome.IGNORED || !sessions.hasSelectedCharacter(id)) {

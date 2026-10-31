@@ -17,6 +17,7 @@ import taan.online.channel.service.model.MoveToCommand;
 import taan.online.inventory.model.InventoryMoveOutcome;
 import taan.online.inventory.repository.TestInventoryRepository;
 import taan.online.inventory.service.MoveInventoryItemAction;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
@@ -72,7 +73,7 @@ class CaptainSelectionActionTest {
             scenario.enter.execute(guest, 1, "", b);
             scenario.rooms.setReady(guest, true);
             scenario.rooms.changeWeapon(owner, 1, 0);
-            scenario.rooms.changeSettings(owner, 2, 3, 0);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(2, 3, 0));
             var before = scenario.rooms.current(owner).orElseThrow();
             var begin = new BeginCaptainSelectionAction(scenario.rooms);
             var candidate = new SetCaptainCandidateAction(scenario.rooms);
@@ -124,7 +125,7 @@ class CaptainSelectionActionTest {
             scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
 
             assertEquals(ChangeRoomTeamOutcome.REJECTED, scenario.rooms.changeTeam(owner, RoomTeam.RED).outcome());
@@ -134,7 +135,10 @@ class CaptainSelectionActionTest {
                 SlotAvailabilityOutcome.REJECTED,
                 scenario.rooms.setSlotAvailability(owner, 1, RoomSlotState.CLOSED).outcome()
             );
-            assertEquals(ChangeRoomSettingsOutcome.REJECTED, scenario.rooms.changeSettings(owner, 2, 1, 0).outcome());
+            assertEquals(
+                ChangeRoomSettingsOutcome.REJECTED,
+                scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(2, 1, 0)).outcome()
+            );
             assertEquals(
                 "ROOM_UNAVAILABLE",
                 scenario.enter.execute(entrant, 1, "", new RecordingRoomOutput()).reason()
@@ -169,7 +173,7 @@ class CaptainSelectionActionTest {
             scenario.create.execute(owner, RoomScenario.command(), a);
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             var begin = new BeginCaptainSelectionAction(scenario.rooms);
             begin.execute(owner);
             var old = List.copyOf(scenario.timers.tasks);
@@ -205,7 +209,7 @@ class CaptainSelectionActionTest {
                 scenario.create.execute(owner, RoomScenario.command(), a);
                 scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
                 scenario.rooms.setReady(guest, true);
-                scenario.rooms.changeSettings(owner, 1, 2, 2);
+                scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
                 new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
 
                 switch (mode) {
@@ -230,7 +234,7 @@ class CaptainSelectionActionTest {
             scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             var begin = new BeginCaptainSelectionAction(scenario.rooms);
             begin.execute(owner);
             scenario.leave.execute(guest, 1, 0);
@@ -253,7 +257,7 @@ class CaptainSelectionActionTest {
                 scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
                 scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
                 scenario.rooms.setReady(guest, true);
-                scenario.rooms.changeSettings(owner, 1, 2, 2);
+                scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
                 scenario.timers.failAt = failAt;
 
                 assertThrows(
@@ -271,7 +275,7 @@ class CaptainSelectionActionTest {
             scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             var callback = scenario.timers.tasks.getFirst();
             scenario.timers.failClock = true;

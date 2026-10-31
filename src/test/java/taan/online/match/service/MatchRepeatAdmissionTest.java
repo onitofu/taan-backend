@@ -39,7 +39,7 @@ class MatchRepeatAdmissionTest {
                     var before = p.f.runtime.snapshot();
                     int index = invalid == 0 ? -1 : invalid == 1 ? 3 : 0;
                     assertFalse(p.energy.activate(p.use(index, item)));
-                    assertSame(before, p.f.runtime.snapshot());
+                    MatchGameStateAssertions.closedWithoutApplyingGameplay(before, p.f.runtime.snapshot());
                     assertEquals(RoomMatchEndReason.INVALID_SCENARIO, p.f.callbacks.reason);
                     assertTrue(p.f.owner.uses.isEmpty());
                     assertTrue(logs.text().contains("match.repeat.rejected"));

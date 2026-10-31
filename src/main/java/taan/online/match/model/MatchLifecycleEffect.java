@@ -1,0 +1,5 @@
+package taan.online.match.model;
+
+public enum MatchLifecycleEffect {
+    PUBLISH_BOOTSTRAP, ARM_DEADLINE, PUBLISH_TURN, STOP_GAMEPLAY, SETTLE_RESULT, DELIVER_RESULT, RETURN_ROOM, CLEANUP
+}

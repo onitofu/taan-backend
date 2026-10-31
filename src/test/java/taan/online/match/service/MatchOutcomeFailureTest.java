@@ -2,6 +2,7 @@ package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -10,9 +11,60 @@ import taan.online.LogCapture;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.match.service.model.MatchExecutionMode;
+import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.RoomMatchEndReason;
 
 class MatchOutcomeFailureTest {
+    @Test
+    void preservesAReplacementAdmissionWhenTerminalDeliveryReentersTheDepartureCallback() {
+        for (boolean rejoin : new boolean[]{false, true}) {
+            var wrapper = new AtomicReference<ControlledDepartureLifecycle>();
+            var scenario = new RoomScenario(
+                MatchExecutionMode.CLIENT_SCENARIO,
+                lifecycle -> {
+                    var controlled = new ControlledDepartureLifecycle(lifecycle);
+                    wrapper.set(controlled);
+                    return controlled;
+                }
+            );
+
+            try (var f = new MatchOutcomeFixture(scenario)) {
+                var member = scenario.rooms.membership(f.room.owner).orElseThrow();
+                wrapper.get().onDeparture = () -> {
+                    scenario.rooms.release(member, "REPEATED_EOF");
+                    scenario.rooms.terminateMatch(f.token, RoomMatchEndReason.INVALID_SCENARIO);
+                    assertTrue(scenario.rooms.membership(f.room.owner).isEmpty());
+
+                    if (rejoin) {
+                        scenario.lobby(f.room.owner);
+                        assertEquals(
+                            EnterRoomOutcome.ENTERED,
+                            scenario.enter.execute(f.room.owner, 1, "", new RecordingRoomOutput()).outcome()
+                        );
+                    }
+                };
+
+                scenario.rooms.release(member, "PEER_CLOSED");
+                scenario.rooms.release(member, "LATE_OLD_CLOSE");
+
+                assertTrue(f.matches.current(f.token).isEmpty());
+                assertEquals(1, f.guest.ends);
+
+                if (rejoin) {
+                    var replacement = scenario.rooms.membership(f.room.owner).orElseThrow();
+                    assertNotEquals(member.admissionId(), replacement.admissionId());
+                    assertEquals(
+                        2,
+                        scenario.rooms.current(f.room.owner).orElseThrow().slots().stream()
+                            .filter(slot -> slot.participant() != null).count()
+                    );
+                } else {
+                    assertTrue(scenario.rooms.membership(f.room.owner).isEmpty());
+                }
+            }
+        }
+    }
+
     @Test
     void releasesARepeatedDepartureWhenItsHandoffFailsWithoutLeakingAnExceptionMessage() {
         var wrapper = new AtomicReference<ControlledDepartureLifecycle>();

@@ -240,7 +240,7 @@ class MatchModelTest {
             assertTrue(match.cancel());
             assertFalse(match.cancel());
             assertFalse(match.commit(0, 30_000_000_000L));
-            assertEquals(MatchPhase.CANCELLED, match.phase());
+            assertEquals(MatchPhase.CLOSED, match.phase());
         }
     }
 

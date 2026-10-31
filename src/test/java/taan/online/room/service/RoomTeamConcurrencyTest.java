@@ -4,9 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static taan.online.room.model.RoomSlotState.CLOSED;
 import static taan.online.room.model.RoomSlotState.OPEN;
-import static taan.online.room.model.RoomTeam.RED;
 import static taan.online.room.model.RoomTeam.BLUE;
+import static taan.online.room.model.RoomTeam.RED;
 import static taan.online.room.service.model.ChangeRoomTeamOutcome.CHANGED;
+import static taan.online.room.service.model.ChangeRoomTeamOutcome.NO_OPEN_SLOT;
 import static taan.online.room.service.model.ChangeRoomTeamOutcome.REJECTED;
 
 import java.util.List;
@@ -51,7 +52,7 @@ class RoomTeamConcurrencyTest {
                     var snapshot = scenario.rooms.current(owner).orElseThrow();
 
                     assertEquals(1, results.stream().filter(value -> value.outcome() == CHANGED).count());
-                    assertEquals(1, results.stream().filter(value -> value.outcome() == REJECTED).count());
+                    assertEquals(1, results.stream().filter(value -> value.outcome() == NO_OPEN_SLOT).count());
                     assertEquals(1, output.teamChanges.size());
                     assertEquals(3, snapshot.slots().stream().filter(slot -> slot.participant() != null).count());
                     assertEquals(

@@ -19,7 +19,6 @@ import taan.online.room.model.RoomTeam;
 
 final class MatchJdbcStub {
     final List<String> calls = new ArrayList<>();
-    final List<Long> recipients = new ArrayList<>();
     final Map<String, ArrayDeque<SQLException>> failures = new HashMap<>();
     final MatchResult stored;
     boolean created = true;
@@ -67,7 +66,7 @@ final class MatchJdbcStub {
             : sql.startsWith("UPDATE characters SET experience") ? "progress"
             : sql.startsWith("INSERT INTO match_results") ? "result"
             : sql.contains("INSERT INTO match_participant_results") ? "participants"
-            : sql.startsWith("UPDATE") ? "medals" : sql.contains("SELECT finished_at") ? "read" : "readParticipants";
+            : sql.contains("SELECT finished_at") ? "read" : "readParticipants";
         var parameters = new HashMap<Integer, Object>();
         return proxy(
             PreparedStatement.class,
@@ -93,10 +92,6 @@ final class MatchJdbcStub {
                             (Long) parameters.get(4)
                         )
                     );
-                }
-
-                if (method.getName().equals("setLong") && kind.equals("medals")) {
-                    recipients.add((Long) arguments[1]);
                 }
 
                 return switch (method.getName()) {
@@ -132,6 +127,7 @@ final class MatchJdbcStub {
                 if (kind.equals("locked")) {
                     return switch (column) {
                         case "experience" -> experience;
+                        case "level" -> 1;
                         case "gold" -> gold;
                         case "force_medals", "kill_medals", "supply_medals" -> 0L;
                         default -> throw new AssertionError(column);

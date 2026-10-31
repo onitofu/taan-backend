@@ -4,9 +4,11 @@ import static taan.online.logging.LogField.port;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import com.zaxxer.hikari.HikariDataSource;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -54,6 +56,7 @@ import taan.online.match.controller.ApplyScenarioPacketHandler;
 import taan.online.match.controller.MatchItemPacketHandler;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.model.MatchBoxPolicy;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.repository.jdbc.JdbcMatchResultRepository;
 import taan.online.match.service.ApplyScenarioAction;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
@@ -78,6 +81,7 @@ import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.network.TcpServer;
 import taan.online.network.TcpServerSettings;
 import taan.online.persistence.DatabaseMigrator;
+import taan.online.persistence.DatabasePool;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.service.BeginCaptainSelectionAction;
 import taan.online.room.service.ChangeRoomSettingsAction;
@@ -99,6 +103,7 @@ import taan.online.server.ConnectionContext;
 import taan.online.server.InventoryRequestDispatcher;
 import taan.online.server.LobbyRequestDispatcher;
 import taan.online.server.MatchRequestDispatcher;
+import taan.online.server.RequestExecutors;
 import taan.online.server.RoomRequestDispatcher;
 import taan.online.server.SelectedCharacterRequestDispatcher;
 import taan.online.session.controller.CashRefreshPacketHandler;
@@ -115,14 +120,17 @@ public final class Application implements AutoCloseable {
     private static final EventLogger LOG = EventLogger.forClass(Application.class);
 
     private final ApplicationConfig config;
-    private final PGSimpleDataSource dataSource;
+    private final HikariDataSource dataSource;
     private final ChannelRegistry channels;
     private final RoomRegistry rooms;
     private final ScheduledRoomSelectionScheduler selectionScheduler;
     private final ScheduledMatchScheduler matchScheduler;
     private final BoundedMatchExecutor matchExecutor;
     private final ItemCatalog itemCatalog = new ItemCatalog();
-    private final ThreadPoolExecutor workers;
+    private final ThreadPoolExecutor authenticationWorkers;
+    private final ThreadPoolExecutor databaseWorkers;
+    private final ThreadPoolExecutor requestWorkers;
+    private final ThreadPoolExecutor settlementWorkers;
     private final TcpServer server;
     private final CountDownLatch terminated = new CountDownLatch(1);
     private final AtomicBoolean closing = new AtomicBoolean();
@@ -132,6 +140,7 @@ public final class Application implements AutoCloseable {
 
         var loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         loggerContext.getLogger("taan.online").setLevel(Level.valueOf(config.logLevel()));
+        loggerContext.getLogger("com.zaxxer.hikari").setLevel(Level.OFF);
 
         var hasher = new Argon2idCredentialHasher(
             config.argonMemoryKiB(),
@@ -139,14 +148,16 @@ public final class Application implements AutoCloseable {
             config.argonParallelism()
         );
 
-        dataSource = new PGSimpleDataSource();
-        dataSource.setServerNames(new String[]{config.databaseHost()});
-        dataSource.setPortNumbers(new int[]{config.databasePort()});
-        dataSource.setDatabaseName(config.databaseName());
-        dataSource.setUser(config.databaseUser());
-        dataSource.setPassword(config.databasePassword());
-        dataSource.setConnectTimeout(config.connectTimeoutSeconds());
-        dataSource.setSocketTimeout(config.socketTimeoutSeconds());
+        var source = new PGSimpleDataSource();
+        source.setServerNames(new String[]{config.databaseHost()});
+        source.setPortNumbers(new int[]{config.databasePort()});
+        source.setDatabaseName(config.databaseName());
+        source.setUser(config.databaseUser());
+        source.setPassword(config.databasePassword());
+        source.setConnectTimeout(config.connectTimeoutSeconds());
+        source.setSocketTimeout(config.socketTimeoutSeconds());
+        source.setTcpKeepAlive(true);
+        dataSource = DatabasePool.create(source, config.databasePoolSize(), config.databaseAcquireTimeoutMillis());
 
         var accounts = new JdbcAccountRepository(dataSource, config.socketTimeoutSeconds());
         var check = new CheckAccountPacketHandler(new CheckAccountAction(accounts));
@@ -190,17 +201,21 @@ public final class Application implements AutoCloseable {
             maps
         );
         selectionScheduler = new ScheduledRoomSelectionScheduler(config.maxConnections());
-        matchExecutor = new BoundedMatchExecutor(config.matchWorkerThreads(), config.maxConnections());
-        matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
-        workers = new ThreadPoolExecutor(
-            config.workerThreads(),
-            config.workerThreads(),
-            0,
-            TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(config.workerQueueCapacity()),
-            Thread.ofPlatform().name("account-worker-", 0).factory(),
-            new ThreadPoolExecutor.AbortPolicy()
+        matchExecutor = new BoundedMatchExecutor(
+            config.matchWorkerThreads(),
+            config.maxConnections(),
+            config.matchCommandQuantum()
         );
+        matchScheduler = new ScheduledMatchScheduler(config.maxConnections(), System::nanoTime);
+        authenticationWorkers = workers(
+            "authentication-",
+            config.authenticationWorkerThreads(),
+            config.authenticationQueueCapacity()
+        );
+        databaseWorkers = workers("database-", config.databaseWorkerThreads(), config.databaseQueueCapacity());
+        requestWorkers = workers("request-", config.requestWorkerThreads(), config.requestQueueCapacity());
+        settlementWorkers = workers("settlement-", config.settlementWorkerThreads(), config.settlementQueueCapacity());
+        var requestExecutors = new RequestExecutors(authenticationWorkers, databaseWorkers, requestWorkers);
 
         var matches = new MatchRegistry(
             matchDefinitions,
@@ -227,10 +242,11 @@ public final class Application implements AutoCloseable {
             config.matchQueueCapacity(),
             new ChannelMatchAccess(channels),
             new SettleMatchResultAction(
-                new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds(), levels),
-                workers,
+                new JdbcMatchResultRepository(dataSource, config.socketTimeoutSeconds()),
+                settlementWorkers,
                 Clock.systemUTC(),
-                new SecureRandom()
+                new SecureRandom(),
+                new MatchRewardPolicies(levels)
             )
         );
         rooms = new RoomRegistry(channels, maps, selectionScheduler, matches);
@@ -342,7 +358,7 @@ public final class Application implements AutoCloseable {
             settings,
             warnings,
             () -> new ConnectionContext(
-                workers,
+                requestExecutors,
                 check,
                 create,
                 warnings,
@@ -397,34 +413,48 @@ public final class Application implements AutoCloseable {
 
         try {
             server.stopAccepting();
-            workers.shutdown();
-            long remaining = Math.max(0, deadline - System.nanoTime() - TimeUnit.SECONDS.toNanos(3));
-
-            if (!workers.awaitTermination(remaining, TimeUnit.NANOSECONDS)) {
-                LOG.log(ServerLogEvent.SHUTDOWN_TIMEOUT);
-                workers.shutdownNow();
-            }
-        } catch (InterruptedException failure) {
-            workers.shutdownNow();
-            Thread.currentThread().interrupt();
-        } finally {
             server.close();
             rooms.close();
             selectionScheduler.close();
+            var executors = List.of(authenticationWorkers, databaseWorkers, requestWorkers, settlementWorkers);
+            executors.forEach(ThreadPoolExecutor::shutdown);
 
-            try {
-                if (!matchExecutor.awaitTermination(Math.max(0, deadline - System.nanoTime()))) {
+            for (var executor : executors) {
+                long remaining = Math.max(0, deadline - System.nanoTime() - TimeUnit.SECONDS.toNanos(2));
+
+                if (!executor.awaitTermination(remaining, TimeUnit.NANOSECONDS)) {
                     LOG.log(ServerLogEvent.SHUTDOWN_TIMEOUT);
+                    executor.shutdownNow();
                 }
-            } catch (InterruptedException failure) {
-                Thread.currentThread().interrupt();
-            } finally {
-                matchScheduler.close();
-                matchExecutor.close();
             }
-            terminated.countDown();
 
+            if (!matchExecutor.awaitTermination(Math.max(0, deadline - System.nanoTime()))) {
+                LOG.log(ServerLogEvent.SHUTDOWN_TIMEOUT);
+            }
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+        } finally {
+            authenticationWorkers.shutdownNow();
+            databaseWorkers.shutdownNow();
+            requestWorkers.shutdownNow();
+            settlementWorkers.shutdownNow();
+            matchScheduler.close();
+            matchExecutor.close();
+            dataSource.close();
+            terminated.countDown();
             LOG.log(ServerLogEvent.STOPPED);
         }
+    }
+
+    private static ThreadPoolExecutor workers(String name, int threads, int capacity) {
+        return new ThreadPoolExecutor(
+            threads,
+            threads,
+            0,
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(capacity),
+            Thread.ofPlatform().name(name, 0).factory(),
+            new ThreadPoolExecutor.AbortPolicy()
+        );
     }
 }

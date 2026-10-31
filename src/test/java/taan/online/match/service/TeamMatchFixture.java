@@ -20,16 +20,17 @@ import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
-import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
-import taan.online.match.service.model.RecordMatchSpendCommand;
-import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.PassMatchTurnCommand;
+import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
+import taan.online.match.service.model.UseMatchItemCommand;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomTeam;
 import taan.online.room.service.model.RoomMatchToken;
@@ -71,7 +72,7 @@ final class TeamMatchFixture implements AutoCloseable {
         }
 
         owner = players.getFirst();
-        scenario.rooms.changeSettings(owner, 1, mode == RoomMode.ITEM ? 0 : 2, 2);
+        scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, mode == RoomMode.ITEM ? 0 : 2, 2));
     }
 
     void start(boolean loaded) {

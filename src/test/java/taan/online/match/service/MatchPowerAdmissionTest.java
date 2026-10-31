@@ -48,7 +48,7 @@ class MatchPowerAdmissionTest {
                 );
                 assertFalse(p.energy.activate(command));
                 assertSame(before.world(), p.f.runtime.snapshot().world());
-                assertSame(before.loot(), p.f.runtime.snapshot().loot());
+                MatchGameStateAssertions.closedWithoutApplyingGameplay(before, p.f.runtime.snapshot());
                 assertTrue(p.f.owner.uses.isEmpty());
                 assertEquals(RoomMatchEndReason.INVALID_SCENARIO, p.f.callbacks.reason);
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));

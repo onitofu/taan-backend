@@ -186,7 +186,7 @@ final class ConnectionContextTestHarness implements AutoCloseable {
             matches
         ) : sharedRooms;
         handler = new ConnectionContext(
-            workers,
+            new RequestExecutors(workers, workers, workers),
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
             new CreateAccountPacketHandler(
                 new RegisterAccountAction(

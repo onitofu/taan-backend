@@ -262,7 +262,10 @@ class MatchTerminationIntegrationTest {
                 ended(winner, slot == 0 ? 1 : 2);
                 awaitClosed(loser);
                 assertEquals(defeated.slotIndex(), wire.slot(winner.read()).slot().slotIndex());
-                wire.option(winner.read());
+
+                if (defeated.sessionId().equals(snapshot.ownerSessionId())) {
+                    wire.option(winner.read());
+                }
                 RoomIntegrationSupport.assertBalances(database, winner, slot == 0 ? a : b);
                 assertTrue(matches.current(token).isEmpty());
                 assertTrue(rooms.membership(defeated.sessionId()).isEmpty());
@@ -320,13 +323,9 @@ class MatchTerminationIntegrationTest {
                 new TurnStartCodec().decode(client.read());
             }
 
-            assertTimeoutPreemptively(
-                Duration.ofSeconds(5),
-                () -> {
-                    while (matches.current(token).orElseThrow().phase() != MatchPhase.ACTION) {
-                        Thread.sleep(1);
-                    }
-                }
+            TestAwait.until(
+                "match action publication",
+                () -> matches.current(token).orElseThrow().phase() == MatchPhase.ACTION
             );
         }
 

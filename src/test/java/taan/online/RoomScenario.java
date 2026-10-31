@@ -16,16 +16,17 @@ import taan.online.channel.model.ChannelGroupDefinition;
 import taan.online.channel.service.ChannelRegistry;
 import taan.online.channel.service.model.MoveToCommand;
 import taan.online.character.repository.TestCharacterRepository;
+import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.model.MatchDefinitionCatalog;
 import taan.online.match.service.MatchCommandExecutor;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.SettleMatchResultAction;
-import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.controller.RoomPacketHandler;
 import taan.online.room.controller.RoomReply;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomBootstrapDefinition;
 import taan.online.room.model.RoomIdPool;
 import taan.online.room.model.RoomMapCatalog;
@@ -35,6 +36,8 @@ import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.model.RoomTitleFilter;
+import taan.online.room.protocol.packet.GameSessionDetails;
+import taan.online.room.protocol.packet.GameSessionInfo;
 import taan.online.room.protocol.packet.PqGameSessionChangeGameOption;
 import taan.online.room.protocol.packet.PqGameSessionChangeMap;
 import taan.online.room.protocol.packet.PqGameSessionChangeTeam;
@@ -279,8 +282,27 @@ public final class RoomScenario implements AutoCloseable {
         return new RoomParticipant(id, character, 0);
     }
 
+    public static CreateRoomCommand command(
+        int state,
+        int grade,
+        String title,
+        int kind,
+        int type,
+        int rule,
+        int players,
+        int capacity,
+        String password,
+        int map
+    ) {
+        return RoomSettingsMapper.create(new GameSessionInfo(
+            0,
+            state,
+            new GameSessionDetails(grade, title, kind, type, rule, players, capacity, password, map)
+        ));
+    }
+
     public static CreateRoomCommand command() {
-        return new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, null, 0);
+        return RoomScenario.command(5, 0, "Room", 0, 0, 2, 0, 8, null, 0);
     }
 
     public static RoomRequestDispatcher dispatcher(

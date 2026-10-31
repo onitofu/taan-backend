@@ -138,6 +138,20 @@ class MatchMovementBoundaryTest {
     }
 
     @Test
+    void ignoresASynchronousMovementFailureAfterTheOutputHasStoppedTheOwner() throws Exception {
+        try (var m = new MovementRuntimeFixture(); var logs = new LogCapture()) {
+            var f = m.f;
+            f.guest.onMovement = () -> {
+                f.runtime.stop();
+                throw new IllegalStateException("late movement failure");
+            };
+            assertTrue(m.move(m.move(1, 0, 0, MatchMovementKind.MOVE)));
+            assertNull(f.callbacks.reason);
+            assertFalse(logs.text().contains("match.movement.delivery.failed"));
+        }
+    }
+
+    @Test
     void staleDeliveryFailureDoesNotCancelTheOpponentsNewTurn() throws Exception {
         try (var m = new MovementRuntimeFixture()) {
             var f = m.f;
@@ -182,7 +196,7 @@ class MatchMovementBoundaryTest {
             assertEquals(RoomMatchEndReason.MOVEMENT_DELIVERY_FAILED, f.callbacks.reason);
             f.timers.now += 1000000000;
             f.runtime.movement.expired();
-            f.runtime.turns.advance(true);
+            f.runtime.lifecycle.advance(true);
             assertEquals(1, f.owner.turns.size());
         }
     }
@@ -198,6 +212,10 @@ class MatchMovementBoundaryTest {
 
                 if (stopped) {
                     f.runtime.stop();
+                    assertFalse(f.runtime.movement.deliveryFailed(
+                        f.runtime.snapshot().turn().revision(),
+                        new IllegalStateException("stale movement failure")
+                    ));
                 } else {
                     for (int index = 0; index < 8; index++) {
                         f.runtime.turnWork(() -> true);

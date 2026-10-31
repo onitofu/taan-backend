@@ -116,7 +116,7 @@ final class MatchOutcomeExecution {
     private boolean exit(UUID session, MatchExitKind kind) {
         if (match.phase() == MatchPhase.COMPLETION && !match.completion().orElseThrow().awaitingSessions().isEmpty()
             && clock.getAsLong() - match.completion().orElseThrow().deadlineNanos() >= 0) {
-            owner.turns.expired(
+            owner.lifecycle.expired(
                 new MatchTurnToken(owner.progress().match(), match.turn().revision(), match.phaseRevision()),
                 match.completion().map(value -> value.fingerprint())
             );
@@ -145,7 +145,7 @@ final class MatchOutcomeExecution {
                 cancel(RoomMatchEndReason.DISCONNECTED, null);
             }
         } else if (match.phase() == MatchPhase.COMPLETION) {
-            owner.turns.finish();
+            owner.lifecycle.finish();
         } else if (match.phase() == MatchPhase.SETTLING) {
             owner.movement.expired();
         } else if (match.resolution().pendingOutcome().isPresent()) {
@@ -158,7 +158,7 @@ final class MatchOutcomeExecution {
             }
 
             owner.items.clear();
-            owner.turns.advance(true);
+            owner.lifecycle.advance(true);
         }
 
         return true;
@@ -189,7 +189,7 @@ final class MatchOutcomeExecution {
                 cancel(RoomMatchEndReason.COMPLETION_TIMEOUT, null);
             }
         } else {
-            owner.turns.finish();
+            owner.lifecycle.finish();
         }
     }
 

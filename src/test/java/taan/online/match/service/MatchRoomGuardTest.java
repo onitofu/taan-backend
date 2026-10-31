@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.MatchRoomFixture;
 import taan.online.RecordingRoomOutput;
 import taan.online.inventory.service.model.InventoryActor;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomTeam;
@@ -44,10 +45,10 @@ class MatchRoomGuardTest {
             rooms.setReady(guest, false);
             rooms.changeTeam(guest, RoomTeam.RED);
             rooms.setReady(guest, true);
-            rooms.changeSettings(f.owner, 2, 0, 2);
+            rooms.changeSettings(f.owner, RoomSettingsMapper.settings(2, 0, 2));
 
             assertEquals("UNSUPPORTED_MAP", rooms.reserveMatch(f.owner).reason());
-            rooms.changeSettings(f.owner, 1, 0, 2);
+            rooms.changeSettings(f.owner, RoomSettingsMapper.settings(1, 0, 2));
             f.scenario.sessions.close(new SessionId(guest));
 
             assertEquals("SESSION_CLOSED", rooms.reserveMatch(f.owner).reason());
@@ -123,7 +124,10 @@ class MatchRoomGuardTest {
                 assertEquals(SetRoomReadyOutcome.REJECTED, rooms.setReady(f.players.get(1), false).outcome());
                 assertEquals(ChangeRoomTeamOutcome.REJECTED, rooms.changeTeam(f.owner, RoomTeam.RED).outcome());
                 assertEquals(ChangeRoomWeaponOutcome.REJECTED, rooms.changeWeapon(f.owner, 1, 0).outcome());
-                assertEquals(ChangeRoomSettingsOutcome.REJECTED, rooms.changeSettings(f.owner, 2, 0, 2).outcome());
+                assertEquals(
+                    ChangeRoomSettingsOutcome.REJECTED,
+                    rooms.changeSettings(f.owner, RoomSettingsMapper.settings(2, 0, 2)).outcome()
+                );
                 assertEquals(
                     SlotAvailabilityOutcome.REJECTED,
                     rooms.setSlotAvailability(f.owner, 7, RoomSlotState.CLOSED).outcome()

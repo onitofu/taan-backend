@@ -125,6 +125,10 @@ public record MatchWorldState(
     }
 
     public MatchWorldState withoutBoxes() {
+        if (boxes.isEmpty()) {
+            return this;
+        }
+
         return new MatchWorldState(
             revision,
             actors,

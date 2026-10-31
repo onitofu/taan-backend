@@ -18,7 +18,7 @@ class MatchRewardJdbcTest {
             var result = RewardTestFixtures.result(9, 2, draw);
             var database = new MatchJdbcStub(result);
             database.gold = 123;
-            var stored = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+            var stored = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
             var winner = stored.result().participants().getFirst();
 
             assertEquals(List.of(2L, 9L), database.lockedCharacters);
@@ -28,7 +28,7 @@ class MatchRewardJdbcTest {
             assertEquals(0.5f, winner.shots().accuracy());
             var replay = new MatchJdbcStub(stored.result());
             replay.created = false;
-            var loaded = new JdbcMatchResultRepository(replay.source(), 5, TestLevels.table()).settle(result);
+            var loaded = new RewardTestRepository(replay.source(), 5, TestLevels.table()).settle(result);
 
             assertFalse(loaded.created());
             assertEquals(stored.result(), loaded.result());
@@ -42,7 +42,7 @@ class MatchRewardJdbcTest {
         var result = RewardTestFixtures.result(1, 2, 99);
         var overflow = new MatchJdbcStub(result);
         overflow.gold = 0xffff_ffffL;
-        var repository = new JdbcMatchResultRepository(overflow.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(overflow.source(), 5, TestLevels.table());
 
         assertThrows(IllegalArgumentException.class, () -> repository.settle(result));
         assertTrue(overflow.calls.contains("connection.rollback"));
@@ -50,7 +50,7 @@ class MatchRewardJdbcTest {
 
         var retry = new MatchJdbcStub(result);
         retry.fail("progress.executeUpdate", new SQLException("private-wallet-value", "40001"));
-        var saved = new JdbcMatchResultRepository(retry.source(), 5, TestLevels.table()).settle(result);
+        var saved = new RewardTestRepository(retry.source(), 5, TestLevels.table()).settle(result);
 
         assertEquals(99, saved.result().participants().getFirst().card().draw());
         assertEquals(200, saved.result().participants().getFirst().card().amount());

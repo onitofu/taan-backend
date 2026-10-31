@@ -2,6 +2,7 @@ package taan.online.server;
 
 import static taan.online.logging.LogField.connectionId;
 import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.executorClass;
 import static taan.online.logging.LogField.operationId;
 import static taan.online.logging.LogField.packetType;
 import static taan.online.logging.LogField.reason;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import taan.online.account.controller.CheckAccountPacketHandler;
 import taan.online.account.controller.CreateAccountPacketHandler;
@@ -69,7 +69,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private final ConnectionId id = ConnectionId.create();
     private final ArrayDeque<PendingRequest> pending = new ArrayDeque<>();
     private final ProtocolStateMachine protocol = new ProtocolStateMachine();
-    private final ThreadPoolExecutor executor;
+    private final RequestExecutors executors;
     private final AccountRequestDispatcher accounts;
     private final UserLoginPacketHandler login;
     private final ConnectionRequestDispatcher requests;
@@ -93,7 +93,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
     private RequestTask activeTask;
 
     public ConnectionContext(
-        ThreadPoolExecutor executor,
+        RequestExecutors executors,
         CheckAccountPacketHandler check,
         CreateAccountPacketHandler create,
         WarningLogLimiter warnings,
@@ -114,7 +114,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         int outputBytes,
         int maxFrame
     ) {
-        this.executor = executor;
+        this.executors = executors;
         this.rooms = rooms;
         this.matches = matches;
         accounts = new AccountRequestDispatcher(check, create, login, clock);
@@ -211,12 +211,19 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
                 timeoutSeconds,
                 TimeUnit.SECONDS
             );
-            activeTask = new RequestTask(request.operationId(), () -> execute(context, request));
+            var executor = executors.forType(request.type());
+            activeTask = new RequestTask(request.operationId(), () -> execute(context, request), executor);
 
             try {
                 executor.execute(activeTask);
             } catch (RejectedExecutionException failure) {
-                warnings.warn(WarningEvent.LIMIT_EXCEEDED, "WORK_QUEUE_FULL", id.value().toString());
+                warnings.warn(
+                    WarningEvent.EXECUTION_QUEUE_REJECTED,
+                    "WORK_QUEUE_FULL",
+                    id.value().toString(),
+                    executorClass(RequestExecutors.classification(request.type()).name()),
+                    operationId(request.operationId())
+                );
                 close(context, "WORK_QUEUE_FULL");
             }
 
@@ -473,7 +480,7 @@ public final class ConnectionContext extends SimpleChannelInboundHandler<byte[]>
         activeTask = null;
 
         if (task != null && task.cancel()) {
-            executor.remove(task);
+            task.remove();
             int type = pending.peekFirst().type();
             LogEvent event = MatchRequestDispatcher.accepts(type) ? MatchLogEvent.REQUEST_CANCELLED
                 : RoomRequestDispatcher.accepts(type) ? RoomLogEvent.REQUEST_CANCELLED : switch (type) {

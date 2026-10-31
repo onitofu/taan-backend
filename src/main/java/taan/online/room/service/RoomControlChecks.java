@@ -13,6 +13,7 @@ import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomRegistryPhase;
@@ -37,23 +38,24 @@ final class RoomControlChecks {
             .findFirst().orElseThrow();
     }
 
-    static String rejection(
+    static RoomControlRejection rejection(
         RoomRegistryPhase phase,
         RoomMembership membership,
         ChannelMembershipSnapshot context,
         RoomParticipant participant
     ) {
         if (phase == RoomRegistryPhase.CLOSED || membership == null) {
-            return phase == RoomRegistryPhase.CLOSED ? "SERVER_STOPPING" : "NO_MEMBERSHIP";
+            return phase == RoomRegistryPhase.CLOSED
+                ? RoomControlRejection.SERVER_STOPPING : RoomControlRejection.NO_MEMBERSHIP;
         }
 
         if (context == null) {
-            return "SESSION_CLOSED";
+            return RoomControlRejection.SESSION_CLOSED;
         }
 
         return context.channelId() != membership.channelId()
             || context.phase() != ChannelPresencePhase.MEMBER || !matches(context, participant)
-            ? "CONTEXT_CHANGED" : null;
+            ? RoomControlRejection.CONTEXT_CHANGED : null;
     }
 
     static InventoryMoveContext inventoryContext(
@@ -110,8 +112,8 @@ final class RoomControlChecks {
         return receipt != null && receipt.awaitingAcknowledgement();
     }
 
-    static boolean inactive(String rejection) {
-        return rejection.equals("SERVER_STOPPING") || rejection.equals("SESSION_CLOSED");
+    static boolean inactive(RoomControlRejection rejection) {
+        return rejection == RoomControlRejection.SERVER_STOPPING || rejection == RoomControlRejection.SESSION_CLOSED;
     }
 
     static boolean matches(ChannelMembershipSnapshot context, RoomParticipant participant) {

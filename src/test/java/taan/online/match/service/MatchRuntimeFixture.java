@@ -3,6 +3,7 @@ package taan.online.match.service;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 import taan.online.MatchFixtures;
@@ -31,6 +32,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
     final TestMatchCallbacks callbacks;
     final RoomMatchToken token;
     boolean admitted = true;
+    boolean rejectWork;
     Runnable onAccess = () -> { };
     Runnable onClock = () -> { };
 
@@ -109,7 +111,12 @@ final class MatchRuntimeFixture implements AutoCloseable {
                 Duration.ofMinutes(1),
                 () -> timers.now
             ),
-            tasks::addLast,
+            command -> {
+                if (rejectWork) {
+                    throw new RejectedExecutionException("test executor unavailable");
+                }
+                tasks.addLast(command);
+            },
             capacity,
             (context, participant) -> {
                 onAccess.run();

@@ -58,7 +58,7 @@ class MatchRewardPersistenceIntegrationTest {
         for (int index = 0; index < 4; index++) {
             tasks.add(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                return new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+                return new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
             });
         }
 
@@ -74,7 +74,7 @@ class MatchRewardPersistenceIntegrationTest {
 
         var winner = database.characters().findByAccount(first.accountId()).getFirst();
         var loser = database.characters().findByAccount(second.accountId()).getFirst();
-        var replay = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+        var replay = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
 
         assertEquals(2260, winner.progress().experience());
         assertEquals(158, winner.gold());
@@ -97,7 +97,7 @@ class MatchRewardPersistenceIntegrationTest {
         var second = character("BravoHero");
         var result = RewardTestFixtures.result(first.id().value(), second.id().value(), 0);
         database.execute("UPDATE characters SET gold = 4294967295 WHERE id = " + second.id().value());
-        var repository = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table());
+        var repository = new RewardTestRepository(database.source(), 5, TestLevels.table());
 
         assertThrows(IllegalArgumentException.class, () -> repository.settle(result));
         assertEquals(0, database.scalar("SELECT sum(experience) FROM characters"));
@@ -106,7 +106,7 @@ class MatchRewardPersistenceIntegrationTest {
         assertEquals(0, database.scalar("SELECT gold FROM characters WHERE id = " + first.id().value()));
 
         database.execute("UPDATE characters SET gold = 0");
-        var lostReply = new JdbcMatchResultRepository(
+        var lostReply = new RewardTestRepository(
             LostCommitReplyDataSource.wrap(database.source()),
             5,
             TestLevels.table()
@@ -125,7 +125,7 @@ class MatchRewardPersistenceIntegrationTest {
         var first = character("AlphaHero");
         var second = character("BravoHero");
         var result = RewardTestFixtures.result(first.id().value(), second.id().value(), 99);
-        new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+        new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
 
         for (String assignments : new String[]{
             "damaging_shots = accepted_shots + 1", "accepted_shots = NULL", "gold_before = NULL",
@@ -158,7 +158,7 @@ class MatchRewardPersistenceIntegrationTest {
         var first = character("AlphaHero");
         var second = character("BravoHero");
         var historical = MatchResultFixtures.result(first.id().value(), second.id().value());
-        new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(historical);
+        new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(historical);
         database.execute("CREATE SCHEMA reward_upgrade");
         var source = new PGSimpleDataSource();
         source.setURL(database.source().getURL());
@@ -194,7 +194,7 @@ class MatchRewardPersistenceIntegrationTest {
         database.execute("INSERT INTO reward_upgrade.match_participant_results (" + columns + ") SELECT "
             + columns + " FROM public.match_participant_results");
         Flyway.configure().dataSource(source).defaultSchema("reward_upgrade").load().migrate();
-        var replay = new JdbcMatchResultRepository(source, 5, TestLevels.table()).settle(historical);
+        var replay = new RewardTestRepository(source, 5, TestLevels.table()).settle(historical);
 
         assertFalse(replay.created());
         assertEquals(historical, replay.result());

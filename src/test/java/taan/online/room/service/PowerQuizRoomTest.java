@@ -10,12 +10,12 @@ import taan.online.LogCapture;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.lobby.view.LobbyRoomListMapper;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.view.RoomRuleMapper;
 import taan.online.room.view.RoomSnapshotMapper;
@@ -39,7 +39,7 @@ class PowerQuizRoomTest {
                     var output = new RecordingRoomOutput();
                     var result = scenario.create.execute(
                         id,
-                        new CreateRoomCommand(5, 0, title, 0, type, type % 2 == 0 ? 2 : 0, 0, 8, null, 0),
+                        RoomScenario.command(5, 0, title, 0, type, type % 2 == 0 ? 2 : 0, 0, 8, null, 0),
                         output
                     );
                     int expected = type % 2 != 0 ? 0 : title.contains("PowerQuiz") ? 1 : 2;
@@ -64,23 +64,32 @@ class PowerQuizRoomTest {
             var output = new RecordingRoomOutput();
             var created = scenario.create.execute(
                 id,
-                new CreateRoomCommand(5, 0, "PowerQuiz", 0, 0, 1, 0, 8, null, 0),
+                RoomScenario.command(5, 0, "PowerQuiz", 0, 0, 1, 0, 8, null, 0),
                 output
             );
             assertEquals(RoomRule.POWER_QUIZ, created.room().settings().rule());
             assertEquals(RoomRule.POWER_QUIZ, scenario.rooms.changeMap(id, 2).settings().rule());
 
             for (int rule : new int[]{2, 1}) {
-                assertEquals(RoomRule.POWER_QUIZ, scenario.rooms.changeSettings(id, 1, 2, rule).settings().rule());
+                assertEquals(
+                    RoomRule.POWER_QUIZ,
+                    scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 2, rule)).settings().rule()
+                );
                 assertEquals(RoomRule.POWER_QUIZ, output.settings.getLast().rule());
             }
 
-            assertEquals(RoomRule.BASIC, scenario.rooms.changeSettings(id, 1, 1, 0).settings().rule());
+            assertEquals(
+                RoomRule.BASIC,
+                scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 1, 0)).settings().rule()
+            );
             assertEquals(
                 ChangeRoomSettingsOutcome.REJECTED,
-                scenario.rooms.changeSettings(id, 1, 1, 1).outcome()
+                scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 1, 1)).outcome()
             );
-            assertEquals(RoomRule.POWER_QUIZ, scenario.rooms.changeSettings(id, 1, 0, 2).settings().rule());
+            assertEquals(
+                RoomRule.POWER_QUIZ,
+                scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 0, 2)).settings().rule()
+            );
             assertThrows(
                 IllegalArgumentException.class,
                 () -> new RoomSettings(new RoomTitle("PowerQuiz"), RoomMode.NO_ITEM, RoomRule.POWER_QUIZ, 1, 8)
@@ -97,7 +106,7 @@ class PowerQuizRoomTest {
                 int type = title.equals("PowerQuiz") ? 1 : 0;
                 var rejected = scenario.create.execute(
                     id,
-                    new CreateRoomCommand(5, 0, title, 0, type, 1, 0, 8, null, 0),
+                    RoomScenario.command(5, 0, title, 0, type, 1, 0, 8, null, 0),
                     output
                 );
                 assertEquals(CreateRoomOutcome.REJECTED, rejected.outcome());

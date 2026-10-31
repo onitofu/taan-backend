@@ -16,6 +16,7 @@ import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.bootstrap.RoomDefinitionLoader;
 import taan.online.channel.service.model.ChannelMembershipSnapshot;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
@@ -47,7 +48,7 @@ class ChannelMapPolicyTest {
 
                     assertEquals(permitted ? mapId : previous, result.settings().mapId());
                     assertEquals(!permitted, result.outcome() == ChangeRoomSettingsOutcome.REJECTED);
-                    var combined = f.rooms.changeSettings(owner, mapId, 0, 2);
+                    var combined = f.rooms.changeSettings(owner, RoomSettingsMapper.settings(mapId, 0, 2));
                     assertEquals(permitted, combined.outcome() != ChangeRoomSettingsOutcome.REJECTED);
                 }
 

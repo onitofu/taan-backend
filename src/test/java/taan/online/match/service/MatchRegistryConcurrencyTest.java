@@ -1,16 +1,15 @@
 package taan.online.match.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.MatchRoomFixture;
+import taan.online.TestAwait;
 import taan.online.match.model.MatchId;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
@@ -62,13 +61,6 @@ class MatchRegistryConcurrencyTest {
     }
 
     private void blocked(Thread thread) {
-        assertTimeoutPreemptively(
-            Duration.ofSeconds(5),
-            () -> {
-                while (thread.getState() != Thread.State.BLOCKED) {
-                    Thread.sleep(1);
-                }
-            }
-        );
+        TestAwait.until("contending admission lock", () -> thread.getState() == Thread.State.BLOCKED);
     }
 }

@@ -7,11 +7,9 @@ import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Optional;
 import javax.sql.DataSource;
 import taan.online.character.model.CharacterId;
-import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.CharacterProgressSnapshot;
 import taan.online.match.model.MatchExperienceReward;
@@ -22,6 +20,7 @@ import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchResult;
 import taan.online.match.model.MatchRewardCard;
 import taan.online.match.model.MatchRewardCardKind;
+import taan.online.match.model.MatchRewardPolicy;
 import taan.online.match.model.MatchShotStatistics;
 import taan.online.match.repository.MatchResultRepository;
 import taan.online.match.repository.MatchSettlement;
@@ -32,16 +31,16 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
     private final int timeout;
     private final MatchRewardPersistence experience;
 
-    public JdbcMatchResultRepository(DataSource dataSource, int timeout, CharacterLevelTable levels) {
+    public JdbcMatchResultRepository(DataSource dataSource, int timeout) {
         this.dataSource = dataSource;
         this.timeout = timeout;
-        experience = new MatchRewardPersistence(levels, timeout);
+        experience = new MatchRewardPersistence(timeout);
     }
 
     @Override
-    public MatchSettlement settle(MatchResult result) {
+    public MatchSettlement settle(MatchResult result, MatchRewardPolicy policy) {
         try {
-            return transact(result);
+            return transact(result, policy);
         } catch (SQLException first) {
             String state = first.getSQLState();
 
@@ -50,7 +49,7 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
             }
 
             try {
-                return transact(result);
+                return transact(result, policy);
             } catch (SQLException second) {
                 second.addSuppressed(first);
                 throw new MatchPersistenceException(second);
@@ -58,7 +57,7 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
         }
     }
 
-    private MatchSettlement transact(MatchResult result) throws SQLException {
+    private MatchSettlement transact(MatchResult result, MatchRewardPolicy policy) throws SQLException {
         try (var connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
 
@@ -67,12 +66,7 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
                 MatchResult stored;
 
                 if (created) {
-                    if (result.rewardDurationMillis() == null) {
-                        grantMedals(connection, result);
-                        stored = result;
-                    } else {
-                        stored = experience.settle(connection, result);
-                    }
+                    stored = experience.settle(connection, result, policy);
 
                     insertParticipants(connection, stored);
                 } else {
@@ -188,27 +182,6 @@ public final class JdbcMatchResultRepository implements MatchResultRepository {
             }
 
             statement.executeBatch();
-        }
-    }
-
-    private void grantMedals(Connection connection, MatchResult result) throws SQLException {
-        String sql = """
-            UPDATE characters SET force_medals = force_medals + 1
-            WHERE id = ? AND force_medals < 4294967295
-            """;
-        var recipients = result.participants().stream().filter(MatchParticipantResult::forceMedal)
-            .sorted(Comparator.comparingLong(value -> value.characterId().value())).toList();
-
-        try (var statement = connection.prepareStatement(sql)) {
-            statement.setQueryTimeout(timeout);
-
-            for (var recipient : recipients) {
-                statement.setLong(1, recipient.characterId().value());
-
-                if (statement.executeUpdate() != 1) {
-                    throw new SQLException("Character medal counter cannot be incremented", "22003");
-                }
-            }
         }
     }
 

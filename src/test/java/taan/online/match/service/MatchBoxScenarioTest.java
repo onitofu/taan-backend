@@ -95,7 +95,7 @@ class MatchBoxScenarioTest {
             var rejected = boxes.apply(extra);
             assertEquals(ScenarioApplicationOutcome.REJECTED, rejected.outcome());
             assertEquals("BOX_BUDGET_EXCEEDED", rejected.reason());
-            assertEquals(before.world(), boxes.f.runtime.snapshot().world());
+            MatchGameStateAssertions.closedWithoutApplyingGameplay(before, boxes.f.runtime.snapshot());
             assertTrue(boxes.f.match.world().boxes().isEmpty());
         }
     }
@@ -113,7 +113,7 @@ class MatchBoxScenarioTest {
                 var result = boxes.apply(command);
                 assertEquals(ScenarioApplicationOutcome.REJECTED, result.outcome());
                 assertEquals(repeatedId ? "DUPLICATE_BOX_ID" : "BOX_BUDGET_EXCEEDED", result.reason());
-                assertEquals(before.world(), boxes.f.runtime.snapshot().world());
+                MatchGameStateAssertions.closedWithoutApplyingGameplay(before, boxes.f.runtime.snapshot());
                 assertTrue(boxes.f.runtime.snapshot().world().boxes().isEmpty());
                 assertEquals(RoomMatchEndReason.INVALID_SCENARIO, boxes.f.callbacks.reason);
                 assertFalse(logs.text().contains("match.box.created"));
@@ -151,7 +151,7 @@ class MatchBoxScenarioTest {
             assertEquals(ScenarioApplicationOutcome.IGNORED, boxes.apply(foreign).outcome());
             assertEquals(before, boxes.f.runtime.snapshot());
             assertEquals("DUPLICATE_BOX_ID", boxes.apply(command).reason());
-            assertEquals(before.world(), boxes.f.runtime.snapshot().world());
+            MatchGameStateAssertions.closedWithoutApplyingGameplay(before, boxes.f.runtime.snapshot());
         }
     }
 

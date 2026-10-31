@@ -72,6 +72,7 @@ class MatchSpecialDeliveryTest {
             e.f.runtime.stop();
             pending.completeExceptionally(new IllegalStateException("late-secret"));
             e.f.run();
+            assertFalse(e.f.runtime.items.deliveryFailed(new IllegalStateException("late-secret")));
             assertFalse(logs.text().contains("match.item.delivery.failed"));
         }
 
