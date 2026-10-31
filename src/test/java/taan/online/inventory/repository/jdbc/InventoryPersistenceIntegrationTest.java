@@ -15,16 +15,13 @@ import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.ds.PGSimpleDataSource;
 import taan.online.CharacterTestDatabase;
 import taan.online.InventoryFixtures;
 import taan.online.account.model.AccountGender;
-import taan.online.account.model.AccountId;
 import taan.online.inventory.model.InventoryId;
 import taan.online.inventory.model.InventoryItemId;
 import taan.online.inventory.model.InventoryMove;
@@ -35,7 +32,6 @@ import taan.online.inventory.service.MoveInventoryItemAction;
 import taan.online.inventory.service.TestInventoryMoveContextAccess;
 import taan.online.inventory.service.model.InventoryActor;
 import taan.online.inventory.service.model.MoveInventoryItemCommand;
-import taan.online.persistence.DatabaseMigrator;
 
 class InventoryPersistenceIntegrationTest {
     private static CharacterTestDatabase database;
@@ -112,7 +108,7 @@ class InventoryPersistenceIntegrationTest {
         database.execute("SELECT setval(pg_get_serial_sequence('inventory_items', 'id'), 4294967296)");
         long uid = database.scalar(
             "INSERT INTO inventory_items (inventory_id, slot, item_id, palette_1_id, "
-                + "palette_2_id, palette_3_id) VALUES (" + bag + ", 79, 1039, 303, 261, 65535) RETURNING id"
+                + "palette_2_id, palette_3_id) VALUES (" + bag + ", 79, 1039, 303, 261, 537) RETURNING id"
         );
         var actor = new InventoryActor(UUID.randomUUID(), owner.id(), character, AccountGender.MALE);
         var repository = new JdbcInventoryRepository(database.source(), 5);
@@ -141,7 +137,7 @@ class InventoryPersistenceIntegrationTest {
         assertEquals(equipment, database.scalar("SELECT inventory_id FROM inventory_items WHERE id = " + uid));
         assertEquals(303, database.scalar("SELECT palette_1_id FROM inventory_items WHERE id = " + uid));
         assertEquals(261, database.scalar("SELECT palette_2_id FROM inventory_items WHERE id = " + uid));
-        assertEquals(65535, database.scalar("SELECT palette_3_id FROM inventory_items WHERE id = " + uid));
+        assertEquals(537, database.scalar("SELECT palette_3_id FROM inventory_items WHERE id = " + uid));
         assertEquals(
             729,
             database.scalar(
@@ -271,63 +267,6 @@ class InventoryPersistenceIntegrationTest {
 
         assertEquals(1, database.scalar("SELECT count(*) FROM inventory_items WHERE id = " + uid));
         assertEquals(4, database.scalar("SELECT count(*) FROM inventory_items"));
-    }
-
-    @Test
-    void migratesV6WithoutChangingIdentitiesOrPaletteValuesAndRejectsInvalidLegacyData() throws Exception {
-        for (int scenario = 0; scenario < 3; scenario++) {
-            String schema = "inventory_upgrade_" + scenario;
-            database.execute("CREATE SCHEMA " + schema);
-            var source = new PGSimpleDataSource();
-            source.setURL(database.source().getURL());
-            source.setUser(database.source().getUser());
-            source.setPassword(database.source().getPassword());
-            source.setCurrentSchema(schema);
-            Flyway.configure().dataSource(source).defaultSchema(schema).target("6").load().migrate();
-
-            try (var connection = source.getConnection(); var statement = connection.createStatement()) {
-                statement.execute(
-                    "INSERT INTO accounts (login, credential_verifier, gender) VALUES ('legacy', 'public-verifier', 1)"
-                );
-                statement.execute("INSERT INTO characters (account_id, name) VALUES (1, 'OldHero')");
-                statement.execute(
-                    "INSERT INTO inventories (character_id, kind) VALUES (1, 'BAG'), (1, 'EQUIPMENT'), (1, 'JEWEL_BOX')"
-                );
-                statement.execute(
-                    "INSERT INTO inventory_items (inventory_id, slot, item_id, parameter0, "
-                        + "parameter1, parameter2) VALUES (1, " + (scenario == 2 ? 80 : 79) + ", "
-                        + (scenario == 1 ? 4294967295L : 1039) + ", 303, 261, 65535)"
-                );
-            }
-
-            if (scenario == 0) {
-                new DatabaseMigrator().migrate(source);
-                new DatabaseMigrator().migrate(source);
-
-                try (var transaction = new JdbcInventoryRepository(source, 5).beginTransaction(new AccountId(1), 1)) {
-                    var item = transaction.state().inventories().getFirst().items().getFirst();
-
-                    assertEquals(1, item.id().value());
-                    assertEquals(79, item.slot());
-                    assertEquals(303, item.palette1Id());
-                    assertEquals(261, item.palette2Id());
-                    assertEquals(65535, item.palette3Id());
-                    transaction.commit();
-                }
-            } else {
-                assertThrows(RuntimeException.class, () -> new DatabaseMigrator().migrate(source));
-
-                try (var connection = source.getConnection(); var statement = connection.createStatement();
-                    var rows = statement.executeQuery(
-                        "SELECT parameter0, parameter1, parameter2 FROM inventory_items"
-                    )) {
-                    assertTrue(rows.next());
-                    assertEquals(303, rows.getInt(1));
-                    assertEquals(261, rows.getInt(2));
-                    assertEquals(65535, rows.getInt(3));
-                }
-            }
-        }
     }
 
     @Test

@@ -41,6 +41,20 @@ public final class CharacterTestDatabase implements AutoCloseable {
         source.setUser(postgres.getUsername());
         source.setPassword(postgres.getPassword());
         new DatabaseMigrator().migrate(source);
+        initializeTestChannels();
+    }
+
+    private void initializeTestChannels() {
+        try {
+            execute("TRUNCATE channels, channel_groups RESTART IDENTITY");
+            execute("INSERT INTO channel_groups (name) VALUES ('Solar')");
+            execute(
+                "INSERT INTO channels (id, group_id, name, sort_order) "
+                    + "VALUES (1, 1, 'Moon', 0), (2, 1, 'Terra', 1)"
+            );
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Test channel initialization failed", failure);
+        }
     }
 
     public PGSimpleDataSource source() {

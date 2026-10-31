@@ -38,14 +38,14 @@ class ChannelPersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesV5WithoutChangingExistingCharactersAndSeedsStableChannelIdsOnlyOnce() throws Exception {
+    void seedsCanonicalChannelsOnceWithoutChangingExistingCharacters() throws Exception {
         database.execute("CREATE SCHEMA channels_upgrade");
         var source = new PGSimpleDataSource();
         source.setURL(database.source().getURL());
         source.setUser(database.source().getUser());
         source.setPassword(database.source().getPassword());
         source.setCurrentSchema("channels_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("channels_upgrade").target("5").load().migrate();
+        Flyway.configure().dataSource(source).defaultSchema("channels_upgrade").load().migrate();
 
         try (var connection = source.getConnection(); var statement = connection.createStatement()) {
             statement.execute(
@@ -59,16 +59,17 @@ class ChannelPersistenceIntegrationTest {
         var groups = new JdbcChannelRepository(source, 5).load();
 
         assertEquals(1, groups.size());
-        assertEquals("Solar", groups.getFirst().name());
+        assertEquals("Astra", groups.getFirst().name());
         assertEquals(0, groups.getFirst().type());
-        assertEquals(List.of(1, 2), groups.getFirst().channels().stream().map(channel -> channel.id()).toList());
+        assertEquals(List.of(1, 2, 3, 4), groups.getFirst().channels().stream().map(channel -> channel.id()).toList());
         assertEquals(
-            List.of("Moon", "Terra"),
+            List.of("Sirius", "Vega", "Rigel", "Altair"),
             groups.getFirst().channels().stream().map(channel -> channel.name()).toList()
         );
+        assertEquals(List.of(0, 1, 4, 6), groups.getFirst().channels().stream().map(c -> c.kind()).toList());
         assertTrue(
             groups.getFirst().channels().stream().allMatch(
-                channel -> channel.enabled() && channel.capacity() == 100
+                channel -> channel.enabled() && channel.capacity() == 100 && channel.lootPickerScalar() == 100
                     && channel.minLevel() == 1 && channel.maxLevel() == 109
             )
         );
@@ -83,17 +84,18 @@ class ChannelPersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesExistingChannelsWithKindZeroAndReloadsIndependentCommittedSettings() throws Exception {
+    void reloadsIndependentCommittedChannelKindsWithoutResettingThemOnRepeatedMigration() throws Exception {
         database.execute("CREATE SCHEMA channel_kind_upgrade");
         var source = new PGSimpleDataSource();
         source.setURL(database.source().getURL());
         source.setUser(database.source().getUser());
         source.setPassword(database.source().getPassword());
         source.setCurrentSchema("channel_kind_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("channel_kind_upgrade").target("7").load().migrate();
+        Flyway.configure().dataSource(source).defaultSchema("channel_kind_upgrade").load().migrate();
 
         try (var connection = source.getConnection(); var statement = connection.createStatement()) {
             statement.execute("UPDATE channel_groups SET type = 4");
+            statement.execute("UPDATE channels SET kind = 0");
         }
 
         new DatabaseMigrator().migrate(source);
@@ -154,19 +156,23 @@ class ChannelPersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesV8WithScalarZeroAndLoadsIndependentCommittedChannelLootSettings() throws Exception {
+    void reloadsCommittedChannelLootSettingsAcrossTheEntireSupportedRange() throws Exception {
         database.execute("CREATE SCHEMA channel_loot_upgrade");
         var source = new PGSimpleDataSource();
         source.setURL(database.source().getURL());
         source.setUser(database.source().getUser());
         source.setPassword(database.source().getPassword());
         source.setCurrentSchema("channel_loot_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("channel_loot_upgrade").target("8").load().migrate();
+        Flyway.configure().dataSource(source).defaultSchema("channel_loot_upgrade").load().migrate();
         new DatabaseMigrator().migrate(source);
+        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("UPDATE channels SET loot_picker_scalar = 0");
+        }
+
         var original = new JdbcChannelRepository(source, 5).load();
         assertTrue(original.getFirst().channels().stream().allMatch(channel -> channel.lootPickerScalar() == 0));
 
-        for (int scalar : new int[]{0, 49, 50, 69, 70, 89}) {
+        for (int scalar : new int[]{0, 49, 50, 69, 70, 89, 90, 99, 100}) {
             try (var connection = source.getConnection(); var statement = connection.prepareStatement(
                 "UPDATE channels SET loot_picker_scalar = ? WHERE id = 2"
             )) {
@@ -181,44 +187,7 @@ class ChannelPersistenceIntegrationTest {
         }
 
         new DatabaseMigrator().migrate(source);
-        assertEquals(89, new JdbcChannelRepository(source, 5).load().getFirst().channels().get(1).lootPickerScalar());
-    }
-
-    @Test
-    void expandsV9WithoutChangingExistingChannelsAndReloadsNuclearSettings() throws Exception {
-        database.execute("CREATE SCHEMA channel_nuclear_upgrade");
-        var source = new PGSimpleDataSource();
-        source.setURL(database.source().getURL());
-        source.setUser(database.source().getUser());
-        source.setPassword(database.source().getPassword());
-        source.setCurrentSchema("channel_nuclear_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("channel_nuclear_upgrade").target("9").load().migrate();
-
-        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
-            statement.execute("UPDATE channels SET loot_picker_scalar = CASE WHEN id = 1 THEN 70 ELSE 89 END");
-            assertThrows(SQLException.class, () -> statement.execute("UPDATE channels SET loot_picker_scalar = 90"));
-        }
-
-        var before = new JdbcChannelRepository(source, 5).load();
-        new DatabaseMigrator().migrate(source);
-        assertEquals(before, new JdbcChannelRepository(source, 5).load());
-
-        for (int scalar : new int[]{90, 99, 100}) {
-            try (var connection = source.getConnection(); var statement = connection.prepareStatement(
-                "UPDATE channels SET loot_picker_scalar = ? WHERE id = 2"
-            )) {
-                statement.setInt(1, scalar);
-                assertEquals(1, statement.executeUpdate());
-            }
-
-            var reloaded = new JdbcChannelRepository(source, 5).load().getFirst().channels();
-            assertEquals(70, reloaded.getFirst().lootPickerScalar());
-            assertEquals(scalar, reloaded.get(1).lootPickerScalar());
-        }
-
-        new DatabaseMigrator().migrate(source);
         assertEquals(100, new JdbcChannelRepository(source, 5).load().getFirst().channels().get(1).lootPickerScalar());
-        assertEquals(89, before.getFirst().channels().get(1).lootPickerScalar());
     }
 
     @Test

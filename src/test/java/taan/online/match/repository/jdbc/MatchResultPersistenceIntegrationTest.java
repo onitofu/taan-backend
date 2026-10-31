@@ -13,21 +13,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.ds.PGSimpleDataSource;
 import taan.online.CharacterFixtures;
 import taan.online.CharacterTestDatabase;
-import taan.online.TestFixtures;
 import taan.online.TestLevels;
 import taan.online.account.model.AccountGender;
-import taan.online.account.model.CredentialVerifier;
-import taan.online.account.model.LoginName;
-import taan.online.account.repository.jdbc.JdbcAccountRepository;
-import taan.online.character.model.CharacterName;
 import taan.online.character.model.CharacterProgress;
 import taan.online.character.model.GameCharacter;
 import taan.online.character.repository.jdbc.JdbcCharacterRepository;
@@ -37,7 +30,6 @@ import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchParticipantStatistics;
 import taan.online.match.model.MatchResult;
 import taan.online.match.repository.MatchSettlement;
-import taan.online.persistence.DatabaseMigrator;
 
 class MatchResultPersistenceIntegrationTest {
     private static CharacterTestDatabase database;
@@ -57,50 +49,6 @@ class MatchResultPersistenceIntegrationTest {
     @BeforeEach
     void reset() throws SQLException {
         database.reset();
-    }
-
-    @Test
-    void upgradesLegacyLevelsAndNormalizesArchivedAndOverCapProgress() throws Exception {
-        database.execute("CREATE SCHEMA experience_upgrade");
-        var source = new PGSimpleDataSource();
-        source.setURL(database.source().getURL());
-        source.setUser(database.source().getUser());
-        source.setPassword(database.source().getPassword());
-        source.setCurrentSchema("experience_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("experience_upgrade").target("12").load().migrate();
-
-        try (var connection = source.getConnection(); var statement = connection.createStatement()) {
-            statement.execute("INSERT INTO accounts (login, credential_verifier, gender) "
-                + "VALUES ('legacy', 'public', 1)");
-            statement.execute("INSERT INTO characters (account_id, name, level, experience, force_medals) VALUES "
-                + "(1, 'LegacyOne', 42, 0, 5), (1, 'LegacyTwo', 200, 0, 0), "
-                + "(1, 'LegacyThree', 1, 6000, 0), (1, 'LegacyFour', 1, 4294967295, 0)");
-            statement.execute("UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE name = 'LegacyOne'");
-        }
-
-        new DatabaseMigrator().migrate(source);
-        new DatabaseMigrator().migrate(source);
-
-        try (var connection = source.getConnection(); var statement = connection.createStatement();
-            var rows = statement.executeQuery(
-                "SELECT level, experience, force_medals, deleted_at FROM characters ORDER BY id"
-            )) {
-            assertTrue(rows.next());
-            assertEquals(42, rows.getInt("level"));
-            assertEquals(TestLevels.table().threshold(42), rows.getLong("experience"));
-            assertEquals(5, rows.getLong("force_medals"));
-            assertTrue(rows.getObject("deleted_at") != null);
-            assertTrue(rows.next());
-            assertEquals(109, rows.getInt("level"));
-            assertEquals(1048576, rows.getLong("experience"));
-            assertTrue(rows.next());
-            assertEquals(4, rows.getInt("level"));
-            assertEquals(6000, rows.getLong("experience"));
-            assertTrue(rows.next());
-            assertEquals(109, rows.getInt("level"));
-            assertEquals(1048576, rows.getLong("experience"));
-            assertFalse(rows.next());
-        }
     }
 
     @Test
@@ -284,39 +232,6 @@ class MatchResultPersistenceIntegrationTest {
 
         assertEquals(2097152, database.scalar("SELECT sum(experience) FROM characters"));
         assertEquals(218, database.scalar("SELECT sum(level) FROM characters"));
-    }
-
-    @Test
-    void migratesLegacyMedalDefaultsAndPreservesTheExistingLevel() throws Exception {
-        database.execute("CREATE SCHEMA progress_upgrade");
-        var isolated = new PGSimpleDataSource();
-        isolated.setURL(database.source().getURL());
-        isolated.setUser(database.source().getUser());
-        isolated.setPassword(database.source().getPassword());
-        isolated.setCurrentSchema("progress_upgrade");
-        Flyway.configure().dataSource(isolated).defaultSchema("progress_upgrade").target("10").load().migrate();
-        var account = new JdbcAccountRepository(isolated, 5).tryCreate(
-            new LoginName("migration@example.test"),
-            new CredentialVerifier(TestFixtures.VERIFIER),
-            AccountGender.MALE
-        ).orElseThrow();
-        var characters = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(isolated, 5));
-
-        try (var transaction = characters.beginTransaction(account.id())) {
-            transaction.tryInsert(new CharacterName("LegacyHero"), CharacterFixtures.starter(AccountGender.MALE));
-            transaction.commit();
-        }
-
-        try (var connection = isolated.getConnection(); var statement = connection.createStatement()) {
-            statement.executeUpdate("UPDATE characters SET level = 42");
-        }
-
-        new DatabaseMigrator().migrate(isolated);
-        new DatabaseMigrator().migrate(isolated);
-        var reloaded = characters.findByAccount(account.id()).getFirst();
-
-        assertEquals(42, reloaded.level());
-        assertEquals(new CharacterProgress(TestLevels.table().threshold(42), 0, 0, 0), reloaded.progress());
     }
 
     @Test

@@ -1,0 +1,48 @@
+CREATE TABLE characters (
+    id BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 MAXVALUE 4294967295 NO CYCLE) PRIMARY KEY,
+    account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+    name VARCHAR(18) COLLATE "C" NOT NULL,
+    level INTEGER NOT NULL DEFAULT 1,
+    deleted_at TIMESTAMPTZ,
+    experience BIGINT NOT NULL DEFAULT 0 CHECK (experience BETWEEN 0 AND 1048576),
+    force_medals BIGINT NOT NULL DEFAULT 0 CHECK (force_medals BETWEEN 0 AND 4294967295),
+    kill_medals BIGINT NOT NULL DEFAULT 0 CHECK (kill_medals BETWEEN 0 AND 4294967295),
+    supply_medals BIGINT NOT NULL DEFAULT 0 CHECK (supply_medals BETWEEN 0 AND 4294967295),
+    gold BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT characters_gold_range CHECK (gold BETWEEN 0 AND 4294967295),
+    CONSTRAINT characters_id_range CHECK (id BETWEEN 1 AND 4294967295),
+    CONSTRAINT characters_name_format CHECK (
+        char_length(name) BETWEEN 4 AND 18
+        AND name COLLATE "C" ~ U&'^[0-9A-z\00C0-\017F\0180-\0236\1EA0-\1EF9]+$'
+    ),
+    CONSTRAINT characters_level_range CHECK (level BETWEEN 1 AND 109)
+);
+
+CREATE INDEX characters_account_id_idx ON characters(account_id);
+CREATE UNIQUE INDEX characters_active_name_idx ON characters (name) WHERE deleted_at IS NULL;
+
+CREATE TABLE inventories (
+    id BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 MAXVALUE 4294967295 NO CYCLE) PRIMARY KEY,
+    character_id BIGINT NOT NULL REFERENCES characters(id) ON DELETE RESTRICT,
+    kind TEXT NOT NULL CHECK (kind IN ('BAG', 'EQUIPMENT', 'JEWEL_BOX')),
+    UNIQUE (character_id, kind),
+    CHECK (id BETWEEN 1 AND 4294967295)
+);
+
+CREATE TABLE inventory_items (
+    id BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 NO CYCLE) PRIMARY KEY CHECK (id > 0),
+    inventory_id BIGINT NOT NULL REFERENCES inventories(id) ON DELETE RESTRICT,
+    slot SMALLINT NOT NULL CHECK (slot BETWEEN 0 AND 255),
+    item_id BIGINT NOT NULL CHECK (item_id BETWEEN 1 AND 4294967295),
+    quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 65535),
+    palette_1_id INTEGER NOT NULL CHECK (palette_1_id BETWEEN 0 AND 65535)
+        REFERENCES palettes(id) ON DELETE RESTRICT,
+    palette_2_id INTEGER NOT NULL CHECK (palette_2_id BETWEEN 0 AND 65535)
+        REFERENCES palettes(id) ON DELETE RESTRICT,
+    palette_3_id INTEGER NOT NULL CHECK (palette_3_id BETWEEN 0 AND 65535)
+        REFERENCES palettes(id) ON DELETE RESTRICT,
+    UNIQUE (inventory_id, slot) DEFERRABLE INITIALLY IMMEDIATE,
+    CONSTRAINT inventory_items_definition_fk FOREIGN KEY (item_id)
+        REFERENCES item_definitions(item_id) ON DELETE RESTRICT
+);

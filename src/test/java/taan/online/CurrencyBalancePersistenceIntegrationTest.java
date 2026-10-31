@@ -39,11 +39,11 @@ class CurrencyBalancePersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesExistingAccountsAndCharactersWithoutChangingTheirData() throws SQLException {
+    void preservesBalancesAndProgressAcrossRepeatedMigration() throws SQLException {
         database.execute("CREATE SCHEMA currency_upgrade");
         var source = freshSource();
         source.setCurrentSchema("currency_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("currency_upgrade").target("11").load().migrate();
+        Flyway.configure().dataSource(source).defaultSchema("currency_upgrade").load().migrate();
         seed(source);
         execute(
             source,
@@ -52,7 +52,7 @@ class CurrencyBalancePersistenceIntegrationTest {
         );
         execute(source, "UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE id = 2");
 
-        var migration = Flyway.configure().dataSource(source).defaultSchema("currency_upgrade").target("12").load();
+        var migration = Flyway.configure().dataSource(source).defaultSchema("currency_upgrade").load();
         migration.migrate();
 
         assertEquals(2, scalar(source, "SELECT count(*) FROM accounts WHERE cash = 0"));
