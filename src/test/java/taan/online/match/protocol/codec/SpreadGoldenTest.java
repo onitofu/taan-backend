@@ -2,11 +2,7 @@ package taan.online.match.protocol.codec;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchRepeatTestPackets;
@@ -35,11 +31,7 @@ class SpreadGoldenTest {
             assertEquals(List.of(0, 1, 2), fires.stream().map(fire -> fire.weapon().sequence()).toList());
             assertEquals(List.of(700, 700, 700), fires.stream().map(fire -> fire.header().tick()).toList());
             assertArrayEquals(root, new ScenarioCodec().encode(scene));
-            assertHash(root);
         }
-
-        assertHash(use);
-        assertHash(spend);
     }
 
     @Test
@@ -54,11 +46,4 @@ class SpreadGoldenTest {
         assertArrayEquals(root, new ScenarioCodec().encode(scene));
     }
 
-    private void assertHash(byte[] root) throws Exception {
-        try (var input = getClass().getResourceAsStream("/match/spread/provenance.json")) {
-            var provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            var hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root));
-            assertTrue(provenance.contains(hash));
-        }
-    }
 }

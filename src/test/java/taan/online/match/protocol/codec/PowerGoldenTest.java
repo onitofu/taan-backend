@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
@@ -18,12 +17,6 @@ import taan.online.match.protocol.packet.ScenarioFireCommand;
 class PowerGoldenTest {
     @Test
     void readsCapturedUsesEmptySpendsAndTheUnchangedNativePowerScenario() throws Exception {
-        String provenance;
-
-        try (var input = getClass().getResourceAsStream("/match/power/provenance.json")) {
-            provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
         for (int slot : new int[]{0, 2}) {
             byte[] root = MatchPowerTestPackets.use(slot);
             var use = new UseItemCodec().decode(root);
@@ -32,7 +25,6 @@ class PowerGoldenTest {
             assertEquals(0, use.inventoryIndex());
             assertEquals(slot == 0 ? 1 : 2, use.team());
             assertArrayEquals(root, new UseItemCodec().encode(use));
-            assertTrue(provenance.contains(hash(root)));
 
             byte[] spent = MatchPowerTestPackets.spend(slot);
             var spend = new SpendItemCodec().decode(spent);
@@ -40,7 +32,6 @@ class PowerGoldenTest {
             assertTrue(spend.items().isEmpty());
             assertEquals(255, spend.teamClear12());
             assertArrayEquals(spent, new SpendItemCodec().encode(spend));
-            assertTrue(provenance.contains(hash(spent)));
         }
 
         byte[] root = MatchPowerTestPackets.root("00220-s2c-PcGamePlay_Scenario.hex");
@@ -52,7 +43,6 @@ class PowerGoldenTest {
             .map(ScenarioFireCommand.class::cast).findFirst().orElseThrow();
         assertEquals(1, fire.attackKind());
         assertEquals(1, fire.weapon().variant());
-        assertTrue(provenance.contains(hash(root)));
         assertArrayEquals(root, new ScenarioCodec().encode(scenario));
     }
 
@@ -69,11 +59,6 @@ class PowerGoldenTest {
                 mask.mask().cells()
             ).equals(hash(definitions.missiles().get(new WeaponMissileKey(0, 0)).mask().cells()))
         );
-
-        try (var input = getClass().getResourceAsStream("/match/power-provenance.json")) {
-            var provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            assertTrue(provenance.contains(hash(mask.mask().cells())));
-        }
     }
 
     private String hash(byte[] value) throws Exception {

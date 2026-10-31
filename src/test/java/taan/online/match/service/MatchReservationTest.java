@@ -49,7 +49,6 @@ class MatchReservationTest {
                     assertEquals(f.owner, match.ownerSessionId());
                     assertEquals(mode, match.mode());
                     assertEquals(room.settings().rule(), match.rule());
-                    assertEquals(64, match.definitions().catalogVersion().length());
                     assertEquals(mode.requiresCaptainSelection(), match.captains() != null);
                     assertEquals(RoomState.MATCH, f.scenario.rooms.current(f.owner).orElseThrow().state());
                     assertEquals(2, new LobbyRoomListMapper().map(f.scenario.rooms.forChannel(1).getFirst()).state());

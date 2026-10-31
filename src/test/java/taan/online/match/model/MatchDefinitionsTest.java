@@ -17,25 +17,23 @@ class MatchDefinitionsTest {
     @Test
     void rejectsInvalidSpawnValuesAndSeparatesRawFromSettledCoordinates() {
         int[][] invalid = {
-            {-1, 0, 0, 0, 0, 0, 0},
-            {0, -1, 0, 0, 0, 0, 0},
-            {0, 0, -1, 0, 0, 0, 0},
-            {0, 0, 0, -1, 0, 0, 0},
-            {0, 0, 0, 0, -1, 0, 0},
-            {0, 0, 0, 0, 0, -1, 0},
-            {0, 0, 0, 0, 0, 3, 0},
-            {0, 0, 0, 0, 0, 0, -1},
-            {0, 0, 0, 0, 0, 0, 256}
+            {-1, 0, 0, 0, 0, 0},
+            {0, -1, 0, 0, 0, 0},
+            {0, 0, -1, 0, 0, 0},
+            {0, 0, 0, -1, 0, 0},
+            {0, 0, 0, 0, -1, 0},
+            {0, 0, 0, 0, 0, -1},
+            {0, 0, 0, 0, 0, 3}
         };
 
         for (int[] row : invalid) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MapSpawnDefinition(row[0], row[1], row[2], row[3], row[4], row[5], row[6], true)
+                () -> new MapSpawnDefinition(row[0], row[1], row[2], row[3], row[4], row[5], true)
             );
         }
 
-        var spawn = new MapSpawnDefinition(13, 747, 684, 747, 682, 2, 255, false);
+        var spawn = new MapSpawnDefinition(13, 747, 684, 747, 682, 2, false);
 
         assertEquals(684, spawn.rawY());
         assertEquals(682, spawn.settledY());
@@ -56,7 +54,6 @@ class MatchDefinitionsTest {
                 IllegalArgumentException.class,
                 () -> new MatchMapDefinition(
                     values[0],
-                    "jungle",
                     values[1],
                     values[2],
                     spawns,
@@ -68,13 +65,8 @@ class MatchDefinitionsTest {
 
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchMapDefinition(1, " ", 1300, 950, spawns, Set.of(0, 1, 6), MatchFixtures.terrainLayers())
-        );
-        assertThrows(
-            IllegalArgumentException.class,
             () -> new MatchMapDefinition(
                 1,
-                "jungle",
                 1300,
                 950,
                 List.of(),
@@ -86,7 +78,6 @@ class MatchDefinitionsTest {
             IllegalArgumentException.class,
             () -> new MatchMapDefinition(
                 1,
-                "jungle",
                 1300,
                 950,
                 List.of(spawns.getFirst(), spawns.getFirst()),
@@ -96,16 +87,15 @@ class MatchDefinitionsTest {
         );
 
         for (var spawn : List.of(
-            new MapSpawnDefinition(0, 1300, 0, 0, 0, 0, 0, true),
-            new MapSpawnDefinition(0, 0, 950, 0, 0, 0, 0, true),
-            new MapSpawnDefinition(0, 0, 0, 1300, 0, 0, 0, true),
-            new MapSpawnDefinition(0, 0, 0, 0, 950, 0, 0, true)
+            new MapSpawnDefinition(0, 1300, 0, 0, 0, 0, true),
+            new MapSpawnDefinition(0, 0, 950, 0, 0, 0, true),
+            new MapSpawnDefinition(0, 0, 0, 1300, 0, 0, true),
+            new MapSpawnDefinition(0, 0, 0, 0, 950, 0, true)
         )) {
             assertThrows(
                 IllegalArgumentException.class,
                 () -> new MatchMapDefinition(
                     1,
-                    "jungle",
                     1300,
                     950,
                     List.of(spawn),
@@ -128,21 +118,19 @@ class MatchDefinitionsTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new WeaponDefinition(values[0], "cannon", values[1], values[2], values[3], 10)
+                () -> new WeaponDefinition(values[0], values[1], values[2], values[3], 10)
             );
         }
 
-        assertThrows(IllegalArgumentException.class, () -> new WeaponDefinition(0, "", 1000, 100, 2500, 10));
-        assertEquals(65535, new WeaponDefinition(11, "budu", 1000, 65535, 4500, 10).maxEnergy());
+        assertEquals(65535, new WeaponDefinition(11, 1000, 65535, 4500, 10).maxEnergy());
     }
 
     @Test
-    void validatesVersionsAndOrderingWithoutAssumingOneMapOrSpawnCount() {
+    void validatesWeaponCompletenessAndOrderingWithoutAssumingOneMapOrSpawnCount() {
         var spawns = new ArrayList<>(spawns());
         var weapons = new HashMap<>(weapons());
         var map = new MatchMapDefinition(
             1,
-            "jungle",
             1300,
             950,
             spawns,
@@ -150,24 +138,17 @@ class MatchDefinitionsTest {
             MatchFixtures.terrainLayers()
         );
         var definitions = new MatchDefinitions(
-            "a".repeat(64),
             map,
             weapons,
             MatchFixtures.attacks(),
             MatchFixtures.missileTerrain()
         );
 
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new MatchDefinitions("bad", map, weapons, MatchFixtures.attacks(), MatchFixtures.missileTerrain())
-        );
         assertEquals(
             2,
             new MatchDefinitions(
-                "a".repeat(64),
                 new MatchMapDefinition(
                     2,
-                    "other",
                     1300,
                     950,
                     spawns.subList(0, 13),
@@ -182,7 +163,6 @@ class MatchDefinitionsTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
-                "a".repeat(64),
                 map,
                 Map.of(),
                 MatchFixtures.attacks(),
@@ -197,10 +177,8 @@ class MatchDefinitionsTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
-                "a".repeat(64),
                 new MatchMapDefinition(
                     1,
-                    "jungle",
                     1300,
                     950,
                     reordered,
@@ -220,7 +198,6 @@ class MatchDefinitionsTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
-                "a".repeat(64),
                 map,
                 swapped,
                 MatchFixtures.attacks(),
@@ -231,21 +208,21 @@ class MatchDefinitionsTest {
         weapons.clear();
 
         assertEquals(14, definitions.map().spawns().size());
-        assertEquals(13, definitions.weapons().size());
+        assertEquals(8, definitions.weapons().size());
         assertThrows(UnsupportedOperationException.class, () -> definitions.map().spawns().clear());
         assertThrows(UnsupportedOperationException.class, () -> definitions.weapons().clear());
     }
 
     private List<MapSpawnDefinition> spawns() {
         return IntStream.range(0, 14)
-            .mapToObj(index -> new MapSpawnDefinition(index, 97, 686, 97, 685, 1, 0, true)).toList();
+            .mapToObj(index -> new MapSpawnDefinition(index, 97, 686, 97, 685, 1, true)).toList();
     }
 
     private Map<Integer, WeaponDefinition> weapons() {
-        return IntStream.concat(IntStream.range(0, 12), IntStream.of(100)).boxed()
+        return IntStream.of(0, 1, 2, 3, 6, 8, 10, 100).boxed()
             .collect(Collectors.toMap(
                 index -> index,
-                index -> new WeaponDefinition(index, "weapon", 1000, 100, 2500, 10)
+                index -> new WeaponDefinition(index, 1000, 100, 2500, 10)
             ));
     }
 }

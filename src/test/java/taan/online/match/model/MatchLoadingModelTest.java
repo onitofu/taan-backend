@@ -108,12 +108,10 @@ class MatchLoadingModelTest {
             var source = f.scenario.matches.current(f.scenario.rooms.reserveMatch(f.owner).token()).orElseThrow();
             var map = source.definitions().map();
             var spawns = new ArrayList<>(map.spawns());
-            spawns.set(8, new MapSpawnDefinition(8, 500, 500, 500, 500, 1, 0, false));
+            spawns.set(8, new MapSpawnDefinition(8, 500, 500, 500, 500, 1, false));
             var definitions = new MatchDefinitions(
-                source.definitions().catalogVersion(),
                 new MatchMapDefinition(
                     map.mapId(),
-                    map.asset(),
                     map.width(),
                     map.height(),
                     spawns,

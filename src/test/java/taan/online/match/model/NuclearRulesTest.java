@@ -31,7 +31,7 @@ class NuclearRulesTest {
     @Test
     void loadsSparseDefinitionsAndOriginalDestructionMasksWithoutChangingBaseWeapons() {
         var definitions = MatchFixtures.definitions();
-        assertEquals(13, definitions.weapons().size());
+        assertEquals(8, definitions.weapons().size());
         assertEquals(5000, definitions.weapons().get(100).resourceMove());
         assertEquals(4000, definitions.weapons().get(3).resourceMove());
         assertEquals(6000, definitions.weapons().get(10).resourceMove());
@@ -49,7 +49,6 @@ class NuclearRulesTest {
         var attacks = new HashMap<>(definitions.attacks());
         attacks.put(new WeaponAttackKey(100, 2), attacks.remove(new WeaponAttackKey(100, 1)));
         assertThrows(IllegalArgumentException.class, () -> new MatchDefinitions(
-            definitions.catalogVersion(),
             definitions.map(),
             definitions.weapons(),
             attacks,

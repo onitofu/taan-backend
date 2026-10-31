@@ -1,9 +1,0 @@
-{
-  "fixtures": [
-    {
-      "PcUpdateMoney-gold-100000.synthetic.frame.hex": "f34366af44be92bb2e60c7df6d33ff962b396d9aa1e97cb1cd8376614c0050d5",
-      "original_file": "PcUpdateMoney-gold-100000.synthetic.frame.bin",
-      "origin": "SYNTHETIC"
-    }
-  ]
-}

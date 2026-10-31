@@ -2,12 +2,8 @@ package taan.online.match.protocol.codec;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -17,14 +13,9 @@ import taan.online.match.protocol.packet.ScenarioUseBonusCommand;
 
 class ScenarioGoldenLayoutsTest {
     @Test
-    void coversEveryLayoutWithIndependentNativeOrExplicitSyntheticResearchBytes() throws Exception {
+    void coversEveryLayoutWithIndependentNativeOrExplicitSyntheticBytes() throws Exception {
         var codec = new ScenarioCodec();
         var types = new HashSet<String>();
-        String provenance;
-
-        try (var input = getClass().getResourceAsStream("/match/scenario-provenance.json")) {
-            provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
 
         for (String name : List.of(
             "native-cannon-0-0",
@@ -39,9 +30,7 @@ class ScenarioGoldenLayoutsTest {
             byte[] root = MatchFixtures.root(name);
             var packet = codec.decode(root);
             packet.scenario().commands().forEach(command -> types.add(command.getClass().getSimpleName()));
-            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root));
 
-            assertTrue(provenance.contains(hash));
             assertArrayEquals(root, codec.encode(packet));
         }
 

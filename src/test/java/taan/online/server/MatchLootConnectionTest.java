@@ -10,9 +10,6 @@ import io.netty.buffer.Unpooled;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -180,13 +177,7 @@ class MatchLootConnectionTest {
     }
 
     @Test
-    void distinguishesIncomingPacketsFromServerOnlyRepliesAndKeepsFixtureHashes() throws Exception {
-        String provenance;
-
-        try (var input = getClass().getResourceAsStream("/match/loot-wire-provenance.json")) {
-            provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
+    void distinguishesIncomingPacketsFromServerOnlyReplies() throws Exception {
         for (String name : List.of(
             "EatItemBox-plain.synthetic",
             "EatItemBox-with-gauge.synthetic",
@@ -199,8 +190,7 @@ class MatchLootConnectionTest {
             int type = ByteBuffer.wrap(root).order(ByteOrder.LITTLE_ENDIAN).getInt();
             assertTrue(MatchRequestDispatcher.accepts(type));
             assertEquals(ProtocolEvent.MATCH_REQUEST, RequestEvents.forType(type));
-            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root));
-            assertTrue(provenance.contains(hash));
+
         }
 
         assertFalse(MatchRequestDispatcher.accepts(0x70580923));

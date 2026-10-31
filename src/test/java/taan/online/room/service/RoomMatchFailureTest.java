@@ -41,7 +41,6 @@ class RoomMatchFailureTest {
         var original = definitions.map();
         var map = new MatchMapDefinition(
             1,
-            original.asset(),
             original.width(),
             original.height(),
             original.spawns().stream().map(
@@ -52,7 +51,6 @@ class RoomMatchFailureTest {
                     value.settledX(),
                     value.settledY(),
                     value.side(),
-                    value.flag(),
                     false
                 )
             ).toList(),
@@ -61,7 +59,6 @@ class RoomMatchFailureTest {
         );
         var runtime = MatchFixtures.registry(
             new MatchDefinitions(
-                definitions.catalogVersion(),
                 map,
                 definitions.weapons(),
                 MatchFixtures.attacks(),

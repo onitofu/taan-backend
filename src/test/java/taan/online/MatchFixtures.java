@@ -101,7 +101,6 @@ public final class MatchFixtures {
     ) {
         return registry(
             new MatchDefinitionCatalog(
-                definitions.catalogVersion(),
                 Map.of(definitions.map().mapId(), definitions.map()),
                 definitions.weapons(),
                 definitions.attacks(),
@@ -287,7 +286,6 @@ public final class MatchFixtures {
 
     private static MatchDefinitionCatalog loadCatalog() {
         return new MatchDefinitionLoader().load(
-            MatchFixtures.class.getResourceAsStream("/match/catalog.properties"),
             MatchFixtures.class.getResourceAsStream("/match/maps.csv"),
             MatchFixtures.class.getResourceAsStream("/match/map-spawns.csv"),
             MatchFixtures.class.getResourceAsStream("/match/weapons.csv"),

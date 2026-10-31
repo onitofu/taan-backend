@@ -167,7 +167,6 @@ public final class RoomScenario implements AutoCloseable {
         ));
         var baseline = MatchFixtures.definitions();
         var catalog = kind == null ? new MatchDefinitionCatalog(
-            baseline.catalogVersion(),
             Map.of(1, baseline.map()),
             baseline.weapons(),
             MatchFixtures.attacks(),
