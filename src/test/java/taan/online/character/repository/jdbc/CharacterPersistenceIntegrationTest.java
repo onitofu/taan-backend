@@ -50,7 +50,7 @@ class CharacterPersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesV1WithoutChangingAccountsAndReloadsCommittedAppearanceAfterMigration() throws Exception {
+    void completesTheBaselineWithoutChangingAccountsAndReloadsCommittedAppearance() throws Exception {
         database.execute("CREATE SCHEMA character_upgrade");
         var isolated = new PGSimpleDataSource();
         isolated.setURL(database.source().getURL());

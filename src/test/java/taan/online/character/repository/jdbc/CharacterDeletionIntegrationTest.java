@@ -12,12 +12,10 @@ import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.ds.PGSimpleDataSource;
 import taan.online.CharacterFixtures;
 import taan.online.CharacterTestDatabase;
 import taan.online.account.model.AccountGender;
@@ -28,8 +26,6 @@ import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.model.CreateCharacterOutcome;
 import taan.online.character.service.model.DeleteCharacterOutcome;
 import taan.online.character.service.model.DeleteCharacterResult;
-import taan.online.inventory.repository.jdbc.JdbcInventoryRepository;
-import taan.online.persistence.DatabaseMigrator;
 
 class CharacterDeletionIntegrationTest {
     private static CharacterTestDatabase database;
@@ -212,49 +208,6 @@ class CharacterDeletionIntegrationTest {
 
         assertEquals(2, database.scalar("SELECT count(*) FROM characters WHERE name = 'Luma'"));
         assertEquals(1, database.scalar("SELECT count(*) FROM characters WHERE deleted_at IS NULL"));
-    }
-
-    @Test
-    void upgradesExistingV2CharactersWithoutChangingTheirIdentityOrAppearance() throws Exception {
-        database.execute("CREATE SCHEMA archive_upgrade");
-        var isolated = new PGSimpleDataSource();
-        isolated.setURL(database.source().getURL());
-        isolated.setUser(database.source().getUser());
-        isolated.setPassword(database.source().getPassword());
-        isolated.setCurrentSchema("archive_upgrade");
-        Flyway.configure().dataSource(isolated).defaultSchema("archive_upgrade").target("2").load().migrate();
-
-        var owner = database.account("migration@example.test", AccountGender.FEMALE);
-
-        try (var connection = isolated.getConnection(); var statement = connection.createStatement()) {
-            statement.execute(
-                "INSERT INTO accounts (login, credential_verifier, gender) "
-                        + "SELECT login, credential_verifier, gender FROM public.accounts"
-            );
-            statement.execute("INSERT INTO characters (account_id, name) VALUES (" + owner.id().value() + ", 'Luma')");
-            statement.execute(
-                "INSERT INTO character_appearance_parts "
-                        + "SELECT 1, slot, 0, 0, 0, 0 FROM generate_series(0, 15) slot"
-            );
-        }
-
-        new DatabaseMigrator().migrate(isolated);
-        new DatabaseMigrator().migrate(isolated);
-        var repository = new JdbcCharacterRepository(isolated, 5, new JdbcInventoryRepository(isolated, 5));
-        var loaded = repository.findByAccount(owner.id());
-
-        assertEquals(1, loaded.size());
-        assertEquals(1, loaded.getFirst().id().value());
-        assertEquals("Luma", loaded.getFirst().name().value());
-        assertEquals(16, loaded.getFirst().appearance().parts().size());
-        assertTrue(repository.existsByName(new CharacterName("Luma")));
-
-        try (var transaction = repository.beginTransaction(owner.id())) {
-            assertTrue(transaction.archive(loaded.getFirst().id()));
-            transaction.commit();
-        }
-
-        assertTrue(repository.findByAccount(owner.id()).isEmpty());
     }
 
     private DeleteCharacterResult delete(AccountId owner, long id) {

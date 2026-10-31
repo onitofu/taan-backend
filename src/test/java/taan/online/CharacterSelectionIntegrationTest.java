@@ -10,12 +10,10 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.ds.PGSimpleDataSource;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
 import taan.online.character.protocol.codec.UpdateMoneyCodec;
@@ -23,7 +21,6 @@ import taan.online.character.protocol.packet.PrSelectCharacter;
 import taan.online.character.repository.jdbc.CharacterPersistenceException;
 import taan.online.character.service.DeleteCharacterAction;
 import taan.online.character.service.model.DeleteCharacterOutcome;
-import taan.online.persistence.DatabaseMigrator;
 import taan.online.protocol.BinaryReader;
 import taan.online.session.protocol.codec.UpdateCashCodec;
 
@@ -290,58 +287,4 @@ class CharacterSelectionIntegrationTest {
         }
     }
 
-    @Test
-    void backfillsBothActiveAndArchivedV3CharactersExactlyOnceAndRollsBackInvalidMigration() throws Exception {
-        for (boolean complete : new boolean[]{true, false}) {
-            String schema = complete ? "inventory_upgrade" : "inventory_invalid";
-            database.execute("CREATE SCHEMA " + schema);
-            var source = new PGSimpleDataSource();
-            source.setURL(database.source().getURL());
-            source.setUser(database.source().getUser());
-            source.setPassword(database.source().getPassword());
-            source.setCurrentSchema(schema);
-            Flyway.configure().dataSource(source).defaultSchema(schema).target("3").load().migrate();
-
-            try (var connection = source.getConnection(); var statement = connection.createStatement()) {
-                statement.execute(
-                    "INSERT INTO accounts (login, credential_verifier, gender) VALUES ('upgrade', 'public-verifier', 1)"
-                );
-                statement.execute("INSERT INTO characters (account_id, name) VALUES (1, 'MaleHero'), (1, 'OldHero')");
-                statement.execute("UPDATE characters SET deleted_at = CURRENT_TIMESTAMP WHERE name = 'OldHero'");
-                statement.execute(
-                    "INSERT INTO character_appearance_parts "
-                        + "SELECT c.id, slot, CASE WHEN slot IN (1, 3, 5, 8) THEN CASE slot "
-                        + "WHEN 1 THEN 729 WHEN 3 THEN 823 WHEN 5 THEN 725 ELSE 736 END ELSE 0 END, "
-                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 1 ELSE 0 END, "
-                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 2 ELSE 0 END, "
-                        + "CASE WHEN slot IN (1, 3, 5, 8) THEN 3 ELSE 0 END "
-                        + "FROM characters c CROSS JOIN generate_series(0, " + (complete ? 15 : 14) + ") slot"
-                );
-            }
-
-            if (complete) {
-                new DatabaseMigrator().migrate(source);
-                new DatabaseMigrator().migrate(source);
-
-                try (var connection = source.getConnection(); var statement = connection.createStatement();
-                    var rows = statement.executeQuery(
-                        "SELECT count(*), count(DISTINCT inventory_id) FROM inventory_items"
-                    )) {
-                    rows.next();
-
-                    assertEquals(8, rows.getInt(1));
-                    assertEquals(2, rows.getInt(2));
-                }
-            } else {
-                assertThrows(RuntimeException.class, () -> new DatabaseMigrator().migrate(source));
-
-                try (var connection = source.getConnection(); var statement = connection.createStatement();
-                    var rows = statement.executeQuery("SELECT to_regclass('inventory_invalid.inventories')")) {
-                    rows.next();
-
-                    assertTrue(rows.getObject(1) == null);
-                }
-            }
-        }
-    }
 }

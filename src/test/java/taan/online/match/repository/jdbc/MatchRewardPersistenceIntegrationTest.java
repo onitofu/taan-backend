@@ -154,7 +154,7 @@ class MatchRewardPersistenceIntegrationTest {
     }
 
     @Test
-    void upgradesHistoricalResultsWithoutInventingCardsGoldOrAccuracyOrReplayingRewards() throws Exception {
+    void reloadsLegacyResultsWithoutInventingCardsGoldOrAccuracyOrReplayingRewards() throws Exception {
         var first = character("AlphaHero");
         var second = character("BravoHero");
         var historical = MatchResultFixtures.result(first.id().value(), second.id().value());
@@ -165,7 +165,7 @@ class MatchRewardPersistenceIntegrationTest {
         source.setUser(database.source().getUser());
         source.setPassword(database.source().getPassword());
         source.setCurrentSchema("reward_upgrade");
-        Flyway.configure().dataSource(source).defaultSchema("reward_upgrade").target("13").load().migrate();
+        Flyway.configure().dataSource(source).defaultSchema("reward_upgrade").load().migrate();
 
         database.execute("""
             INSERT INTO reward_upgrade.accounts (id, login, credential_verifier, gender, created_at, cash)
