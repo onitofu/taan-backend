@@ -4,25 +4,21 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import taan.online.character.model.CharacterLevelTable;
 import taan.online.character.model.CharacterProgress;
-import taan.online.match.model.MatchExperienceRules;
+import taan.online.match.model.MatchMedalLimitException;
 import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchResult;
-import taan.online.match.model.MatchRewardRules;
+import taan.online.match.model.MatchRewardCalculation;
+import taan.online.match.model.MatchRewardPolicy;
 
 final class MatchRewardPersistence {
-    private final MatchExperienceRules rules;
     private final int timeout;
-    private final MatchRewardRules rewardRules;
 
-    MatchRewardPersistence(CharacterLevelTable levels, int timeout) {
-        this.rules = new MatchExperienceRules(levels);
-        rewardRules = new MatchRewardRules(levels);
+    MatchRewardPersistence(int timeout) {
         this.timeout = timeout;
     }
 
-    MatchResult settle(Connection connection, MatchResult result) throws SQLException {
+    MatchResult settle(Connection connection, MatchResult result, MatchRewardPolicy policy) throws SQLException {
         var rewards = new ArrayList<MatchParticipantResult>();
         var ordered = result.participants().stream()
             .sorted(Comparator.comparingLong(p -> p.characterId().value())).toList();
@@ -30,7 +26,7 @@ final class MatchRewardPersistence {
         for (var participant : ordered) {
             CharacterProgress before;
             long goldBefore;
-            boolean full = result.policyVersion().equals("pvp-rewards-1.1.0");
+            int levelBefore;
 
             try (var statement = connection.prepareStatement(
                 "SELECT experience, gold, level, force_medals, kill_medals, supply_medals "
@@ -45,6 +41,7 @@ final class MatchRewardPersistence {
                     }
 
                     goldBefore = rows.getLong("gold");
+                    levelBefore = rows.getInt("level");
                     before = new CharacterProgress(
                         rows.getLong("experience"),
                         rows.getLong("force_medals"),
@@ -54,21 +51,26 @@ final class MatchRewardPersistence {
                 }
             }
 
-            var settled = full ? rewardRules.calculate(result, participant, before, goldBefore)
-                : participant.rewarded(rules.calculate(result, participant, before));
-            var reward = settled.experienceReward();
-            var after = reward.after();
+            MatchRewardCalculation calculation;
+
+            try {
+                calculation = policy.calculate(result, participant, before, levelBefore, goldBefore);
+            } catch (MatchMedalLimitException failure) {
+                throw new SQLException("Character medal counter cannot be incremented", "22003", failure);
+            }
+
+            var after = calculation.progress();
 
             try (var statement = connection.prepareStatement(
                 "UPDATE characters SET experience = ?, level = ?, force_medals = ?, kill_medals = ?, "
                     + "gold = ? WHERE id = ?"
             )) {
                 statement.setQueryTimeout(timeout);
-                statement.setLong(1, after.progress().experience());
-                statement.setInt(2, after.level());
-                statement.setLong(3, after.progress().forceMedals());
-                statement.setLong(4, after.progress().killMedals());
-                statement.setLong(5, full ? settled.goldReward().after() : goldBefore);
+                statement.setLong(1, after.experience());
+                statement.setInt(2, calculation.level());
+                statement.setLong(3, after.forceMedals());
+                statement.setLong(4, after.killMedals());
+                statement.setLong(5, calculation.gold());
                 statement.setLong(6, participant.characterId().value());
 
                 if (statement.executeUpdate() != 1) {
@@ -76,7 +78,7 @@ final class MatchRewardPersistence {
                 }
             }
 
-            rewards.add(settled);
+            rewards.add(calculation.participant());
         }
 
         rewards.sort(Comparator.comparingInt(MatchParticipantResult::slotIndex));

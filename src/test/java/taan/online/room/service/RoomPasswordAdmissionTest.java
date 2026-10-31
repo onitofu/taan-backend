@@ -269,7 +269,7 @@ class RoomPasswordAdmissionTest {
     }
 
     private static CreateRoomCommand command(String title, String password) {
-        return new CreateRoomCommand(5, 0, title, 0, 0, 2, 0, 8, password, 0);
+        return RoomScenario.command(5, 0, title, 0, 0, 2, 0, 8, password, 0);
     }
 
     private void assertNoSecret(byte[] root, String password) {

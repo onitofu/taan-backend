@@ -19,12 +19,12 @@ class JdbcMatchResultRepositoryTest {
     void commitsTheWholeResultAndLocksMedalRecipientsInIdentityOrder() {
         var result = MatchResultFixtures.result(9, 2);
         var database = new MatchJdbcStub(result);
-        var stored = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result);
+        var stored = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result);
 
         assertTrue(stored.created());
         assertEquals(result, stored.result());
-        assertEquals(List.of(2L, 9L), database.recipients);
-        assertTrue(database.calls.indexOf("connection.commit") > database.calls.indexOf("medals.executeUpdate"));
+        assertEquals(List.of(2L, 9L), database.lockedCharacters);
+        assertTrue(database.calls.indexOf("connection.commit") > database.calls.indexOf("progress.executeUpdate"));
         assertEquals("connection.close", database.calls.getLast());
         assertFalse(database.calls.contains("connection.rollback"));
     }
@@ -46,11 +46,11 @@ class JdbcMatchResultRepositoryTest {
             );
             var database = new MatchJdbcStub(stored);
             database.created = false;
-            var replayed = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(original);
+            var replayed = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(original);
 
             assertFalse(replayed.created());
             assertEquals(stored, replayed.result());
-            assertTrue(database.recipients.isEmpty());
+            assertTrue(database.lockedCharacters.isEmpty());
             assertFalse(database.calls.contains("participants.executeBatch"));
         }
     }
@@ -67,11 +67,11 @@ class JdbcMatchResultRepositoryTest {
             List.of()
         );
         var database = new MatchJdbcStub(cancelled);
-        var stored = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(cancelled);
+        var stored = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(cancelled);
 
         assertTrue(stored.created());
         assertEquals(cancelled, stored.result());
-        assertTrue(database.recipients.isEmpty());
+        assertTrue(database.lockedCharacters.isEmpty());
         assertTrue(database.calls.contains("result.setNull"));
     }
 
@@ -83,7 +83,7 @@ class JdbcMatchResultRepositoryTest {
             var database = new MatchJdbcStub(result);
             database.fail("source.getConnection", new SQLException("private-connection-value", state));
 
-            assertTrue(new JdbcMatchResultRepository(
+            assertTrue(new RewardTestRepository(
                 database.source(),
                 5,
                 TestLevels.table()
@@ -96,7 +96,7 @@ class JdbcMatchResultRepositoryTest {
         failedDatabase.fail("source.getConnection", new SQLException("second-private-value", "08006"));
         var failed = assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(failedDatabase.source(), 5, TestLevels.table()).settle(result)
+            () -> new RewardTestRepository(failedDatabase.source(), 5, TestLevels.table()).settle(result)
         );
 
         assertEquals(1, failed.getCause().getSuppressed().length);
@@ -108,7 +108,7 @@ class JdbcMatchResultRepositoryTest {
 
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(noState.source(), 5, TestLevels.table()).settle(result)
+            () -> new RewardTestRepository(noState.source(), 5, TestLevels.table()).settle(result)
         );
         assertEquals(1, database.calls.stream().filter("source.getConnection"::equals).count());
     }
@@ -123,7 +123,7 @@ class JdbcMatchResultRepositoryTest {
             database.fail("connection.rollback", new SQLException("private-rollback-value", "XX000"));
             var failed = assertThrows(
                 MatchPersistenceException.class,
-                () -> new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result)
+                () -> new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result)
             );
 
             assertTrue(database.calls.contains("connection.rollback"));
@@ -136,7 +136,7 @@ class JdbcMatchResultRepositoryTest {
 
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(overflow.source(), 5, TestLevels.table()).settle(result)
+            () -> new RewardTestRepository(overflow.source(), 5, TestLevels.table()).settle(result)
         );
         assertTrue(overflow.calls.contains("connection.rollback"));
     }
@@ -154,10 +154,10 @@ class JdbcMatchResultRepositoryTest {
 
             assertThrows(
                 RuntimeException.class,
-                () -> new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(result)
+                () -> new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(result)
             );
             assertTrue(database.calls.contains("connection.rollback"));
-            assertTrue(database.recipients.isEmpty());
+            assertTrue(database.lockedCharacters.isEmpty());
         }
     }
 }

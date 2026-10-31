@@ -12,7 +12,6 @@ import taan.online.LogCapture;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.channel.service.model.MoveToCommand;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.session.model.SessionId;
 
@@ -28,7 +27,7 @@ class QuickJoinRoomActionTest {
             var ownerOutput = new RecordingRoomOutput();
             var secondRoom = scenario.create.execute(
                 second,
-                new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, null, 0),
+                RoomScenario.command(5, 0, "No items", 0, 1, 0, 0, 8, null, 0),
                 ownerOutput
             ).room();
             var output = new RecordingRoomOutput();

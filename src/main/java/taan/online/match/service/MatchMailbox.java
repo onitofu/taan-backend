@@ -1,6 +1,7 @@
 package taan.online.match.service;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
@@ -9,15 +10,17 @@ import java.util.function.Supplier;
 
 final class MatchMailbox {
     private final ArrayDeque<MatchMailboxTask<?>> pending = new ArrayDeque<>();
+    private final ArrayDeque<MatchMailboxTask<?>> control = new ArrayDeque<>();
     private final MatchCommandExecutor executor;
     private final int capacity;
     private boolean scheduled;
-    private boolean closed;
+    private MatchMailboxPhase phase = MatchMailboxPhase.OPEN;
     private MatchMailboxTask<Boolean> terminal;
+    private Runnable onRejected;
 
     MatchMailbox(MatchCommandExecutor executor, int capacity) {
-        if (capacity < 1) {
-            throw new IllegalArgumentException("Match queue capacity must be positive");
+        if (capacity < 1 || executor.quantum() < 1) {
+            throw new IllegalArgumentException("Match queue capacity and quantum must be positive");
         }
 
         this.executor = executor;
@@ -29,21 +32,36 @@ final class MatchMailbox {
     }
 
     <T> CompletableFuture<T> submit(Supplier<T> command, T cancelled, Runnable rejected) {
+        return enqueue(command, cancelled, rejected, false);
+    }
+
+    <T> CompletableFuture<T> control(Supplier<T> command, T cancelled, Runnable rejected) {
+        return enqueue(command, cancelled, rejected, true);
+    }
+
+    private <T> CompletableFuture<T> enqueue(
+        Supplier<T> command,
+        T cancelled,
+        Runnable rejected,
+        boolean internal
+    ) {
         var task = new MatchMailboxTask<>(command, cancelled);
         boolean schedule = false;
         boolean overflow = false;
         boolean stopped;
 
         synchronized (this) {
-            stopped = closed;
+            stopped = phase == MatchMailboxPhase.CLOSED || !internal && phase == MatchMailboxPhase.DRAINING;
 
             if (!stopped) {
-                overflow = pending.size() >= capacity;
+                var queue = internal ? control : pending;
+                overflow = queue.size() >= capacity;
 
                 if (!overflow) {
-                    pending.addLast(task);
+                    queue.addLast(task);
                     schedule = !scheduled;
                     scheduled = true;
+                    onRejected = rejected;
                 }
             }
         }
@@ -55,10 +73,26 @@ final class MatchMailbox {
                 rejected.run();
             }
         } else if (schedule) {
-            schedule(rejected);
+            schedule();
         }
 
         return task.result();
+    }
+
+    void fence() {
+        List<MatchMailboxTask<?>> cancelled;
+
+        synchronized (this) {
+            if (phase != MatchMailboxPhase.OPEN) {
+                return;
+            }
+
+            phase = MatchMailboxPhase.DRAINING;
+            cancelled = List.copyOf(pending);
+            pending.clear();
+        }
+
+        cancelled.forEach(MatchMailboxTask::cancel);
     }
 
     CompletableFuture<Boolean> terminate(BooleanSupplier command) {
@@ -71,9 +105,11 @@ final class MatchMailbox {
                 return terminal.result();
             }
 
-            closed = true;
-            cancelled = List.copyOf(pending);
+            phase = MatchMailboxPhase.CLOSED;
+            cancelled = new ArrayList<>(pending);
+            cancelled.addAll(control);
             pending.clear();
+            control.clear();
             task = new MatchMailboxTask<>(command::getAsBoolean, false);
             terminal = task;
             schedule = !scheduled;
@@ -83,24 +119,28 @@ final class MatchMailbox {
         cancelled.forEach(MatchMailboxTask::cancel);
 
         if (schedule) {
-            schedule(() -> { });
+            schedule();
         }
 
         return task.result();
     }
 
-    private void schedule(Runnable rejected) {
+    private void schedule() {
         try {
             executor.execute(this::run);
         } catch (RejectedExecutionException failure) {
             List<MatchMailboxTask<?>> cancelled;
             MatchMailboxTask<Boolean> ending;
+            Runnable rejected;
 
             synchronized (this) {
                 scheduled = false;
-                cancelled = List.copyOf(pending);
+                cancelled = new ArrayList<>(pending);
+                cancelled.addAll(control);
                 pending.clear();
+                control.clear();
                 ending = terminal;
+                rejected = onRejected;
             }
 
             cancelled.forEach(MatchMailboxTask::cancel);
@@ -114,20 +154,24 @@ final class MatchMailbox {
     }
 
     private void run() {
-        while (true) {
+        for (int count = 0; count < executor.quantum(); count++) {
             MatchMailboxTask<?> work;
 
             synchronized (this) {
-                work = pending.pollFirst();
+                work = control.pollFirst();
+
+                if (work == null) {
+                    work = pending.pollFirst();
+                }
 
                 if (work == null) {
                     work = terminal;
-                    scheduled = false;
-                }
-            }
 
-            if (work == null) {
-                return;
+                    if (work == null) {
+                        scheduled = false;
+                        return;
+                    }
+                }
             }
 
             work.run();
@@ -136,5 +180,14 @@ final class MatchMailbox {
                 return;
             }
         }
+
+        synchronized (this) {
+            if (pending.isEmpty() && control.isEmpty() && terminal == null) {
+                scheduled = false;
+                return;
+            }
+        }
+
+        schedule();
     }
 }

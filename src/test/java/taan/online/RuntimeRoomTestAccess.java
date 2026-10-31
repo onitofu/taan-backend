@@ -1,12 +1,11 @@
 package taan.online;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
 import taan.online.bootstrap.Application;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.service.MatchRegistry;
 import taan.online.match.service.model.MatchSnapshot;
+import taan.online.room.model.CaptainSelectionPhase;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.service.RoomRegistry;
@@ -17,17 +16,25 @@ public final class RuntimeRoomTestAccess {
     }
 
     public static void awaitMatchAction(Application application, int roomId) throws ReflectiveOperationException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-        var snapshot = matchSnapshot(application, roomId);
+        var registry = rooms(application);
+        var matches = matches(registry);
+        var owner = room(registry, roomId).ownerSessionId();
+        var token = registry.matchContext(owner).token();
+        TestAwait.until("match action publication", () -> matches.current(token)
+            .filter(snapshot -> snapshot.phase() == MatchPhase.ACTION).isPresent());
+    }
 
-        while (snapshot.phase() != MatchPhase.ACTION) {
-            if (System.nanoTime() - deadline >= 0) {
-                throw new AssertionError("Match did not reach ACTION: " + snapshot.phase());
+    public static void awaitCaptainFinalization(Application application, int id) throws ReflectiveOperationException {
+        var registry = rooms(application);
+        var field = RoomRegistry.class.getDeclaredField("rooms");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var rooms = (Map<RoomId, Room>) field.get(registry);
+        TestAwait.until("captain selection finalization", 10000, () -> {
+            synchronized (registry) {
+                return rooms.get(new RoomId(id)).captainSelection().phase() == CaptainSelectionPhase.FINALIZED;
             }
-
-            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
-            snapshot = matchSnapshot(application, roomId);
-        }
+        });
     }
 
     public static RoomRegistry rooms(Application application) throws ReflectiveOperationException {

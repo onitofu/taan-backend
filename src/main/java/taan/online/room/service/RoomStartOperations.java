@@ -3,8 +3,8 @@ package taan.online.room.service;
 import static taan.online.logging.LogField.accountId;
 import static taan.online.logging.LogField.channelId;
 import static taan.online.logging.LogField.channelKind;
-import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.characterId;
+import static taan.online.logging.LogField.mapId;
 import static taan.online.logging.LogField.outcome;
 import static taan.online.logging.LogField.reason;
 import static taan.online.logging.LogField.roomId;
@@ -30,6 +30,7 @@ import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomRegistryPhase;
 import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomStartOutcome;
@@ -70,15 +71,15 @@ final class RoomStartOperations {
         this.advanceAction = advanceAction;
     }
 
-    RoomStartResult begin(UUID id, String rejection) {
-        if (rejection != null) {
-            return new RoomStartResult(RoomStartOutcome.IGNORED, rejection);
+    RoomStartResult begin(UUID id, RoomControlRejection control) {
+        if (control != null) {
+            return new RoomStartResult(RoomStartOutcome.IGNORED, control.name());
         }
 
         var room = room(id);
         advance(room);
 
-        rejection = room.startRejection(id);
+        String rejection = room.startRejection(id);
 
         if (rejection == null && room.state() == RoomState.CAPTAIN_SELECTION) {
             return new RoomStartResult(RoomStartOutcome.ALREADY_SELECTING, "ALREADY_SELECTING");
@@ -114,14 +115,14 @@ final class RoomStartOperations {
         return new RoomStartResult(RoomStartOutcome.SELECTION_OPENED, "OPENED", null, delivery);
     }
 
-    RoomStartResult start(UUID id, String rejection) {
-        if (rejection != null) {
-            return new RoomStartResult(RoomStartOutcome.IGNORED, rejection);
+    RoomStartResult start(UUID id, RoomControlRejection control) {
+        if (control != null) {
+            return new RoomStartResult(RoomStartOutcome.IGNORED, control.name());
         }
 
         var room = room(id);
         advance(room);
-        rejection = room.startRejection(id);
+        String rejection = room.startRejection(id);
 
         if (rejection != null) {
             return rejected(room, id, rejection);
@@ -163,11 +164,11 @@ final class RoomStartOperations {
         return new RoomStartResult(RoomStartOutcome.MATCH_UNAVAILABLE, reason, captains, delivery);
     }
 
-    SetCaptainCandidateResult candidate(UUID id, long characterId, boolean requested, String rejection) {
-        if (rejection != null) {
+    SetCaptainCandidateResult candidate(UUID id, long characterId, boolean requested, RoomControlRejection control) {
+        if (control != null) {
             return new SetCaptainCandidateResult(
                 SetCaptainCandidateOutcome.IGNORED,
-                rejection,
+                control.name(),
                 false,
                 CompletableFuture.completedFuture(null)
             );

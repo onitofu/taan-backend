@@ -63,7 +63,7 @@ class MatchOutcomeBoundaryTest {
             assertFalse(depart(f, new DepartMatchCommand(c, RoomMatchEndReason.GIVE_UP)));
             assertNull(f.callbacks.reason);
             f.runtime.stop();
-            assertFalse(depart(f, new DepartMatchCommand(c, RoomMatchEndReason.DISCONNECTED)));
+            assertFalse(f.runtime.outcomes.depart(new DepartMatchCommand(c, RoomMatchEndReason.DISCONNECTED)));
         }
 
         try (var f = new MatchRuntimeFixture(8)) {

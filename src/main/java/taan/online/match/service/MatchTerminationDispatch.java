@@ -5,13 +5,11 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
-import taan.online.logging.LogContext;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchResult;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.room.service.model.RoomMatchTermination;
 import taan.online.room.service.model.RoomMatchTerminationMode;
-import taan.online.room.service.model.RoomMatchTerminationResult;
 import taan.online.room.service.model.RoomMatchToken;
 
 record MatchTerminationDispatch(
@@ -65,31 +63,6 @@ record MatchTerminationDispatch(
     }
 
     CompletionStage<Void> dispatch(UUID requester, Runnable queued) {
-        var sending = new CompletableFuture<CompletionStage<Void>>();
-        var cleanup = runtime.finish(() -> sending.complete(publish(requester, queued)));
-        var stage = cleanup.thenCompose(ignored -> sending.thenCompose(value -> value));
-        runtime.outcomes.complete(new RoomMatchTerminationResult(delivery.terminal(), stage));
-        return stage;
-    }
-
-    private CompletionStage<Void> publish(UUID requester, Runnable queued) {
-        var settlement = persistent ? settlements.execute(result) : CompletableFuture.completedFuture(result);
-        return settlement.handle(
-            LogContext.propagate(
-                (stored, failure) -> {
-                    try {
-                        if (failure != null) {
-                            delivery.settlementFailed();
-                            return CompletableFuture.<Void>completedFuture(null);
-                        }
-
-                        MatchProgressPublication.publish(runtime, stored);
-                        return delivery.dispatch(requester, stored);
-                    } finally {
-                        queued.run();
-                    }
-                }
-            )
-        ).thenCompose(value -> value);
+        return runtime.lifecycle.finish(this, requester, queued);
     }
 }

@@ -16,6 +16,7 @@
         <jacoco.version>0.8.15</jacoco.version>
         <checkstyle.version>14.3.0</checkstyle.version>
         <netty.version>4.2.19.Final</netty.version>
+        <hikaricp.version>7.1.0</hikaricp.version>
         <postgresql.version>42.7.14</postgresql.version>
         <flyway.version>13.10.3</flyway.version>
         <password4j.version>1.8.4</password4j.version>
@@ -53,6 +54,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikaricp.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>

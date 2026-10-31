@@ -4,5 +4,6 @@ public enum ChangeRoomTeamOutcome {
     CHANGED,
     UNCHANGED,
     REJECTED,
+    NO_OPEN_SLOT,
     IGNORED
 }

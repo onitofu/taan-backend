@@ -11,9 +11,9 @@ import taan.online.LogCapture;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
 import taan.online.lobby.view.LobbyRoomListMapper;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.RoomSelectionToken;
 import taan.online.room.service.model.RoomStartOutcome;
 import taan.online.room.service.model.SetCaptainCandidateOutcome;
@@ -32,7 +32,7 @@ class CaptainSelectionRecoveryTest {
                 assertEquals(SetCaptainCandidateOutcome.IGNORED, candidate.execute(owner, 1, true).outcome());
                 var created = scenario.create.execute(
                     owner,
-                    new CreateRoomCommand(5, 0, "Room", 0, type, type == 2 ? 2 : 0, 0, 8, null, 0),
+                    RoomScenario.command(5, 0, "Room", 0, type, type == 2 ? 2 : 0, 0, 8, null, 0),
                     new RecordingRoomOutput()
                 );
 
@@ -56,7 +56,7 @@ class CaptainSelectionRecoveryTest {
             var first = scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput()).room();
             scenario.enter.execute(guest, first.id().value(), "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             var oldTask = scenario.timers.tasks.getFirst();
             scenario.rooms.release(owner, "DISCONNECT");
@@ -66,7 +66,7 @@ class CaptainSelectionRecoveryTest {
             var next = scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput()).room();
             scenario.enter.execute(guest, next.id().value(), "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             var current = scenario.rooms.current(owner).orElseThrow();
             var tasks = scenario.timers.tasks.stream().toList();
@@ -89,7 +89,7 @@ class CaptainSelectionRecoveryTest {
             scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             var token = scenario.timers.tasks.getFirst().token();
             var oldGeneration = new RoomSelectionToken(token.roomId(), UUID.randomUUID(), token.selectionId());
@@ -128,7 +128,7 @@ class CaptainSelectionRecoveryTest {
             scenario.rooms.expel(owner, 3);
             scenario.rooms.setReady(guest, true);
             scenario.rooms.changeTeam(owner, RoomTeam.BLUE);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             scenario.lobby(guest);
             scenario.timers.advanceSeconds(5);
@@ -147,7 +147,7 @@ class CaptainSelectionRecoveryTest {
             scenario.create.execute(owner, RoomScenario.command(), new RecordingRoomOutput());
             scenario.enter.execute(guest, 1, "", new RecordingRoomOutput());
             scenario.rooms.setReady(guest, true);
-            scenario.rooms.changeSettings(owner, 1, 2, 2);
+            scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, 2, 2));
             new BeginCaptainSelectionAction(scenario.rooms).execute(owner);
             scenario.timers.now = 11_000_000_000L;
             scenario.quickJoin.execute(foreign, 65535, new RecordingRoomOutput());

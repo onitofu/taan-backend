@@ -22,7 +22,6 @@ import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomModelFixtures;
 import taan.online.room.model.RoomParticipant;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.EnterRoomOutcome;
 import taan.online.room.service.model.RoomSnapshot;
 
@@ -34,7 +33,7 @@ class QuickJoinRegistryTest {
 
             for (int i = 1; i <= 6; i++) {
                 var owner = scenario.player(i, i == 2 ? 2 : 1);
-                var command = new CreateRoomCommand(
+                var command = RoomScenario.command(
                     5,
                     0,
                     "Room",

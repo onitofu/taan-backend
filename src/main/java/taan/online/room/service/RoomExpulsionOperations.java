@@ -9,6 +9,7 @@ import taan.online.room.model.Room;
 import taan.online.room.model.RoomId;
 import taan.online.room.service.model.ExpelRoomParticipantOutcome;
 import taan.online.room.service.model.ExpelRoomParticipantResult;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomLeaveStatus;
 import taan.online.room.service.model.RoomMembership;
@@ -24,14 +25,14 @@ final class RoomExpulsionOperations {
         Map<RoomId, Room> rooms,
         Map<UUID, RoomSubscription> memberships,
         Map<UUID, RoomLeaveReceipt> receipts,
-        Function<UUID, String> controlRejection,
+        Function<UUID, RoomControlRejection> controlRejection,
         BiConsumer<RoomMembership, String> remove,
         Consumer<Room> beforeRemoval
     ) {
-        String rejection = controlRejection.apply(id);
+        var control = controlRejection.apply(id);
 
-        if (rejection != null) {
-            return RoomNotifications.expelRejected(id, rejection);
+        if (control != null) {
+            return RoomNotifications.expelRejected(id, control);
         }
 
         var snapshot = RoomSnapshot.from(rooms.get(memberships.get(id).membership().roomId()));
@@ -39,14 +40,16 @@ final class RoomExpulsionOperations {
             .filter(value -> value.participant().character().id().value() == targetCharacterId)
             .findFirst().orElse(null);
         var target = slot == null ? null : slot.participant();
-        rejection = RoomControlChecks.expel(rooms.get(snapshot.id()), id, target);
-
-        if (rejection == null) {
-            rejection = controlRejection.apply(target.sessionId());
-        }
+        String rejection = RoomControlChecks.expel(rooms.get(snapshot.id()), id, target);
 
         if (rejection != null) {
             return RoomNotifications.expelRejected(id, rejection);
+        }
+
+        control = controlRejection.apply(target.sessionId());
+
+        if (control != null) {
+            return RoomNotifications.expelRejected(id, control);
         }
 
         var subscription = memberships.get(target.sessionId());

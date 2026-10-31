@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
 import taan.online.RoomScenario;
+import taan.online.TestLevels;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.repository.MatchSettlement;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.room.model.RoomState;
@@ -24,12 +26,13 @@ class MatchSettlementDeliveryTest {
         var work = new ArrayDeque<Runnable>();
         var writes = new AtomicInteger();
         var action = new SettleMatchResultAction(
-            result -> {
+            (result, policy) -> {
                 writes.incrementAndGet();
                 return new MatchSettlement(result, true);
             },
             work::addLast,
-            Clock.systemUTC()
+            Clock.systemUTC(),
+            new MatchRewardPolicies(TestLevels.table())
         );
         var scenario = new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO, action);
 
@@ -79,11 +82,12 @@ class MatchSettlementDeliveryTest {
         for (boolean leave : new boolean[]{false, true}) {
             var work = new ArrayDeque<Runnable>();
             var action = new SettleMatchResultAction(
-                result -> {
+                (result, policy) -> {
                     throw new IllegalStateException("private-settlement-value");
                 },
                 work::addLast,
-                Clock.systemUTC()
+                Clock.systemUTC(),
+                new MatchRewardPolicies(TestLevels.table())
             );
             var scenario = new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO, action);
 

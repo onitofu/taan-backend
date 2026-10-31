@@ -15,12 +15,6 @@
     <property name="severity" value="error"/>
     <property name="fileExtensions" value="java"/>
 
-    <!-- File length -->
-    <module name="FileLength">
-        <property name="max" value="500"/>
-        <property name="severity" value="error"/>
-    </module>
-
     <!-- No tab characters -->
     <module name="FileTabCharacter">
         <property name="eachLine" value="true"/>

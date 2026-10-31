@@ -10,27 +10,28 @@ final class MatchLoadingRules {
     private MatchLoadingRules() {
     }
 
-    static String validate(Match match, UUID session, int slot, int x, int y) {
+    static MatchLoadingOutcome validate(Match match, UUID session, int slot, int x, int y) {
         var actor = match.participants().stream().filter(p -> p.sessionId().equals(session)).findFirst().orElse(null);
 
         if (actor == null || actor.slotIndex() != slot) {
-            return "FOREIGN_SLOT";
+            return MatchLoadingOutcome.FOREIGN_SLOT;
         }
 
         var accepted = match.loadedSessions().contains(session) ? match.actors().get(session) : null;
 
         if (accepted != null) {
-            return accepted.x() == x && accepted.y() == y ? "UNCHANGED" : "CONFLICTING_POSITION";
+            return accepted.x() == x && accepted.y() == y
+                ? MatchLoadingOutcome.UNCHANGED : MatchLoadingOutcome.CONFLICTING_POSITION;
         }
 
         if (match.phase() != MatchPhase.LOADING) {
-            return "INVALID_PHASE";
+            return MatchLoadingOutcome.INVALID_PHASE;
         }
 
         int side = actor.team() == RoomTeam.BLUE ? 1 : 2;
         boolean valid = match.definitions().map().spawns().stream()
             .anyMatch(p -> p.valid() && (p.side() == 0 || p.side() == side) && p.settledX() == x && p.settledY() == y);
-        return valid ? "ACCEPTED" : "INVALID_POSITION";
+        return valid ? MatchLoadingOutcome.ACCEPTED : MatchLoadingOutcome.INVALID_POSITION;
     }
 
     static boolean delivered(Match match, Set<UUID> deliveries) {

@@ -14,8 +14,17 @@ public record ApplicationConfig(
     int maxConnections,
     int maxFrameBytes,
     int maxPendingRequests,
-    int workerThreads,
-    int workerQueueCapacity,
+    int authenticationWorkerThreads,
+    int authenticationQueueCapacity,
+    int databaseWorkerThreads,
+    int databaseQueueCapacity,
+    int requestWorkerThreads,
+    int requestQueueCapacity,
+    int settlementWorkerThreads,
+    int settlementQueueCapacity,
+    int databasePoolSize,
+    int databaseAcquireTimeoutMillis,
+    int matchCommandQuantum,
     int requestTimeoutSeconds,
     int frameAssemblyTimeoutSeconds,
     int idleTimeoutSeconds,
@@ -57,8 +66,17 @@ public record ApplicationConfig(
             positive(environment, "BACKEND_MAX_CONNECTIONS"),
             number(environment, "BACKEND_MAX_FRAME_BYTES", 4, Integer.MAX_VALUE - 4),
             positive(environment, "BACKEND_MAX_PENDING_REQUESTS"),
-            positive(environment, "BACKEND_WORKER_THREADS"),
-            positive(environment, "BACKEND_WORK_QUEUE_CAPACITY"),
+            number(environment, "BACKEND_AUTH_WORKER_THREADS", 1, 64),
+            number(environment, "BACKEND_AUTH_QUEUE_CAPACITY", 1, 65536),
+            number(environment, "BACKEND_DATABASE_WORKER_THREADS", 1, 64),
+            number(environment, "BACKEND_DATABASE_QUEUE_CAPACITY", 1, 65536),
+            number(environment, "BACKEND_REQUEST_WORKER_THREADS", 1, 64),
+            number(environment, "BACKEND_REQUEST_QUEUE_CAPACITY", 1, 65536),
+            number(environment, "BACKEND_SETTLEMENT_WORKER_THREADS", 1, 64),
+            number(environment, "BACKEND_SETTLEMENT_QUEUE_CAPACITY", 1, 65536),
+            number(environment, "DB_POOL_SIZE", 1, 128),
+            number(environment, "DB_ACQUIRE_TIMEOUT_MILLIS", 500, Integer.MAX_VALUE),
+            number(environment, "BACKEND_MATCH_COMMAND_QUANTUM", 1, 1024),
             positive(environment, "BACKEND_REQUEST_TIMEOUT_SECONDS"),
             positive(environment, "BACKEND_FRAME_ASSEMBLY_TIMEOUT_SECONDS"),
             positive(environment, "BACKEND_IDLE_TIMEOUT_SECONDS"),
@@ -85,6 +103,15 @@ public record ApplicationConfig(
 
         if (config.argonMemoryKiB() < 8L * config.argonParallelism()) {
             throw new InvalidConfigurationException("ARGON2_PARALLELISM", "Insufficient memory per lane");
+        }
+
+        if (config.databasePoolSize() < config.authenticationWorkerThreads() + config.databaseWorkerThreads()
+            + config.settlementWorkerThreads()) {
+            throw new InvalidConfigurationException("DB_POOL_SIZE", "Insufficient connections for worker budgets");
+        }
+
+        if (config.databaseAcquireTimeoutMillis() >= config.requestTimeoutSeconds() * 1000L) {
+            throw new InvalidConfigurationException("DB_ACQUIRE_TIMEOUT_MILLIS", "Must be below request timeout");
         }
 
         return config;

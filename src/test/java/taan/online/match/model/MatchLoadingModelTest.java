@@ -41,18 +41,18 @@ class MatchLoadingModelTest {
             var guest = snapshot.participants().get(1);
 
             assertFalse(match.expired(0));
-            assertEquals("FOREIGN_SLOT", match.loadingDone(UUID.randomUUID(), 0, 97, 685));
-            assertEquals("INVALID_PHASE", match.loadingDone(owner.sessionId(), 0, 97, 685));
+            assertEquals(MatchLoadingOutcome.FOREIGN_SLOT, match.loadingDone(UUID.randomUUID(), 0, 97, 685));
+            assertEquals(MatchLoadingOutcome.INVALID_PHASE, match.loadingDone(owner.sessionId(), 0, 97, 685));
             assertFalse(match.deliveryCompleted(owner.sessionId()));
             assertTrue(match.commit(5, 30));
             assertFalse(match.expired(34));
             assertTrue(match.expired(35));
             assertFalse(match.confirmsPosition(owner.sessionId(), 0, 97, 685, 0));
             assertFalse(match.deliveryCompleted(UUID.randomUUID()));
-            assertEquals("INVALID_POSITION", match.loadingDone(owner.sessionId(), 0, 97, 686));
-            assertEquals("ACCEPTED", match.loadingDone(owner.sessionId(), 0, 97, 685));
-            assertEquals("CONFLICTING_POSITION", match.loadingDone(owner.sessionId(), 0, 97, 686));
-            assertEquals("ACCEPTED", match.loadingDone(guest.sessionId(), 2, 1110, 685));
+            assertEquals(MatchLoadingOutcome.INVALID_POSITION, match.loadingDone(owner.sessionId(), 0, 97, 686));
+            assertEquals(MatchLoadingOutcome.ACCEPTED, match.loadingDone(owner.sessionId(), 0, 97, 685));
+            assertEquals(MatchLoadingOutcome.CONFLICTING_POSITION, match.loadingDone(owner.sessionId(), 0, 97, 686));
+            assertEquals(MatchLoadingOutcome.ACCEPTED, match.loadingDone(guest.sessionId(), 2, 1110, 685));
             assertFalse(match.beginSynchronization(7));
             assertTrue(match.deliveryCompleted(owner.sessionId()));
             assertFalse(match.beginSynchronization(7));
@@ -67,7 +67,7 @@ class MatchLoadingModelTest {
             assertTrue(match.previewStarted(10, 20));
             assertEquals(30, match.deadlineNanos());
             assertFalse(match.deliveryCompleted(owner.sessionId()));
-            assertEquals("UNCHANGED", match.loadingDone(owner.sessionId(), 0, 97, 685));
+            assertEquals(MatchLoadingOutcome.UNCHANGED, match.loadingDone(owner.sessionId(), 0, 97, 685));
             assertThrows(UnsupportedOperationException.class, () -> match.loadedSessions().clear());
         }
     }
@@ -140,7 +140,7 @@ class MatchLoadingModelTest {
             );
             match.commit(0, 30);
 
-            assertEquals("INVALID_POSITION", match.loadingDone(source.ownerSessionId(), 0, 500, 500));
+            assertEquals(MatchLoadingOutcome.INVALID_POSITION, match.loadingDone(source.ownerSessionId(), 0, 500, 500));
             assertTrue(match.loadedSessions().isEmpty());
         }
     }

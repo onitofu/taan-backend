@@ -10,7 +10,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
-import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.EnterRoomOutcome;
 
 class RoomPasswordConcurrencyTest {
@@ -23,7 +22,7 @@ class RoomPasswordConcurrencyTest {
                         var owner = scenario.player(1, 1);
                         int room = scenario.create.execute(
                             owner,
-                            new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, "secret", 0),
+                            RoomScenario.command(5, 0, "Room", 0, 0, 2, 0, 8, "secret", 0),
                             new RecordingRoomOutput()
                         ).room().id().value();
 

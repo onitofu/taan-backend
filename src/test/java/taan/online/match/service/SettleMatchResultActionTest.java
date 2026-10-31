@@ -15,7 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import taan.online.LogCapture;
+import taan.online.TestLevels;
 import taan.online.match.model.MatchOutcome;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.repository.MatchSettlement;
 
 class SettleMatchResultActionTest {
@@ -25,9 +27,10 @@ class SettleMatchResultActionTest {
         var calls = new AtomicInteger();
         Instant finished = Instant.parse("2026-10-21T00:00:00Z");
         var action = new SettleMatchResultAction(
-            result -> new MatchSettlement(result, calls.getAndIncrement() == 0),
+            (result, policy) -> new MatchSettlement(result, calls.getAndIncrement() == 0),
             work::addLast,
-            Clock.fixed(finished, ZoneOffset.UTC)
+            Clock.fixed(finished, ZoneOffset.UTC),
+            new MatchRewardPolicies(TestLevels.table())
         );
 
         try (var fixture = new MatchOutcomeFixture(); var logs = new LogCapture()) {
@@ -67,7 +70,7 @@ class SettleMatchResultActionTest {
     void reportsInfrastructureAndQueueFailuresOnceWithoutPublishingSuccessOrSecrets() {
         for (boolean rejected : new boolean[]{false, true}) {
             var action = new SettleMatchResultAction(
-                result -> {
+                (result, policy) -> {
                     throw new IllegalStateException("private-database-value");
                 },
                 work -> {
@@ -77,7 +80,8 @@ class SettleMatchResultActionTest {
 
                     work.run();
                 },
-                Clock.systemUTC()
+                Clock.systemUTC(),
+                new MatchRewardPolicies(TestLevels.table())
             );
 
             try (var fixture = new MatchOutcomeFixture(); var logs = new LogCapture()) {

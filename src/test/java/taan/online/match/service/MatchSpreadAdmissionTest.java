@@ -41,7 +41,7 @@ class MatchSpreadAdmissionTest {
                     int index = invalid == 3 ? 255 : invalid == 4 ? -1 : invalid == 5 ? 3 : 0;
                     var before = p.f.runtime.snapshot();
                     assertFalse(p.energy.activate(p.use(index, item)));
-                    assertSame(before, p.f.runtime.snapshot());
+                    MatchGameStateAssertions.closedWithoutApplyingGameplay(before, p.f.runtime.snapshot());
                     assertEquals(RoomMatchEndReason.INVALID_SCENARIO, p.f.callbacks.reason);
                     assertTrue(p.f.owner.uses.isEmpty());
                     assertTrue(logs.text().contains("match.spread.rejected"));
@@ -57,7 +57,7 @@ class MatchSpreadAdmissionTest {
             p.grant(3, true);
             var before = p.f.runtime.snapshot();
             assertFalse(p.energy.activate(p.use(0, 3)));
-            assertSame(before, p.f.runtime.snapshot());
+            MatchGameStateAssertions.closedWithoutApplyingGameplay(before, p.f.runtime.snapshot());
         }
 
         try (var p = new MatchRepeatFixture(MatchSpreadTestPackets.POLICY)) {

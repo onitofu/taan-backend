@@ -19,7 +19,7 @@ class MatchExperienceJdbcTest {
         var input = result(9, 2);
         var database = new MatchJdbcStub(input);
 
-        var stored = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(input);
+        var stored = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(input);
 
         assertTrue(stored.created());
         assertEquals(List.of(2L, 9L), database.lockedCharacters);
@@ -30,7 +30,7 @@ class MatchExperienceJdbcTest {
 
         var replay = new MatchJdbcStub(stored.result());
         replay.created = false;
-        var loaded = new JdbcMatchResultRepository(replay.source(), 5, TestLevels.table()).settle(input);
+        var loaded = new RewardTestRepository(replay.source(), 5, TestLevels.table()).settle(input);
 
         assertEquals(stored.result(), loaded.result());
         assertFalse(loaded.created());
@@ -52,7 +52,7 @@ class MatchExperienceJdbcTest {
         );
         var database = new MatchJdbcStub(historical);
         database.created = false;
-        var replayed = new JdbcMatchResultRepository(database.source(), 5, TestLevels.table()).settle(proposal);
+        var replayed = new RewardTestRepository(database.source(), 5, TestLevels.table()).settle(proposal);
 
         assertFalse(replayed.created());
         assertEquals(historical, replayed.result());
@@ -70,7 +70,7 @@ class MatchExperienceJdbcTest {
         missing.missingCharacter = true;
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(
+            () -> new RewardTestRepository(
                 missing.source(),
                 5,
                 TestLevels.table()
@@ -81,7 +81,7 @@ class MatchExperienceJdbcTest {
         failed.counterOverflow = true;
         assertThrows(
             MatchPersistenceException.class,
-            () -> new JdbcMatchResultRepository(
+            () -> new RewardTestRepository(
                 failed.source(),
                 5,
                 TestLevels.table()
@@ -92,7 +92,7 @@ class MatchExperienceJdbcTest {
         for (String stage : List.of("locked.executeQuery", "locked.rows.next", "progress.executeUpdate")) {
             var transientFailure = new MatchJdbcStub(input);
             transientFailure.fail(stage, new SQLException("Private value", "40001"));
-            assertTrue(new JdbcMatchResultRepository(
+            assertTrue(new RewardTestRepository(
                 transientFailure.source(),
                 5,
                 TestLevels.table()

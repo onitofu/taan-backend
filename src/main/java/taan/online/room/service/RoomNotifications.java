@@ -41,6 +41,7 @@ import taan.online.room.service.model.ExpelRoomParticipantOutcome;
 import taan.online.room.service.model.ExpelRoomParticipantResult;
 import taan.online.room.service.model.LeaveRoomOutcome;
 import taan.online.room.service.model.LeaveRoomResult;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomLeaveReceipt;
 import taan.online.room.service.model.RoomMembership;
 import taan.online.room.service.model.RoomSnapshot;
@@ -130,10 +131,22 @@ final class RoomNotifications {
         target.output().close("ROOM_NOTIFICATION_FAILED");
     }
 
-    static ExpelRoomParticipantResult expelRejected(UUID actor, String rejection) {
-        LOG.log(RoomLogEvent.EXPEL_REJECTED, sessionId(actor), reason(rejection));
-        var outcome = RoomControlChecks.inactive(rejection) || rejection.equals("NO_MEMBERSHIP")
+    static ExpelRoomParticipantResult expelRejected(UUID actor, RoomControlRejection rejection) {
+        var outcome = RoomControlChecks.inactive(rejection) || rejection == RoomControlRejection.NO_MEMBERSHIP
             ? ExpelRoomParticipantOutcome.IGNORED : ExpelRoomParticipantOutcome.REJECTED;
+        return expelRejected(actor, rejection.name(), outcome);
+    }
+
+    static ExpelRoomParticipantResult expelRejected(UUID actor, String rejection) {
+        return expelRejected(actor, rejection, ExpelRoomParticipantOutcome.REJECTED);
+    }
+
+    private static ExpelRoomParticipantResult expelRejected(
+        UUID actor,
+        String rejection,
+        ExpelRoomParticipantOutcome outcome
+    ) {
+        LOG.log(RoomLogEvent.EXPEL_REJECTED, sessionId(actor), reason(rejection));
         return new ExpelRoomParticipantResult(outcome, rejection);
     }
 

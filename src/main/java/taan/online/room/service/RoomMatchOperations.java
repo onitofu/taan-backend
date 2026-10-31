@@ -23,6 +23,7 @@ import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomMatchCharacterProgress;
 import taan.online.room.service.model.RoomMatchContext;
 import taan.online.room.service.model.RoomMatchDraft;
@@ -107,9 +108,9 @@ final class RoomMatchOperations {
         );
     }
 
-    RoomMatchReservationResult reserve(UUID id, String rejection) {
-        if (rejection != null) {
-            return rejected(rejection);
+    RoomMatchReservationResult reserve(UUID id, RoomControlRejection control) {
+        if (control != null) {
+            return rejected(control.name());
         }
 
         var room = rooms.get(memberships.get(id).membership().roomId());
@@ -118,7 +119,7 @@ final class RoomMatchOperations {
             return result(RoomMatchReservationOutcome.UNCHANGED, token(room), "ALREADY_RESERVED");
         }
 
-        rejection = room.startRejection(id);
+        String rejection = room.startRejection(id);
 
         if (rejection == null) {
             rejection = contextRejection(room);
@@ -432,7 +433,7 @@ final class RoomMatchOperations {
         for (var slot : room.slots()) {
             if (slot.participant() != null) {
                 var id = slot.participant().sessionId();
-                String rejection = RoomControlChecks.rejection(
+                var rejection = RoomControlChecks.rejection(
                     RoomRegistryPhase.OPEN,
                     memberships.get(id).membership(),
                     channels.membership(id).orElse(null),
@@ -440,7 +441,7 @@ final class RoomMatchOperations {
                 );
 
                 if (rejection != null) {
-                    return rejection;
+                    return rejection.name();
                 }
             }
         }

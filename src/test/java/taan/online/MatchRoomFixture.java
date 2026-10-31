@@ -3,6 +3,7 @@ package taan.online;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchDraft;
 import taan.online.room.service.model.RoomMatchParticipant;
@@ -40,7 +41,7 @@ public final class MatchRoomFixture implements AutoCloseable {
             case CAPTAIN_ITEM -> 2;
             case CAPTAIN_NO_ITEM -> 3;
         };
-        scenario.rooms.changeSettings(owner, 1, gameType, mode.usesItems() ? 2 : 0);
+        scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, gameType, mode.usesItems() ? 2 : 0));
         players.stream().skip(1).forEach(id -> scenario.rooms.setReady(id, true));
     }
 

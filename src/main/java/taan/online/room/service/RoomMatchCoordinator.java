@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomMatchCharacterProgress;
 import taan.online.room.service.model.RoomMatchEndReason;
 import taan.online.room.service.model.RoomMatchReservationOutcome;
@@ -18,14 +19,14 @@ final class RoomMatchCoordinator implements RoomMatchCallbacks {
     private final RoomMatchOperations matches;
     private final RoomStartOperations starts;
     private final Supplier<RoomRegistryPhase> phase;
-    private final Function<UUID, String> rejection;
+    private final Function<UUID, RoomControlRejection> rejection;
 
     RoomMatchCoordinator(
         Object monitor,
         RoomMatchOperations matches,
         RoomStartOperations starts,
         Supplier<RoomRegistryPhase> phase,
-        Function<UUID, String> rejection
+        Function<UUID, RoomControlRejection> rejection
     ) {
         this.monitor = monitor;
         this.matches = matches;

@@ -31,6 +31,7 @@ import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.MatchOutcome;
 import taan.online.match.model.MatchParticipationState;
 import taan.online.match.model.MatchResult;
+import taan.online.match.model.MatchRewardPolicies;
 import taan.online.match.repository.MatchResultRepository;
 import taan.online.match.service.model.MatchSnapshot;
 
@@ -38,21 +39,29 @@ public final class SettleMatchResultAction {
     private static final EventLogger LOG = EventLogger.forClass(SettleMatchResultAction.class);
 
     private final MatchResultRepository results;
+    private final MatchRewardPolicies policies;
     private final Executor executor;
     private final Clock clock;
     private final RandomGenerator random;
 
-    public SettleMatchResultAction(MatchResultRepository results, Executor executor, Clock clock) {
-        this(results, executor, clock, new SecureRandom());
+    public SettleMatchResultAction(
+        MatchResultRepository results,
+        Executor executor,
+        Clock clock,
+        MatchRewardPolicies policies
+    ) {
+        this(results, executor, clock, new SecureRandom(), policies);
     }
 
     public SettleMatchResultAction(
         MatchResultRepository results,
         Executor executor,
         Clock clock,
-        RandomGenerator random
+        RandomGenerator random,
+        MatchRewardPolicies policies
     ) {
         this.results = results;
+        this.policies = policies;
         this.executor = executor;
         this.clock = clock;
         this.random = random;
@@ -94,7 +103,7 @@ public final class SettleMatchResultAction {
 
     private void settle(MatchResult result, CompletableFuture<MatchResult> completed, long started) {
         try {
-            var stored = results.settle(result);
+            var stored = results.settle(result, policies.select(result));
             var event = stored.created() ? MatchLogEvent.REWARDS_COMMITTED : MatchLogEvent.REWARDS_DUPLICATE;
 
             for (var participant : stored.result().participants()) {

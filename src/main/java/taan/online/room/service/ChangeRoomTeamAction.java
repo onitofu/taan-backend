@@ -22,7 +22,8 @@ public final class ChangeRoomTeamAction {
     public ChangeRoomTeamResult execute(UUID id, RoomTeam desiredTeam) {
         var result = rooms.changeTeam(id, desiredTeam);
 
-        if (result.outcome() == ChangeRoomTeamOutcome.REJECTED) {
+        if (result.outcome() == ChangeRoomTeamOutcome.REJECTED
+            || result.outcome() == ChangeRoomTeamOutcome.NO_OPEN_SLOT) {
             LOG.log(RoomLogEvent.TEAM_CHANGE_REJECTED, sessionId(id), reason(result.reason()));
         }
 

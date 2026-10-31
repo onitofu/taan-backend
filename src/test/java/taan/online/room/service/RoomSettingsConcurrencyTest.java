@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import taan.online.RecordingRoomOutput;
 import taan.online.RoomScenario;
+import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 
@@ -26,7 +27,7 @@ class RoomSettingsConcurrencyTest {
                     var changing = workers.submit(
                         () -> {
                             first.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.changeSettings(owner, 2, 1, 0);
+                            return scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(2, 1, 0));
                         }
                     );
                     var readying = workers.submit(
@@ -88,7 +89,7 @@ class RoomSettingsConcurrencyTest {
                     var changing = workers.submit(
                         () -> {
                             barrier.await(5, TimeUnit.SECONDS);
-                            return scenario.rooms.changeSettings(owner, 2, 1, 0);
+                            return scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(2, 1, 0));
                         }
                     );
                     var joining = workers.submit(

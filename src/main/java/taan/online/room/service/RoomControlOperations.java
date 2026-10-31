@@ -12,20 +12,20 @@ import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.Room;
 import taan.online.room.model.RoomMapCatalog;
-import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomParticipant;
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomRulePolicy;
 import taan.online.room.model.RoomSlot;
 import taan.online.room.model.RoomSlotState;
 import taan.online.room.model.RoomState;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.service.model.ChangeRoomSettingsCommand;
 import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.ChangeRoomSettingsResult;
 import taan.online.room.service.model.ChangeRoomTeamOutcome;
 import taan.online.room.service.model.ChangeRoomTeamResult;
 import taan.online.room.service.model.ChangeRoomWeaponOutcome;
 import taan.online.room.service.model.ChangeRoomWeaponResult;
+import taan.online.room.service.model.RoomControlRejection;
 import taan.online.room.service.model.RoomSnapshot;
 import taan.online.room.service.model.SetRoomReadyOutcome;
 import taan.online.room.service.model.SetRoomReadyResult;
@@ -39,17 +39,17 @@ final class RoomControlOperations {
     }
 
     static SlotAvailabilityResult setSlotAvailability(
-        String rejection,
+        RoomControlRejection control,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         int index,
         RoomSlotState desiredState
     ) {
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? SlotAvailabilityOutcome.IGNORED
+        if (control != null) {
+            var outcome = RoomControlChecks.inactive(control) ? SlotAvailabilityOutcome.IGNORED
                 : SlotAvailabilityOutcome.REJECTED;
-            return new SlotAvailabilityResult(outcome, rejection);
+            return new SlotAvailabilityResult(outcome, control.name());
         }
 
         var member = subscription.membership();
@@ -59,7 +59,7 @@ final class RoomControlOperations {
             return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, "ROOM_UNAVAILABLE");
         }
 
-        rejection = RoomControlChecks.availability(RoomSnapshot.from(room), id, index, desiredState);
+        String rejection = RoomControlChecks.availability(RoomSnapshot.from(room), id, index, desiredState);
 
         if (rejection != null) {
             return new SlotAvailabilityResult(SlotAvailabilityOutcome.REJECTED, rejection);
@@ -75,16 +75,16 @@ final class RoomControlOperations {
     }
 
     static ChangeRoomTeamResult changeTeam(
-        String rejection,
+        RoomControlRejection control,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         RoomTeam desiredTeam
     ) {
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomTeamOutcome.IGNORED
+        if (control != null) {
+            var outcome = RoomControlChecks.inactive(control) ? ChangeRoomTeamOutcome.IGNORED
                 : ChangeRoomTeamOutcome.REJECTED;
-            return new ChangeRoomTeamResult(outcome, rejection);
+            return new ChangeRoomTeamResult(outcome, control.name());
         }
 
         var member = subscription.membership();
@@ -109,7 +109,7 @@ final class RoomControlOperations {
         var changed = room.changeTeam(id, desiredTeam);
 
         if (changed.isEmpty()) {
-            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.REJECTED, "NO_OPEN_TEAM_SLOT");
+            return new ChangeRoomTeamResult(ChangeRoomTeamOutcome.NO_OPEN_SLOT, "NO_OPEN_TEAM_SLOT");
         }
 
         var change = changed.orElseThrow();
@@ -118,16 +118,16 @@ final class RoomControlOperations {
     }
 
     static SetRoomReadyResult setReady(
-        String rejection,
+        RoomControlRejection control,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         boolean ready
     ) {
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? SetRoomReadyOutcome.IGNORED
+        if (control != null) {
+            var outcome = RoomControlChecks.inactive(control) ? SetRoomReadyOutcome.IGNORED
                 : SetRoomReadyOutcome.REJECTED;
-            return new SetRoomReadyResult(outcome, rejection);
+            return new SetRoomReadyResult(outcome, control.name());
         }
 
         var member = subscription.membership();
@@ -155,17 +155,17 @@ final class RoomControlOperations {
     }
 
     static ChangeRoomWeaponResult changeWeapon(
-        String rejection,
+        RoomControlRejection control,
         Room room,
         RoomSubscription subscription,
         List<RoomSubscription> subscriptions,
         long characterId,
         int weaponId
     ) {
-        if (rejection != null) {
-            var outcome = RoomControlChecks.inactive(rejection) ? ChangeRoomWeaponOutcome.IGNORED
+        if (control != null) {
+            var outcome = RoomControlChecks.inactive(control) ? ChangeRoomWeaponOutcome.IGNORED
                 : ChangeRoomWeaponOutcome.REJECTED;
-            return new ChangeRoomWeaponResult(outcome, rejection);
+            return new ChangeRoomWeaponResult(outcome, control.name());
         }
 
         if (room.state() != RoomState.WAITING) {
@@ -210,14 +210,12 @@ final class RoomControlOperations {
         UUID id,
         RoomMapCatalog maps,
         int kind,
-        int mapId,
-        Integer gameType,
-        Integer rule,
+        ChangeRoomSettingsCommand command,
         List<RoomSubscription> subscriptions,
         RoomSubscription subscription,
         Consumer<Room> changed
     ) {
-        var result = changeSettings(room, id, maps, mapId, gameType, rule);
+        var result = changeSettings(room, id, maps, command);
 
         if (result.outcome() == ChangeRoomSettingsOutcome.CHANGED) {
             changed.accept(room);
@@ -229,7 +227,7 @@ final class RoomControlOperations {
             RoomSnapshot.from(room),
             result,
             kind,
-            mapId
+            command.mapId()
         );
     }
 
@@ -237,19 +235,11 @@ final class RoomControlOperations {
         Room room,
         UUID id,
         RoomMapCatalog maps,
-        int mapId,
-        Integer gameType,
-        Integer rule
+        ChangeRoomSettingsCommand command
     ) {
         String rejection = null;
         var current = room.settings();
-        int desiredType = gameType == null ? switch (current.mode()) {
-            case ITEM -> 0;
-            case NO_ITEM -> 1;
-            case CAPTAIN_ITEM -> 2;
-            case CAPTAIN_NO_ITEM -> 3;
-        } : gameType;
-        int desiredRule = rule == null ? ((desiredType & 1) == 0 ? 2 : 0) : rule;
+        int mapId = command.mapId();
 
         if (!room.ownerSessionId().equals(id)) {
             rejection = "NOT_OWNER";
@@ -257,9 +247,7 @@ final class RoomControlOperations {
             rejection = "ROOM_UNAVAILABLE";
         } else if (!maps.contains(mapId)) {
             rejection = "UNSUPPORTED_MAP";
-        } else if ((desiredType < 0 || desiredType > 3) || desiredRule != ((desiredType & 1) == 0 ? 2 : 0)
-            && !(desiredRule == 1 && (desiredType & 1) == 0
-                && RoomRulePolicy.select(current.title(), RoomMode.ITEM) == RoomRule.POWER_QUIZ)) {
+        } else if (!RoomRulePolicy.permits(current.title(), command.mode(), command.rule())) {
             rejection = "UNSUPPORTED_MODE_OR_RULE";
         }
 
@@ -267,12 +255,7 @@ final class RoomControlOperations {
             return new ChangeRoomSettingsResult(ChangeRoomSettingsOutcome.REJECTED, rejection, current);
         }
 
-        var mode = switch (desiredType) {
-            case 0 -> RoomMode.ITEM;
-            case 1 -> RoomMode.NO_ITEM;
-            case 2 -> RoomMode.CAPTAIN_ITEM;
-            default -> RoomMode.CAPTAIN_NO_ITEM;
-        };
+        var mode = command.mode();
         boolean changed = room.changeSettings(mode, RoomRulePolicy.select(current.title(), mode), mapId, maps);
         var outcome = changed ? ChangeRoomSettingsOutcome.CHANGED : ChangeRoomSettingsOutcome.UNCHANGED;
         return new ChangeRoomSettingsResult(outcome, outcome.name(), room.settings());

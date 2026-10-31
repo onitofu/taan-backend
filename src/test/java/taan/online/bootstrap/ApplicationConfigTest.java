@@ -124,4 +124,56 @@ class ApplicationConfigTest {
 
         assertEquals("ARGON2_PARALLELISM", failure.setting());
     }
+
+    @Test
+    void boundsIndependentResourcesAndRequiresEnoughConnectionsAndAShorterAcquireTimeout() {
+        var environment = TestFixtures.environment();
+        environment.put("DB_POOL_SIZE", "4");
+        assertEquals(
+            "DB_POOL_SIZE",
+            assertThrows(
+                InvalidConfigurationException.class,
+                () -> ApplicationConfig.fromEnvironment(environment)
+            ).setting()
+        );
+
+        environment.put("DB_POOL_SIZE", "6");
+        environment.put("DB_ACQUIRE_TIMEOUT_MILLIS", "10000");
+        assertEquals(
+            "DB_ACQUIRE_TIMEOUT_MILLIS",
+            assertThrows(
+                InvalidConfigurationException.class,
+                () -> ApplicationConfig.fromEnvironment(environment)
+            ).setting()
+        );
+
+        for (String key : new String[]{
+            "BACKEND_AUTH_WORKER_THREADS",
+            "BACKEND_AUTH_QUEUE_CAPACITY",
+            "BACKEND_DATABASE_WORKER_THREADS",
+            "BACKEND_DATABASE_QUEUE_CAPACITY",
+            "BACKEND_REQUEST_WORKER_THREADS",
+            "BACKEND_REQUEST_QUEUE_CAPACITY",
+            "BACKEND_SETTLEMENT_WORKER_THREADS",
+            "BACKEND_SETTLEMENT_QUEUE_CAPACITY",
+            "DB_POOL_SIZE",
+            "DB_ACQUIRE_TIMEOUT_MILLIS",
+            "BACKEND_MATCH_COMMAND_QUANTUM"
+        }) {
+            var invalid = TestFixtures.environment();
+            invalid.remove(key);
+            assertEquals(
+                key,
+                assertThrows(
+                    InvalidConfigurationException.class,
+                    () -> ApplicationConfig.fromEnvironment(invalid)
+                ).setting()
+            );
+
+            for (String value : new String[]{"0", "2147483647"}) {
+                invalid.put(key, value);
+                assertThrows(InvalidConfigurationException.class, () -> ApplicationConfig.fromEnvironment(invalid));
+            }
+        }
+    }
 }

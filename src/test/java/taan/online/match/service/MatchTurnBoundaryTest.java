@@ -232,7 +232,7 @@ class MatchTurnBoundaryTest {
                 f.timers.commands.getFirst().run();
                 f.run();
                 assertEquals(completion ? RoomMatchEndReason.COMPLETION_TIMEOUT : null, f.callbacks.reason);
-                assertEquals(completion ? MatchPhase.COMPLETION : MatchPhase.SETTLING, f.runtime.snapshot().phase());
+                assertEquals(completion ? MatchPhase.CLOSED : MatchPhase.SETTLING, f.runtime.snapshot().phase());
             }
         }
     }

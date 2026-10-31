@@ -15,6 +15,8 @@ import taan.online.RoomScenario;
 import taan.online.account.model.AccountGender;
 import taan.online.account.model.AccountId;
 import taan.online.channel.service.model.MoveToCommand;
+import taan.online.room.model.RoomMode;
+import taan.online.room.model.RoomRule;
 import taan.online.room.service.model.CreateRoomCommand;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.service.model.RoomStartOutcome;
@@ -42,17 +44,13 @@ class CreateRoomActionTest {
             );
             scenario.lobby(id);
 
+            assertEquals("UNSUPPORTED_SETTINGS", scenario.create.execute(id, null, new RecordingRoomOutput()).reason());
+
             for (CreateRoomCommand command : List.of(
-                new CreateRoomCommand(0, 0, "Room", 0, 0, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 1, "Room", 0, 0, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 1, 0, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 4, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, -1, 0, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 0, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 1, 2, 0, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 1, 8, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 7, null, 0),
-                new CreateRoomCommand(5, 0, "Room", 0, 0, 2, 0, 8, null, 2)
+                new CreateRoomCommand("Room", null, RoomRule.BONUS, null),
+                new CreateRoomCommand("Room", RoomMode.ITEM, null, null),
+                new CreateRoomCommand("Room", RoomMode.ITEM, RoomRule.BASIC, null),
+                new CreateRoomCommand("Room", RoomMode.NO_ITEM, RoomRule.BONUS, null)
             )) {
                 assertEquals(
                     "UNSUPPORTED_SETTINGS",
@@ -100,7 +98,7 @@ class CreateRoomActionTest {
                 CreateRoomOutcome.CREATED,
                 scenario.create.execute(
                     id,
-                    new CreateRoomCommand(5, 0, "No items", 0, 1, 0, 0, 8, null, 1),
+                    RoomScenario.command(5, 0, "No items", 0, 1, 0, 0, 8, null, 1),
                     new RecordingRoomOutput()
                 ).outcome()
             );
@@ -174,6 +172,6 @@ class CreateRoomActionTest {
     }
 
     private CreateRoomCommand title(String value) {
-        return new CreateRoomCommand(5, 0, value, 0, 0, 2, 0, 8, null, 0);
+        return RoomScenario.command(5, 0, value, 0, 0, 2, 0, 8, null, 0);
     }
 }

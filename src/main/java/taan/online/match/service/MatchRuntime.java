@@ -1,19 +1,21 @@
 package taan.online.match.service;
 
-import static taan.online.logging.LogField.commandType;
-import static taan.online.logging.LogField.durationMs;
+import static taan.online.logging.LogField.channelId;
+import static taan.online.logging.LogField.fromPhase;
+import static taan.online.logging.LogField.lifecycleEvent;
 import static taan.online.logging.LogField.matchId;
-import static taan.online.logging.LogField.matchRevision;
+import static taan.online.logging.LogField.phaseRevision;
 import static taan.online.logging.LogField.reason;
+import static taan.online.logging.LogField.roomGeneration;
+import static taan.online.logging.LogField.roomId;
+import static taan.online.logging.LogField.toPhase;
+import static taan.online.logging.LogField.turnRevision;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import taan.online.logging.EventLogger;
@@ -22,12 +24,12 @@ import taan.online.logging.WarningLogLimiter;
 import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchExitKind;
+import taan.online.match.model.MatchLifecycleEvent;
 import taan.online.match.model.MatchParticipationState;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchTransitionDecision;
 import taan.online.match.service.model.ApplyScenarioCommand;
 import taan.online.match.service.model.CommittedScenario;
-import taan.online.match.service.model.ConfirmMatchLoadingCommand;
-import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommand;
@@ -36,12 +38,9 @@ import taan.online.match.service.model.MatchDeadlineExpiredCommand;
 import taan.online.match.service.model.MatchDeliveryCompletedCommand;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchSnapshot;
-import taan.online.match.service.model.MatchStateCommand;
 import taan.online.match.service.model.MatchTurnToken;
 import taan.online.match.service.model.PreparedScenario;
-import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
-import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.room.service.RoomMatchCallbacks;
 import taan.online.room.service.model.RoomMatchEndReason;
@@ -53,8 +52,8 @@ final class MatchRuntime {
     private static final EventLogger LOG = EventLogger.forClass(MatchRuntime.class);
 
     private final Match match;
+    final MatchLifecycleCoordinator lifecycle;
     final MatchScenarioExecution scenarios;
-    final MatchTurnExecution turns;
     final MatchMovementExecution movement;
     final MatchItemExecution items;
     final MatchOutcomeExecution outcomes;
@@ -64,15 +63,15 @@ final class MatchRuntime {
     private final MatchScheduler scheduler;
     private final LongSupplier clock;
     private final WarningLogLimiter warnings;
-    private final Map<UUID, MatchReportBudget> reportBudgets = new HashMap<>();
     private final Object admission = new Object();
     private volatile MatchSnapshot snapshot;
     private volatile boolean closed;
-    private volatile long publishedRevision = -1;
+    private MatchParticipationState stoppedParticipation;
+    volatile long publishedRevision = -1;
     private boolean startPublished;
     RoomMatchCallbacks callbacks;
     private List<MatchSubscription> recipients = List.of();
-    private volatile CompletionStage<Void> startDelivery = CompletableFuture.completedFuture(null);
+    volatile CompletionStage<Void> startDelivery = CompletableFuture.completedFuture(null);
 
     MatchRuntime(
         Match match,
@@ -92,8 +91,8 @@ final class MatchRuntime {
         this.warnings = warnings;
         mailbox = new MatchMailbox(executor, capacity);
         snapshot = MatchSnapshot.from(match);
+        lifecycle = new MatchLifecycleCoordinator(this, match, admission, settings, scheduler, clock, warnings);
         scenarios = new MatchScenarioExecution(this, access, settings.lootPolicy());
-        turns = new MatchTurnExecution(this, match, admission, settings, scheduler, clock, warnings);
         outcomes = new MatchOutcomeExecution(this, match, admission, clock);
         items = new MatchItemExecution(this, match, admission, clock, settings.lootPolicy(), warnings);
         movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
@@ -119,7 +118,7 @@ final class MatchRuntime {
                     prepared.baseWorldRevision(),
                     command.turnRevision(),
                     prepared.world(),
-                    turns.completion(prepared),
+                    lifecycle.completion(prepared),
                     prepared.baseLoot(),
                     prepared.loot()
                 )) {
@@ -135,7 +134,7 @@ final class MatchRuntime {
 
     CompletionStage<Void> publishScenario(CommittedScenario scenario, ScenarioApplicationResult result) {
         if (settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO) {
-            turns.arm();
+            lifecycle.arm();
         } else {
             new MatchBootstrapDelivery(snapshot, recipients, this, scheduler, progress(), warnings).dispatch(null);
         }
@@ -161,7 +160,7 @@ final class MatchRuntime {
 
     CompletableFuture<Boolean> confirmScenario(ConfirmScenarioCommand command) {
         return turnWork(
-            () -> settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO && turns.acknowledge(command)
+            () -> settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO && lifecycle.acknowledge(command)
         );
     }
 
@@ -185,7 +184,7 @@ final class MatchRuntime {
     }
 
     void turnDeadlineExpired(MatchTurnToken token, Optional<String> fingerprint) {
-        turnWork(() -> turns.expired(token, fingerprint));
+        turnWork(() -> lifecycle.expired(token, fingerprint));
     }
 
     List<MatchSubscription> recipients() {
@@ -193,10 +192,29 @@ final class MatchRuntime {
     }
 
     void refresh() {
+        bootstrapRefresh();
+        publishedRevision = snapshot.phaseRevision();
+    }
+
+    void bootstrapRefresh() {
         var before = snapshot;
         snapshot = MatchSnapshot.from(match);
+        if (before.phaseRevision() != snapshot.phaseRevision()) {
+            LOG.log(
+                MatchLogEvent.LIFECYCLE_TRANSITION,
+                lifecycleEvent(match.lastLifecycleEvent().name()),
+                matchId(snapshot.id().value()),
+                roomId(snapshot.roomId().value()),
+                roomGeneration(snapshot.roomGeneration()),
+                channelId(snapshot.channelId()),
+                fromPhase(before.phase().name()),
+                toPhase(snapshot.phase().name()),
+                phaseRevision(snapshot.phaseRevision()),
+                turnRevision(snapshot.turn().revision())
+            );
+        }
+
         MatchLootExecution.logQuizChanges(before, snapshot);
-        publishedRevision = snapshot.phaseRevision();
     }
 
     boolean running() {
@@ -212,7 +230,9 @@ final class MatchRuntime {
     }
 
     MatchParticipationState participation() {
-        return match.participation();
+        synchronized (admission) {
+            return closed ? stoppedParticipation : match.participation();
+        }
     }
 
     RoomMatchToken token() {
@@ -241,115 +261,7 @@ final class MatchRuntime {
     }
 
     CompletableFuture<Boolean> submit(MatchCommand command) {
-        return mailbox.submit(() -> execute(command), () -> rejected(command));
-    }
-
-    private boolean execute(MatchCommand command) {
-        long started = clock.getAsLong();
-
-        try {
-            if (command instanceof StartMatchCommand && callbacks != null && !callbacks.startCurrent(token())) {
-                terminate(RoomMatchEndReason.PREPARATION_FAILED);
-                return false;
-            }
-
-            if (command instanceof TerminateMatchCommand end) {
-                synchronized (admission) {
-                    if (closed || !admits(end.context())) {
-                        return false;
-                    }
-                }
-
-                return outcomes.end(end);
-            }
-
-            RoomMatchEndReason ending = null;
-            MatchSnapshot publication = null;
-            boolean accepted;
-
-            synchronized (admission) {
-                if (closed || !token().equals(command.token()) || !current((MatchStateCommand) command)) {
-                    LOG.log(MatchLogEvent.COMMAND_REJECTED, matchId(snapshot.id().value()), reason("STALE_CONTEXT"));
-                    return false;
-                }
-
-                if (!(command instanceof StartMatchCommand) && match.expired(clock.getAsLong())
-                    && !(settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
-                        && (match.phase() == MatchPhase.ACTION || match.phase() == MatchPhase.SETTLING
-                            || match.phase() == MatchPhase.COMPLETION))) {
-                    ending = match.phase() != MatchPhase.LOADING && match.phase() != MatchPhase.SYNCHRONIZING
-                        ? RoomMatchEndReason.PREVIEW_TIMEOUT : RoomMatchEndReason.LOADING_TIMEOUT;
-                    warnings.warn(WarningEvent.LIMIT_EXCEEDED, ending.name());
-                    accepted = false;
-                } else {
-                    accepted = apply((MatchStateCommand) command);
-                }
-
-                snapshot = MatchSnapshot.from(match);
-
-                if (ending == null && callbacks != null && snapshot.phase() != MatchPhase.RESERVED
-                    && publishedRevision != snapshot.phaseRevision()) {
-                    publishedRevision = snapshot.phaseRevision();
-                    publication = snapshot;
-                }
-            }
-
-            if (ending != null) {
-                terminate(ending);
-            } else if (publication != null) {
-                startDelivery = new MatchBootstrapDelivery(
-                    publication,
-                    recipients,
-                    this,
-                    scheduler,
-                    progress(),
-                    warnings
-                ).dispatch(MatchBootstrapDelivery.requester(command, snapshot, true));
-            }
-
-            LOG.log(
-                MatchLogEvent.COMMAND_PROCESSED,
-                matchId(snapshot.id().value()),
-                commandType(command.getClass().getSimpleName()),
-                matchRevision(snapshot.phaseRevision()),
-                durationMs(TimeUnit.NANOSECONDS.toMillis(clock.getAsLong() - started))
-            );
-            return accepted;
-        } catch (RuntimeException failure) {
-            LOG.failure(MatchLogEvent.COMMAND_FAILED, failure, matchId(snapshot.id().value()));
-            terminate(RoomMatchEndReason.PREPARATION_FAILED);
-            return false;
-        }
-    }
-
-    private boolean current(MatchStateCommand command) {
-        return switch (command) {
-            case ConfirmMatchLoadingCommand c -> admits(c.context());
-            case ConfirmMatchPositionCommand c -> admits(c.context());
-            case ReportMatchEnemiesCommand c -> admits(c.context());
-            case MatchDeliveryCompletedCommand c -> c.progress().equals(progress())
-                && snapshot.participants().stream().anyMatch(p -> p.sessionId().equals(c.recipient()));
-            case MatchDeadlineExpiredCommand c -> c.progress().equals(progress());
-            default -> true;
-        };
-    }
-
-    private boolean apply(MatchStateCommand command) {
-        return switch (command) {
-            case StartMatchCommand ignored -> match.commit(clock.getAsLong(), settings.loadingTimeoutNanos());
-            case ConfirmMatchLoadingCommand c -> loaded(c);
-            case ConfirmMatchPositionCommand c -> turns.position(c);
-            case ReportMatchEnemiesCommand c -> MatchReportBudget.report(
-                match.phase(),
-                reportBudgets,
-                c.context().sessionId(),
-                clock,
-                settings.reportsPerSecond(),
-                warnings
-            );
-            case MatchDeliveryCompletedCommand c -> delivered(c);
-            case MatchDeadlineExpiredCommand ignored -> false;
-        };
+        return mailbox.submit(() -> lifecycle.execute(command), () -> rejected(command));
     }
 
     RoomMatchTerminationResult termination() {
@@ -359,54 +271,6 @@ final class MatchRuntime {
     RoomMatchTerminationResult notifyTermination(RoomMatchEndReason reason, UUID requester) {
         return callbacks == null ? RoomMatchTerminationResult.ignored()
             : callbacks.terminateMatch(token(), reason, requester);
-    }
-
-    private boolean loaded(ConfirmMatchLoadingCommand command) {
-        String result = match.loadingDone(command.context().sessionId(), command.slot(), command.x(), command.y());
-
-        if (!result.equals("ACCEPTED") && !result.equals("UNCHANGED")) {
-            warnings.warn(WarningEvent.FRAME_REJECTED, result);
-            return false;
-        }
-
-        LOG.log(MatchLogEvent.LOADING_ACK, matchId(snapshot.id().value()), reason(result));
-        beginSynchronization();
-        return true;
-    }
-
-    private boolean beginSynchronization() {
-        if (!match.beginSynchronization(clock.getAsLong())) {
-            return false;
-        }
-
-        turns.firstTurnIssued();
-        return true;
-    }
-
-    private boolean delivered(MatchDeliveryCompletedCommand command) {
-        if (!command.success()) {
-            return true;
-        }
-
-        if (!match.deliveryCompleted(command.recipient())) {
-            return false;
-        }
-
-        if (!beginSynchronization()) {
-            boolean started = settings.executionMode() == MatchExecutionMode.PREVIEW
-                ? match.previewStarted(clock.getAsLong(), settings.previewTimeoutNanos())
-                : match.actionStarted(
-                    clock.getAsLong(),
-                    settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
-                    ? settings.actionTimeoutNanos() : settings.previewTimeoutNanos()
-                );
-
-            if (started) {
-                LOG.log(MatchLogEvent.STARTED, matchId(snapshot.id().value()), reason(settings.executionMode().name()));
-            }
-        }
-
-        return true;
     }
 
     CompletionStage<Boolean> deliveryCompleted(RoomMatchProgressToken progress, UUID recipient, boolean success) {
@@ -423,11 +287,11 @@ final class MatchRuntime {
 
     void deadlineExpired(RoomMatchProgressToken progress) {
         if (live() && snapshot.phase() == MatchPhase.LOADING) {
-            turnWork(() -> turns.loadingExpired(progress));
+            turnWork(() -> lifecycle.loadingExpired(progress));
         } else if (settings.executionMode() == MatchExecutionMode.CLIENT_SCENARIO
             && (snapshot.phase() == MatchPhase.ACTION || snapshot.phase() == MatchPhase.SETTLING
                 || snapshot.phase() == MatchPhase.COMPLETION)) {
-            turns.enqueue(progress);
+            lifecycle.enqueue(progress);
         } else {
             submit(new MatchDeadlineExpiredCommand(progress));
         }
@@ -452,15 +316,20 @@ final class MatchRuntime {
     }
 
     MatchSnapshot stop() {
+        MatchSnapshot stopped;
+
         synchronized (admission) {
             if (closed) {
                 return null;
             }
 
             closed = true;
-            match.updateParticipation(match.participation().stop(clock.getAsLong()));
-            return snapshot;
+            stoppedParticipation = match.participation().stop(clock.getAsLong());
+            stopped = snapshot;
         }
+
+        mailbox.fence();
+        return stopped;
     }
 
     boolean unpublished() {
@@ -469,12 +338,60 @@ final class MatchRuntime {
         }
     }
 
+    void control(Runnable command, Runnable rejected) {
+        mailbox.control(
+            () -> {
+                try {
+                    command.run();
+                    return true;
+                } catch (RuntimeException failure) {
+                    LOG.failure(MatchLogEvent.COMMAND_FAILED, failure, matchId(snapshot.id().value()));
+                    rejected.run();
+                    return false;
+                }
+            },
+            false,
+            rejected
+        );
+    }
+
+    void beginTermination() {
+        scheduler.cancel(snapshot.id().value());
+        match.beginTermination();
+        items.clear();
+        refresh();
+    }
+
+    void transition(MatchLifecycleEvent event) {
+        var result = match.transition(event);
+
+        if (result.decision() != MatchTransitionDecision.APPLIED) {
+            ignoredLifecycle(event.name(), result.decision().name());
+        }
+
+        refresh();
+    }
+
+    void ignoredLifecycle(String event, String rejection) {
+        LOG.log(
+            MatchLogEvent.LIFECYCLE_IGNORED,
+            matchId(snapshot.id().value()),
+            roomId(snapshot.roomId().value()),
+            roomGeneration(snapshot.roomGeneration()),
+            channelId(snapshot.channelId()),
+            lifecycleEvent(event),
+            phaseRevision(snapshot.phaseRevision()),
+            turnRevision(snapshot.turn().revision()),
+            reason(rejection)
+        );
+    }
+
     CompletionStage<Void> finish(Runnable delivery) {
         return mailbox.terminate(
             () -> {
                 scheduler.cancel(snapshot.id().value());
-                match.beginTermination();
                 match.cancel();
+                refresh();
                 items.clear();
                 delivery.run();
                 return true;

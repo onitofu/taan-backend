@@ -148,7 +148,7 @@ class MatchPickupScenarioTest {
                 assertEquals(ScenarioApplicationOutcome.REJECTED, result.outcome());
                 assertEquals(duplicate ? "INACTIVE_BOX" : "UNKNOWN_BOX", result.reason());
                 assertSame(before.world(), pickup.f.runtime.snapshot().world());
-                assertSame(before.loot(), pickup.f.runtime.snapshot().loot());
+                MatchGameStateAssertions.closedWithoutApplyingGameplay(before, pickup.f.runtime.snapshot());
                 assertTrue(pickup.f.match.loot().inventories().isEmpty());
                 assertFalse(logs.text().contains("match.box.picked_up"));
                 assertFalse(logs.text().contains(TestFixtures.CREDENTIAL));
@@ -164,7 +164,7 @@ class MatchPickupScenarioTest {
 
             assertEquals("UNKNOWN_BOX", pickup.boxes.apply(command).reason());
             assertSame(before.world(), pickup.f.runtime.snapshot().world());
-            assertSame(before.loot(), pickup.f.runtime.snapshot().loot());
+            MatchGameStateAssertions.closedWithoutApplyingGameplay(before, pickup.f.runtime.snapshot());
         }
     }
 

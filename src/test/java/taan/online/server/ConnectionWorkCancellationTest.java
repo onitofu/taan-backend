@@ -182,7 +182,7 @@ class ConnectionWorkCancellationTest {
         var matches = MatchFixtures.registry();
         var rooms = new RoomRegistry(channels, RoomScenario.maps(), new TestRoomSelectionScheduler(), matches);
         var handler = new ConnectionContext(
-            workers,
+            new RequestExecutors(workers, workers, workers),
             new CheckAccountPacketHandler(new CheckAccountAction(repository)),
             new CreateAccountPacketHandler(
                 new RegisterAccountAction(

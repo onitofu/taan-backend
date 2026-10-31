@@ -12,11 +12,9 @@ import taan.online.channel.service.SelectedCharacterAccess;
 import taan.online.logging.EventLogger;
 import taan.online.room.logging.RoomLogEvent;
 import taan.online.room.model.RoomBootstrapDefinition;
-import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomMapCatalog;
 import taan.online.room.model.RoomParticipant;
 import taan.online.room.model.RoomPassword;
-import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomRulePolicy;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
@@ -75,7 +73,7 @@ public final class CreateRoomAction {
             return rejected(id, "NOT_IN_LOBBY", started);
         }
 
-        if (!supported(command)) {
+        if (command == null || command.mode() == null || command.rule() == null) {
             return rejected(id, "UNSUPPORTED_SETTINGS", started);
         }
 
@@ -91,16 +89,10 @@ public final class CreateRoomAction {
             return rejected(id, "TITLE_FORBIDDEN", started);
         }
 
-        var mode = switch (command.gameType()) {
-            case 0 -> RoomMode.ITEM;
-            case 1 -> RoomMode.NO_ITEM;
-            case 2 -> RoomMode.CAPTAIN_ITEM;
-            default -> RoomMode.CAPTAIN_NO_ITEM;
-        };
+        var mode = command.mode();
         var rule = RoomRulePolicy.select(title, mode);
 
-        if (command.rule() != (mode.usesItems() ? 2 : 0)
-            && !(command.rule() == 1 && rule == RoomRule.POWER_QUIZ)) {
+        if (!RoomRulePolicy.permits(title, mode, command.rule())) {
             return rejected(id, "UNSUPPORTED_SETTINGS", started);
         }
 
@@ -132,13 +124,6 @@ public final class CreateRoomAction {
         var owner = new RoomParticipant(id, character.orElseThrow(), defaults.weaponId());
         var result = rooms.create(context.orElseThrow(), settings, password, owner, output);
         return result.outcome() == CreateRoomOutcome.REJECTED ? rejected(id, result.reason(), started) : result;
-    }
-
-    private boolean supported(CreateRoomCommand command) {
-        return command.state() == 5 && command.roomGrade() == 0 && command.gameKind() == 0
-            && (command.gameType() >= 0 && command.gameType() <= 3)
-            && command.playerCount() == 0 && command.capacity() == 8
-            && (command.mapId() == 0 || command.mapId() == 1);
     }
 
     private CreateRoomResult rejected(UUID id, String value, long started) {

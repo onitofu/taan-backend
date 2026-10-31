@@ -4,6 +4,8 @@ import org.slf4j.event.Level;
 import taan.online.logging.LogEvent;
 
 public enum MatchLogEvent implements LogEvent {
+    LIFECYCLE_TRANSITION("match.lifecycle.transition", Level.DEBUG, "Match lifecycle transition applied"),
+    LIFECYCLE_IGNORED("match.lifecycle.event.ignored", Level.DEBUG, "Stale lifecycle event ignored"),
     REWARDS_COMMITTED("match.rewards.committed", Level.INFO, "Match rewards committed"),
     REWARDS_DUPLICATE("match.rewards.duplicate", Level.DEBUG, "Previously committed match rewards reused"),
     REWARDS_FAILED("match.rewards.failed", Level.ERROR, "Match rewards could not be committed"),

@@ -12,10 +12,10 @@ import taan.online.TestFixtures;
 
 class MatchShutdownTest {
     @Test
-    void preservesInterruptionAndClosesBothWorkerPoolsEvenBeforeStartup() throws Exception {
+    void preservesInterruptionAndClosesAllWorkerPoolsEvenBeforeStartup() throws Exception {
         var application = new Application(ApplicationConfig.fromEnvironment(TestFixtures.environment()));
-        var entered = new CountDownLatch(2);
-        var stopped = new CountDownLatch(2);
+        var entered = new CountDownLatch(5);
+        var stopped = new CountDownLatch(5);
         var release = new CountDownLatch(1);
         blockWorkers(application, entered, stopped, release);
         assertTrue(entered.await(5, TimeUnit.SECONDS));
@@ -34,12 +34,12 @@ class MatchShutdownTest {
     }
 
     @Test
-    void boundsBothWorkerPoolsByOneSharedShutdownDeadline() throws Exception {
+    void boundsAllWorkerPoolsByOneSharedShutdownDeadline() throws Exception {
         var environment = TestFixtures.environment();
         environment.put("BACKEND_SHUTDOWN_TIMEOUT_SECONDS", "4");
         var application = new Application(ApplicationConfig.fromEnvironment(environment));
-        var entered = new CountDownLatch(2);
-        var stopped = new CountDownLatch(2);
+        var entered = new CountDownLatch(5);
+        var stopped = new CountDownLatch(5);
         var release = new CountDownLatch(1);
         blockWorkers(application, entered, stopped, release);
 
@@ -62,12 +62,6 @@ class MatchShutdownTest {
         CountDownLatch stopped,
         CountDownLatch release
     ) throws Exception {
-        var workerField = Application.class.getDeclaredField("workers");
-        workerField.setAccessible(true);
-        var workers = (ThreadPoolExecutor) workerField.get(application);
-        var matchField = Application.class.getDeclaredField("matchExecutor");
-        matchField.setAccessible(true);
-        var matches = (BoundedMatchExecutor) matchField.get(application);
         Runnable work = () -> {
             entered.countDown();
 
@@ -78,7 +72,16 @@ class MatchShutdownTest {
                 stopped.countDown();
             }
         };
-        workers.execute(work);
-        matches.execute(work);
+        for (String fieldName : new String[]{
+            "authenticationWorkers", "databaseWorkers", "requestWorkers", "settlementWorkers"
+        }) {
+            var field = Application.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            ((ThreadPoolExecutor) field.get(application)).execute(work);
+        }
+
+        var matchField = Application.class.getDeclaredField("matchExecutor");
+        matchField.setAccessible(true);
+        ((BoundedMatchExecutor) matchField.get(application)).execute(work);
     }
 }
