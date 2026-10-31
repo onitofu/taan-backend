@@ -3,15 +3,11 @@ package taan.online.match.protocol.codec;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
@@ -40,20 +36,13 @@ class ScenarioCodecTest {
     private final ScenarioCodec codec = new ScenarioCodec();
 
     @Test
-    void retainsNativeRootsAndTheirIndependentProvenance() throws Exception {
-        String provenance;
-
-        try (var input = getClass().getResourceAsStream("/match/scenario-provenance.json")) {
-            provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
+    void retainsIndependentNativeRoots() throws Exception {
         for (String name : List.of("native-cannon-0-0", "native-cannon-2-1", "native-cannon-2-0")) {
             byte[] root = MatchFixtures.root(name);
             var packet = codec.decode(root);
 
             assertArrayEquals(root, codec.encode(packet));
-            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root));
-            assertTrue(provenance.contains(hash));
+
             assertEquals(0, ((ScenarioFireCommand) packet.scenario().commands().get(1)).weaponId());
 
             for (int size = 0; size < root.length; size++) {

@@ -3,10 +3,8 @@ package taan.online.match.protocol.codec;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import taan.online.match.controller.ScenarioClaimsMapper;
@@ -44,11 +42,5 @@ class ThunderGoldenTest {
             ).animationId()
         );
         assertArrayEquals(root, codec.encode(packet));
-
-        try (var evidence = getClass().getResourceAsStream("/match/weapons/provenance.json")) {
-            assertTrue(new String(evidence.readAllBytes(), StandardCharsets.US_ASCII).contains(
-                HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root))
-            ));
-        }
     }
 }

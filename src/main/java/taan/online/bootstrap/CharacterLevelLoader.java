@@ -15,7 +15,7 @@ public final class CharacterLevelLoader {
         Objects.requireNonNull(input, "Missing level table");
 
         try (var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
-            if (!"level,total_exp,exp_to_next,reference_hours".equals(reader.readLine())) {
+            if (!"level,total_exp".equals(reader.readLine())) {
                 throw new IllegalArgumentException("Invalid level table header");
             }
 
@@ -25,7 +25,7 @@ public final class CharacterLevelLoader {
             while ((line = reader.readLine()) != null) {
                 var fields = line.split(",", -1);
 
-                if (fields.length != 4) {
+                if (fields.length != 2) {
                     throw new IllegalArgumentException("Invalid level table row");
                 }
 

@@ -32,7 +32,6 @@ class ScenarioPowerAdmissionTest {
                 )
             );
             world.definitions = new MatchDefinitions(
-                original.catalogVersion(),
                 original.map(),
                 original.weapons(),
                 attacks,

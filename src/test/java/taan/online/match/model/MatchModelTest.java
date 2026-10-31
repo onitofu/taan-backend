@@ -71,7 +71,7 @@ class MatchModelTest {
                     0,
                     RoomTeam.BLUE,
                     p.character(),
-                    new MapSpawnDefinition(0, 1, 1, 1, 1, 1, 0, false)
+                    new MapSpawnDefinition(0, 1, 1, 1, 1, 1, false)
                 )
             );
             assertThrows(
@@ -83,7 +83,7 @@ class MatchModelTest {
                     0,
                     RoomTeam.BLUE,
                     p.character(),
-                    new MapSpawnDefinition(0, 1, 1, 1, 1, 2, 0, true)
+                    new MapSpawnDefinition(0, 1, 1, 1, 1, 2, true)
                 )
             );
             assertEquals(
@@ -95,7 +95,7 @@ class MatchModelTest {
                     0,
                     RoomTeam.BLUE,
                     p.character(),
-                    new MapSpawnDefinition(0, 1, 1, 1, 1, 0, 0, true)
+                    new MapSpawnDefinition(0, 1, 1, 1, 1, 0, true)
                 ).spawn().side()
             );
         }
@@ -143,7 +143,7 @@ class MatchModelTest {
                     2,
                     RoomTeam.RED,
                     b.character(),
-                    new MapSpawnDefinition(99, 1, 1, 1, 1, 2, 0, true)
+                    new MapSpawnDefinition(99, 1, 1, 1, 1, 2, true)
                 )
             )) {
                 assertThrows(

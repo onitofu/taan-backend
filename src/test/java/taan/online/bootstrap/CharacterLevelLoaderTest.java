@@ -15,8 +15,8 @@ class CharacterLevelLoaderTest {
         assertThrows(NullPointerException.class, () -> loader.load(null));
 
         for (String invalid : new String[]{
-            "", "wrong", "level,total_exp,exp_to_next,reference_hours\ninvalid\n",
-            "level,total_exp,exp_to_next,reference_hours\ninvalid,0,0,0\n"
+            "", "wrong", "level,total_exp\ninvalid\n",
+            "level,total_exp\ninvalid,0\n"
         }) {
             assertThrows(
                 IllegalArgumentException.class,

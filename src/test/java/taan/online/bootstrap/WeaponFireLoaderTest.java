@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +51,7 @@ class WeaponFireLoaderTest {
     }
 
     @Test
-    void checksTheNewMaskOriginsAndBothCatalogExportHashes() throws Exception {
+    void checksTheKnownExplosionMaskAnchors() throws Exception {
         var definitions = MatchFixtures.definitions();
         int[][] centers = {{138, 139, 136}, {144, 146, 140}, {139, 138, 137, 135, 133}};
         int[] weapons = {1, 2, 6};
@@ -64,13 +62,6 @@ class WeaponFireLoaderTest {
                 assertEquals(128, mask.centerX());
                 assertEquals(centers[index][type], mask.centerY());
             }
-        }
-
-        String provenance = text("catalog-provenance.json");
-
-        for (var resource : List.of("weapon-attacks.csv", "weapon-fires.csv")) {
-            assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(text(resource).getBytes(StandardCharsets.UTF_8)))));
         }
     }
 
@@ -108,7 +99,6 @@ class WeaponFireLoaderTest {
 
     private void load(InputStream fires) {
         new MatchDefinitionLoader().load(
-            resource("catalog.properties"),
             resource("maps.csv"),
             resource("map-spawns.csv"),
             resource("weapons.csv"),

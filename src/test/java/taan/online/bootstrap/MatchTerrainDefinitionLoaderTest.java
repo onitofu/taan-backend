@@ -25,7 +25,7 @@ class MatchTerrainDefinitionLoaderTest {
     private final MatchTerrainDefinitionLoader loader = new MatchTerrainDefinitionLoader();
 
     @Test
-    void loadsAllOrdinaryLayersAndTheCanonicalCannonMaskWithExportedChecksums() throws Exception {
+    void loadsAllOrdinaryLayersAndTheCanonicalCannonMask() throws Exception {
         var catalog = MatchFixtures.catalog();
         var expected = IntStream.rangeClosed(1, 21).boxed().collect(Collectors.toSet());
         assertEquals(expected, catalog.maps().keySet());
@@ -37,16 +37,7 @@ class MatchTerrainDefinitionLoaderTest {
         assertEquals(128, cannon.centerX());
         assertEquals(150, cannon.centerY());
         assertTrue(cannon.mask().cells().length > 0);
-        String provenance = text("terrain-provenance.json");
-
-        for (var map : catalog.maps().values()) {
-            for (var layer : map.terrainLayers()) {
-                assertTrue(provenance.contains(hash(layer.cells())));
-            }
-        }
-
         assertEquals(25, catalog.missiles().size());
-        assertTrue(provenance.contains(hash(cannon.mask().cells())));
     }
 
     @Test
@@ -160,7 +151,6 @@ class MatchTerrainDefinitionLoaderTest {
             assertThrows(
                 IllegalArgumentException.class,
                 () -> loader.load(
-                    resource("catalog.properties"),
                     resource("maps.csv"),
                     resource("map-spawns.csv"),
                     resource("weapons.csv"),

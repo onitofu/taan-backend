@@ -188,7 +188,6 @@ public final class Application implements AutoCloseable {
         var channelAccess = new SessionChannelAccess(sessions);
         channels = new ChannelRegistry(channelAccess, config.port());
         var matchDefinitions = new MatchDefinitionLoader().load(
-            Application.class.getResourceAsStream("/match/catalog.properties"),
             Application.class.getResourceAsStream("/match/maps.csv"),
             Application.class.getResourceAsStream("/match/map-spawns.csv"),
             Application.class.getResourceAsStream("/match/weapons.csv"),

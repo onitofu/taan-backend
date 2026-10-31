@@ -11,7 +11,6 @@ class CrossbowDefinitionTest {
     void bindsTheSpecialsWireVariantFourToMissileTwoAndLoadsIndependentClientResourceValues() {
         var catalog = MatchFixtures.catalog();
         var weapon = catalog.weapons().get(3);
-        assertEquals("crossbow", weapon.asset());
         assertEquals(1000, weapon.resourceMaxHp());
         assertEquals(100, weapon.maxEnergy());
         assertEquals(10, weapon.hitEnergy());

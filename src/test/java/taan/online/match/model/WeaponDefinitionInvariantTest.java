@@ -57,7 +57,7 @@ class WeaponDefinitionInvariantTest {
         for (int energy : new int[]{-1, 10923}) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new WeaponDefinition(0, "cannon", 1000, 100, 2500, energy)
+                () -> new WeaponDefinition(0, 1000, 100, 2500, energy)
             );
         }
 
@@ -69,7 +69,7 @@ class WeaponDefinitionInvariantTest {
     }
 
     @Test
-    void validatesCompleteWeaponCatalogsAndRejectsCrossWeaponAliasesEvenWhenAllTwelveRowsArePresent() {
+    void validatesCompleteWeaponCatalogsAndRejectsCrossWeaponAliasesEvenWhenAllImplementedRowsArePresent() {
         var original = MatchFixtures.definitions();
 
         for (int kind = 0; kind < 5; kind++) {
@@ -90,7 +90,6 @@ class WeaponDefinitionInvariantTest {
             }
 
             assertThrows(IllegalArgumentException.class, () -> new MatchDefinitions(
-                original.catalogVersion(),
                 original.map(),
                 original.weapons(),
                 attacks,

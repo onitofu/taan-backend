@@ -16,7 +16,6 @@ class MatchDefinitionCatalogTest {
         var definitions = MatchFixtures.definitions();
         var maps = new HashMap<>(Map.of(1, definitions.map()));
         var catalog = new MatchDefinitionCatalog(
-            definitions.catalogVersion(),
             maps,
             definitions.weapons(),
             MatchFixtures.attacks(),
@@ -30,7 +29,6 @@ class MatchDefinitionCatalogTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitionCatalog(
-                definitions.catalogVersion(),
                 Map.of(),
                 definitions.weapons(),
                 MatchFixtures.attacks(),
@@ -40,7 +38,6 @@ class MatchDefinitionCatalogTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitionCatalog(
-                definitions.catalogVersion(),
                 Map.of(2, definitions.map()),
                 definitions.weapons(),
                 MatchFixtures.attacks(),
@@ -55,7 +52,6 @@ class MatchDefinitionCatalogTest {
         var kinds = new HashSet<>(Set.of(0, 1, 4, 6));
         var copy = new MatchMapDefinition(
             map.mapId(),
-            map.asset(),
             map.width(),
             map.height(),
             map.spawns(),
@@ -72,7 +68,6 @@ class MatchDefinitionCatalogTest {
                 IllegalArgumentException.class,
                 () -> new MatchMapDefinition(
                     map.mapId(),
-                    map.asset(),
                     map.width(),
                     map.height(),
                     map.spawns(),

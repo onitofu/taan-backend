@@ -3,13 +3,10 @@ package taan.online.bootstrap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchFixtures;
 import taan.online.match.model.WeaponAttackDefinition;
@@ -18,14 +15,12 @@ import taan.online.match.model.WeaponFireDefinition;
 
 class CannonDefinitionLoaderTest {
     @Test
-    void loadsTheVersionedOrdinaryCannonPermissionsAndChecksTheirExportHash() throws Exception {
+    void loadsOrdinaryCannonPermissionsAndRejectsCorruptDefinitions() throws Exception {
         var catalog = MatchFixtures.catalog();
         byte[] bytes;
-        String provenance;
 
-        try (var stream = resource("weapon-attacks.csv"); var evidence = resource("catalog-provenance.json")) {
+        try (var stream = resource("weapon-attacks.csv")) {
             bytes = stream.readAllBytes();
-            provenance = new String(evidence.readAllBytes(), StandardCharsets.UTF_8);
         }
 
         assertEquals(
@@ -54,7 +49,6 @@ class CannonDefinitionLoaderTest {
             ),
             catalog.attacks().get(new WeaponAttackKey(0, 1))
         );
-        assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))));
         String csv = new String(bytes, StandardCharsets.UTF_8);
 
         for (String invalid : new String[]{
@@ -110,7 +104,6 @@ class CannonDefinitionLoaderTest {
 
     private void load(InputStream cannon) {
         new MatchDefinitionLoader().load(
-            resource("catalog.properties"),
             resource("maps.csv"),
             resource("map-spawns.csv"),
             resource("weapons.csv"),

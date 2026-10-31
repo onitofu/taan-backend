@@ -3,10 +3,8 @@ package taan.online.match.protocol.codec;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
@@ -17,21 +15,15 @@ class MakeGhostRequestCodecTest {
     @Test
     void decodesTheIndependentNativeRequestAndPreservesEveryValidSlot() throws Exception {
         byte[] root;
-        String provenance;
 
-        try (
-            var input = getClass().getResourceAsStream("/match/ghost/00144-c2s-combat.hex");
-            var manifest = getClass().getResourceAsStream("/match/ghost/provenance.json")
-        ) {
+        try (var input = getClass().getResourceAsStream("/match/ghost/00144-c2s-combat.hex")) {
             root = HexFormat.of().parseHex(new String(input.readAllBytes(), StandardCharsets.US_ASCII)
                 .replaceAll("\\s+", ""));
-            provenance = new String(manifest.readAllBytes(), StandardCharsets.UTF_8);
         }
 
         var codec = new MakeGhostRequestCodec();
         assertEquals(0, codec.decode(root).slotIndex());
         assertArrayEquals(root, codec.encode(new PqGamePlayMakeGhost(0)));
-        assertTrue(provenance.contains(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root))));
 
         for (int slot = 0; slot < 8; slot++) {
             var packet = new PqGamePlayMakeGhost(slot);

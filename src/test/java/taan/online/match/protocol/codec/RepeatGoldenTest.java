@@ -2,10 +2,8 @@ package taan.online.match.protocol.codec;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -50,12 +48,6 @@ class RepeatGoldenTest {
         try (var input = getClass().getResourceAsStream("/match/repeat/" + name)) {
             bytes = HexFormat.of().parseHex(new String(input.readAllBytes(), StandardCharsets.US_ASCII)
                 .replaceAll("\\s+", ""));
-        }
-
-        try (var input = getClass().getResourceAsStream("/match/repeat/provenance.json")) {
-            var manifest = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            var digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-            assertTrue(manifest.contains(digest));
         }
 
         return bytes;

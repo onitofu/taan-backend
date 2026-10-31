@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,14 +25,12 @@ import taan.online.match.model.WeaponFireDefinition;
 
 public final class MatchDefinitionLoader {
     public MatchDefinitionCatalog load(
-        InputStream properties,
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
         InputStream attacks
     ) {
         return load(
-            properties,
             maps,
             spawns,
             weapons,
@@ -43,38 +40,29 @@ public final class MatchDefinitionLoader {
     }
 
     public MatchDefinitionCatalog load(
-        InputStream properties,
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
         InputStream attacks,
         Function<String, InputStream> resources
     ) {
-        try (properties; maps; spawns; weapons; attacks) {
-            return definitions(properties, maps, spawns, weapons, attacks, resources);
+        try (maps; spawns; weapons; attacks) {
+            return definitions(maps, spawns, weapons, attacks, resources);
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot load match definitions", failure);
         }
     }
 
     private MatchDefinitionCatalog definitions(
-        InputStream properties,
         InputStream maps,
         InputStream spawns,
         InputStream weapons,
         InputStream attacks,
         Function<String, InputStream> resources
     ) throws IOException {
-        var values = new Properties();
-        values.load(new InputStreamReader(Objects.requireNonNull(properties), StandardCharsets.UTF_8.newDecoder()));
-
-        if (!values.stringPropertyNames().equals(Set.of("catalog.version"))) {
-            throw new IllegalArgumentException("Invalid match catalog properties");
-        }
-
         var points = csv(
             spawns,
-            "map_id,index,raw_x,raw_y,settled_x,settled_y,side,flag,valid",
+            "map_id,index,raw_x,raw_y,settled_x,settled_y,side,valid",
             row -> Map.entry(
                 Integer.parseInt(row[0]),
                 new MapSpawnDefinition(
@@ -84,8 +72,7 @@ public final class MatchDefinitionLoader {
                     Integer.parseInt(row[4]),
                     Integer.parseInt(row[5]),
                     Integer.parseInt(row[6]),
-                    Integer.parseInt(row[7]),
-                    valid(row[8])
+                    valid(row[7])
                 )
             )
         ).stream().collect(
@@ -98,12 +85,11 @@ public final class MatchDefinitionLoader {
 
         for (var map : csv(
             maps,
-            "map_id,asset,width,height,kind_0,kind_1,kind_4,kind_6",
+            "map_id,width,height,kind_0,kind_1,kind_4,kind_6",
             row -> new MatchMapDefinition(
                 Integer.parseInt(row[0]),
-                row[1],
+                Integer.parseInt(row[1]),
                 Integer.parseInt(row[2]),
-                Integer.parseInt(row[3]),
                 points.getOrDefault(Integer.parseInt(row[0]), List.of()),
                 kinds(row),
                 layers.getOrDefault(Integer.parseInt(row[0]), List.of())
@@ -123,14 +109,13 @@ public final class MatchDefinitionLoader {
 
         var weaponDefinitions = csv(
             weapons,
-            "weapon_id,asset,resource_max_hp,max_energy,resource_move,hit_energy",
+            "weapon_id,resource_max_hp,max_energy,resource_move,hit_energy",
             row -> new WeaponDefinition(
                 Integer.parseInt(row[0]),
-                row[1],
+                Integer.parseInt(row[1]),
                 Integer.parseInt(row[2]),
                 Integer.parseInt(row[3]),
-                Integer.parseInt(row[4]),
-                Integer.parseInt(row[5])
+                Integer.parseInt(row[4])
             )
         );
         var fires = new HashMap<WeaponAttackKey, List<WeaponFireDefinition>>();
@@ -175,7 +160,6 @@ public final class MatchDefinitionLoader {
         }
 
         return new MatchDefinitionCatalog(
-            values.getProperty("catalog.version"),
             definitions,
             weaponDefinitions.stream().collect(
                 Collectors.toUnmodifiableMap(WeaponDefinition::weaponId, weapon -> weapon)
@@ -190,7 +174,7 @@ public final class MatchDefinitionLoader {
         var result = new HashSet<Integer>();
 
         for (int index = 0; index < kinds.length; index++) {
-            if (valid(row[index + 4])) {
+            if (valid(row[index + 3])) {
                 result.add(kinds[index]);
             }
         }

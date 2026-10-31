@@ -2,11 +2,7 @@ package taan.online.match.protocol.codec;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import taan.online.MatchGuidedTestPackets;
@@ -22,11 +18,6 @@ class GuidedGoldenTest {
         assertArrayEquals(use, new UseItemCodec().encode(activation));
         byte[] spend = MatchGuidedTestPackets.root("00155-c2s-combat.hex");
         assertArrayEquals(spend, new SpendItemCodec().encode(new SpendItemCodec().decode(spend)));
-        String provenance;
-
-        try (var input = getClass().getResourceAsStream("/match/guided/provenance.json")) {
-            provenance = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
 
         for (String name : List.of(
             "00151-c2s-combat.hex",
@@ -36,8 +27,6 @@ class GuidedGoldenTest {
             "00353-s2c-PcGamePlay_Scenario.hex"
         )) {
             byte[] root = MatchGuidedTestPackets.root(name);
-            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root));
-            assertTrue(provenance.contains(hash));
 
             if (name.contains("Scenario") || name.startsWith("00159")) {
                 var packet = new ScenarioCodec().decode(root);

@@ -18,7 +18,6 @@ class TerrainDefinitionInvariantTest {
             IllegalArgumentException.class,
             () -> new MatchMapDefinition(
                 m.mapId(),
-                m.asset(),
                 m.width(),
                 m.height(),
                 m.spawns(),
@@ -28,12 +27,11 @@ class TerrainDefinitionInvariantTest {
         );
         assertThrows(
             IllegalArgumentException.class,
-            () -> new MatchDefinitions(d.catalogVersion(), m, d.weapons(), d.attacks(), Map.of())
+            () -> new MatchDefinitions(m, d.weapons(), d.attacks(), Map.of())
         );
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
-                d.catalogVersion(),
                 m,
                 d.weapons(),
                 d.attacks(),
@@ -63,13 +61,12 @@ class TerrainDefinitionInvariantTest {
         )) {
             assertThrows(
                 IllegalArgumentException.class,
-                () -> new MatchDefinitions(d.catalogVersion(), d.map(), d.weapons(), shots, d.missiles())
+                () -> new MatchDefinitions(d.map(), d.weapons(), shots, d.missiles())
             );
         }
         assertThrows(
             IllegalArgumentException.class,
             () -> new MatchDefinitions(
-                d.catalogVersion(),
                 d.map(),
                 d.weapons(),
                 d.attacks(),
