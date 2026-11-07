@@ -188,7 +188,8 @@ public final class ScenarioWorldDraft {
             deaths,
             Optional.of(receipt),
             boxes,
-            combatStatistics
+            combatStatistics,
+            original.teamGauges()
         );
     }
 

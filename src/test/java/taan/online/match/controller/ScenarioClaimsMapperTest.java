@@ -40,6 +40,7 @@ import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.protocol.MalformedPacketException;
 
 class ScenarioClaimsMapperTest {
@@ -65,6 +66,7 @@ class ScenarioClaimsMapperTest {
             new ScenarioUseBonusCommand(h(15), 5),
             new ScenarioMakeItemBoxCommand(h(5), -1L, new ScenarioIntPoint(100, 200)),
             new ScenarioEatItemBoxCommand(h(5), -1L, 5, -1),
+            new ScenarioTeamGaugeCommand(h(5), 0, 50, 0),
             new ScenarioNormalCommand(h(5), 0, 0)
         );
         var scene = new GameScenario(
@@ -125,7 +127,12 @@ class ScenarioClaimsMapperTest {
         assertInstanceOf(ScenarioAnimationClaim.class, mapped.get(11));
         assertInstanceOf(ScenarioActorClaim.class, mapped.get(12));
         assertEquals(700, mapped.get(12).header().duration());
-        assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(13));
+        var gauge = assertInstanceOf(ScenarioTeamGaugeClaim.class, mapped.get(13));
+        assertEquals(0, gauge.reason());
+        assertEquals(50, gauge.newGauge());
+        assertEquals(0, gauge.oldGauge());
+        assertEquals(700, gauge.scalar10());
+        assertInstanceOf(ScenarioActorClaim.class, mapped.get(mapped.size() - 2));
         assertInstanceOf(ScenarioUnsupportedClaim.class, mapped.get(14));
         assertInstanceOf(ScenarioActorClaim.class, mapped.getLast());
     }

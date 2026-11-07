@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import taan.online.LogCapture;
@@ -170,7 +170,7 @@ class MatchSpreadAdmissionTest {
             var context = p.energy.context();
             assertTrue(p.energy.movement.pass(p.energy.movement.pass()));
             var before = p.f.runtime.snapshot();
-            var command = new ReportMatchBonusCommand(context, 0, 0, OptionalInt.empty(), -1, 3, -17, -3, -1);
+            var command = new ReportMatchBonusCommand(context, 0, 0, Optional.empty(), -1, 3, -17, -3, -1);
 
             var result = MatchItemExecution.reportBonus(p.f.runtime, command);
             p.f.run();

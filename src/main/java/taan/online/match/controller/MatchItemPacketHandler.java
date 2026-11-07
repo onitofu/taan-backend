@@ -1,6 +1,5 @@
 package taan.online.match.controller;
 
-import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -16,6 +15,7 @@ import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
+import taan.online.match.protocol.packet.ScenarioTeamGaugeCommand;
 import taan.online.match.service.ConfirmMatchItemReceiptAction;
 import taan.online.match.service.DiscardMatchItemAction;
 import taan.online.match.service.RecordMatchSpendAction;
@@ -28,6 +28,8 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.RecordMatchSpendCommand;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
+import taan.online.match.service.model.ScenarioEventTime;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.match.service.model.SpentMatchItem;
 import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.protocol.MalformedPacketException;
@@ -71,7 +73,7 @@ public final class MatchItemPacketHandler {
                 sender,
                 packet.slotIndex(),
                 packet.command().header().slot(),
-                packet.gauge().map(value -> OptionalInt.of(value.header().slot())).orElse(OptionalInt.empty()),
+                packet.gauge().map(this::gauge),
                 packet.command().entityId(),
                 packet.command().itemId(),
                 packet.command().header().tick(),
@@ -88,7 +90,7 @@ public final class MatchItemPacketHandler {
                 sender,
                 packet.slotIndex(),
                 packet.command().header().slot(),
-                packet.gauge().map(value -> OptionalInt.of(value.header().slot())).orElse(OptionalInt.empty()),
+                packet.gauge().map(this::gauge),
                 packet.command().entityId(),
                 packet.command().itemId()
             );
@@ -153,5 +155,16 @@ public final class MatchItemPacketHandler {
         );
 
         return spending.execute(command).thenApply(ignored -> null);
+    }
+
+    private ScenarioTeamGaugeClaim gauge(ScenarioTeamGaugeCommand value) {
+        var header = value.header();
+        return new ScenarioTeamGaugeClaim(
+            new ScenarioEventTime(header.slot(), header.kind(), Integer.toUnsignedLong(header.tick()), 0),
+            header.scalar10(),
+            value.reason(),
+            value.newGauge(),
+            value.oldGauge()
+        );
     }
 }

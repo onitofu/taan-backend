@@ -53,7 +53,19 @@ final class ScenarioRuntimeFixture implements AutoCloseable {
         MatchBoxPolicy boxes,
         RoomRule rule
     ) throws IOException {
-        f = new MatchRuntimeFixture(capacity, mode, policy, RoomMode.ITEM, boxes, rule);
+        this(capacity, mode, policy, boxes, rule, RoomMode.ITEM, 2);
+    }
+
+    ScenarioRuntimeFixture(
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        MatchBoxPolicy boxes,
+        RoomRule rule,
+        RoomMode roomMode,
+        int count
+    ) throws IOException {
+        f = new MatchRuntimeFixture(capacity, mode, policy, roomMode, boxes, rule, count);
         nativePacket = new ScenarioCodec().decode(MatchFixtures.root("native-cannon-0-0"));
         f.activate();
         f.runtime.submit(new StartMatchCommand(f.token));

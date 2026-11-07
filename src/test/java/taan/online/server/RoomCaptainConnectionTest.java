@@ -87,13 +87,13 @@ class RoomCaptainConnectionTest {
                 MatchFixtures.loaded(world.matches, token);
 
                 assertEquals(
-                    mode == 2 ? MatchPhase.ACTION : MatchPhase.PREVIEW,
+                    MatchPhase.ACTION,
                     world.matches.current(token).orElseThrow().phase()
                 );
                 world.drainOutputs();
                 world.request(owner, MatchFixtures.root("give-up-empty"));
 
-                int expectedResult = mode == 2 ? 2 : 0;
+                int expectedResult = 2;
 
                 for (var client : List.of(owner, guest)) {
                     MatchResultAssertions.readEnd(() -> read(client), expectedResult);

@@ -144,7 +144,7 @@ public final class MatchRegistry implements RoomMatchLifecycle {
                 participants.isEmpty() ? 0 : participants.get(random.nextInt(participants.size())).slotIndex(),
                 MatchBoxPolicy.DISABLED
             );
-            var profile = settings.forProfile(draft.settings().mode().usesItems());
+            var profile = settings;
 
             if (profile.executionMode() == MatchExecutionMode.CLIENT_SCENARIO) {
                 var initial = new MatchTurnPolicy().initial(participants, random.nextLong(), draft.lootPickerScalar());

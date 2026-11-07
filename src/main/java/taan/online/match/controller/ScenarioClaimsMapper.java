@@ -9,6 +9,7 @@ import taan.online.match.protocol.packet.ScenarioFireCommand;
 import taan.online.match.protocol.packet.ScenarioGuidedCommand;
 import taan.online.match.protocol.packet.ScenarioMakeItemBoxCommand;
 import taan.online.match.protocol.packet.ScenarioNormalCommand;
+import taan.online.match.protocol.packet.ScenarioTeamGaugeCommand;
 import taan.online.match.protocol.packet.ScenarioWeaponCommand;
 import taan.online.match.service.model.ScenarioActorClaim;
 import taan.online.match.service.model.ScenarioAnimationClaim;
@@ -22,6 +23,7 @@ import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
 public final class ScenarioClaimsMapper {
@@ -55,6 +57,16 @@ public final class ScenarioClaimsMapper {
 
         if (command instanceof ScenarioEatItemBoxCommand pickup && value.kind() == 11) {
             return new ScenarioEatItemBoxClaim(header, pickup.entityId(), pickup.itemId(), pickup.opaque24());
+        }
+
+        if (command instanceof ScenarioTeamGaugeCommand gauge && value.kind() == 12) {
+            return new ScenarioTeamGaugeClaim(
+                header,
+                value.scalar10(),
+                gauge.reason(),
+                gauge.newGauge(),
+                gauge.oldGauge()
+            );
         }
 
         if (command instanceof ScenarioGuidedCommand guided && value.kind() == 13) {

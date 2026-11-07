@@ -19,7 +19,7 @@ import taan.online.room.model.RoomTeam;
 
 class TeamMatchTest {
     @Test
-    void keepsBothNoItemModesInPreviewWithMixedWeaponsAndFullTeams() {
+    void startsBothNoItemModesWithMixedWeaponsAndFullTeams() {
         for (var mode : List.of(RoomMode.NO_ITEM, RoomMode.CAPTAIN_NO_ITEM)) {
             try (var room = new MatchRoomFixture(new RoomScenario(MatchExecutionMode.CLIENT_SCENARIO), 8, mode)) {
                 for (int index = 0; index < room.players.size(); index++) {
@@ -43,14 +43,14 @@ class TeamMatchTest {
                 result.delivery().toCompletableFuture().join();
                 var token = room.scenario.rooms.matchContext(room.owner).token();
                 MatchFixtures.loaded(room.scenario.matches, token);
-                assertEquals(MatchPhase.PREVIEW, room.scenario.matches.current(token).orElseThrow().phase());
+                assertEquals(MatchPhase.ACTION, room.scenario.matches.current(token).orElseThrow().phase());
             }
         }
     }
 
     @Test
-    void bootsAllSixteenTeamSizesInBothItemModesAndPreservesOneTurnPerLivingPlayerPerRound() {
-        for (var mode : List.of(RoomMode.ITEM, RoomMode.CAPTAIN_ITEM)) {
+    void bootsAllSixteenTeamSizesInAllModesAndPreservesOneTurnPerLivingPlayerPerRound() {
+        for (var mode : List.of(RoomMode.values())) {
             for (int blue = 1; blue <= 4; blue++) {
                 for (int red = 1; red <= 4; red++) {
                     try (var f = new TeamMatchFixture(blue, red, mode)) {
@@ -87,7 +87,7 @@ class TeamMatchTest {
 
     @Test
     void keepsADeadOrdinaryPlayerWatchingAndRequiresOneAckFromEveryConnectedPlayer() throws Exception {
-        for (var mode : List.of(RoomMode.ITEM, RoomMode.CAPTAIN_ITEM)) {
+        for (var mode : List.of(RoomMode.values())) {
             try (var f = new TeamMatchFixture(2, 2, mode)) {
                 f.start(true);
                 var shooter = f.active();
@@ -133,14 +133,14 @@ class TeamMatchTest {
     }
 
     @Test
-    void endsCaptainCombatOnCaptainDeathWhileItemCombatWaitsForTheWholeTeam() throws Exception {
-        for (var mode : List.of(RoomMode.ITEM, RoomMode.CAPTAIN_ITEM)) {
+    void endsCaptainCombatOnCaptainDeathWhileOrdinaryCombatWaitsForTheWholeTeam() throws Exception {
+        for (var mode : List.of(RoomMode.values())) {
             try (var f = new TeamMatchFixture(2, 2, mode)) {
                 f.start(true);
                 var shooter = f.active();
                 var target = f.snapshot().participants().stream().filter(p -> p.team() != shooter.team())
                     .filter(
-                        p -> mode == RoomMode.ITEM || f.snapshot().captain(p.slotIndex())
+                        p -> !mode.requiresCaptainSelection() || f.snapshot().captain(p.slotIndex())
                     ).findFirst().orElseThrow();
                 assertEquals(ScenarioApplicationOutcome.APPLIED, f.shot(target.slotIndex(), 10000).outcome());
 

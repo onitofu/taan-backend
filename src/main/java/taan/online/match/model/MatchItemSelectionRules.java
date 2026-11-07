@@ -85,15 +85,18 @@ public final class MatchItemSelectionRules {
     }
 
     public static List<Integer> selected(List<Integer> active, boolean captain) {
-        var selected = selected(active);
+        return selected(active, captain, List.of());
+    }
 
-        if (!captain) {
-            return selected;
+    public static List<Integer> selected(List<Integer> active, boolean captain, List<Integer> free) {
+        var result = new ArrayList<Integer>();
+
+        if (captain) {
+            result.add(1);
         }
 
-        var result = new ArrayList<Integer>();
-        result.add(1);
-        result.addAll(selected);
+        result.addAll(free);
+        result.addAll(selected(active));
         return List.copyOf(result);
     }
 

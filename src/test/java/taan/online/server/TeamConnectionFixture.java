@@ -55,6 +55,18 @@ final class TeamConnectionFixture implements AutoCloseable {
         String title,
         int... weapons
     ) throws Exception {
+        this(world, blue, red, captain, title, true, weapons);
+    }
+
+    TeamConnectionFixture(
+        RoomConnectionWorld world,
+        int blue,
+        int red,
+        boolean captain,
+        String title,
+        boolean items,
+        int... weapons
+    ) throws Exception {
         this.world = world;
         int room = 0;
 
@@ -75,7 +87,7 @@ final class TeamConnectionFixture implements AutoCloseable {
         }
 
         var owner = clients.getFirst();
-        world.request(owner, RoomScenario.settings(1, captain ? 2 : 0, 2, 0));
+        world.request(owner, RoomScenario.settings(1, (captain ? 2 : 0) + (items ? 0 : 1), items ? 2 : 0, 0));
         clients.stream().skip(1).forEach(c -> world.request(c, RoomScenario.ready(1)));
 
         if (captain) {

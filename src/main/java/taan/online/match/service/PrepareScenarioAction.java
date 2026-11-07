@@ -6,9 +6,11 @@ import java.util.stream.Collectors;
 import taan.online.match.model.MatchNativeLootRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.ScenarioCommitReceipt;
+import taan.online.match.model.ScenarioGaugeDraft;
 import taan.online.match.model.ScenarioLootDraft;
 import taan.online.match.model.ScenarioWorldDraft;
 import taan.online.match.model.ScenarioWorldException;
+import taan.online.match.model.TeamGaugeDelta;
 import taan.online.match.service.model.AcceptedScenario;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchSnapshot;
@@ -22,6 +24,7 @@ import taan.online.match.service.model.ScenarioFireClaim;
 import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
 public final class PrepareScenarioAction {
@@ -44,6 +47,15 @@ public final class PrepareScenarioAction {
         draft.fired(scenario.sender().sessionId());
         var loot = new ScenarioLootDraft(snapshot.loot());
         var shooter = scenario.sender().sessionId();
+        var member = snapshot.participants().stream().filter(value -> value.sessionId().equals(shooter))
+            .findFirst().orElseThrow();
+        var gauges = new ScenarioGaugeDraft(
+            snapshot.world().teamGauges(),
+            member.team(),
+            snapshot.mode(),
+            snapshot.participants().size()
+        );
+        boolean damagingHit = false;
         draft.grantEnergy(shooter, journal.headerEnergyGrant());
 
         for (var event : journal.events()) {
@@ -56,6 +68,7 @@ public final class PrepareScenarioAction {
 
             switch (event) {
                 case ScenarioDamageClaim damage -> {
+                    damagingHit |= damage.damage() > 0;
                     draft.damage(shooter, session, damage.damage());
                     draft.damageEnergy(session, damage.energy1e());
                     draft.damageEnergy(shooter, damage.energy1c());
@@ -87,7 +100,21 @@ public final class PrepareScenarioAction {
                 case ScenarioAnimationClaim ignored -> { }
                 case ScenarioGuidedClaim ignored -> { }
                 case ScenarioMakeItemBoxClaim box -> draft.createBox(box.entityId(), box.x(), box.y());
+                case ScenarioTeamGaugeClaim gauge -> gauges.claim(
+                    header.tick(),
+                    new TeamGaugeDelta(gauge.reason(), gauge.newGauge(), gauge.oldGauge())
+                );
                 case ScenarioEatItemBoxClaim pickup -> {
+                    if (!snapshot.mode().usesItems()) {
+                        if (pickup.itemId() != 0) {
+                            throw new ScenarioWorldException("NO_ITEM_REWARD_FORBIDDEN");
+                        }
+
+                        draft.pickupBox(pickup.entityId(), 0);
+                        gauges.pickup(header.tick());
+                        break;
+                    }
+
                     if (!policy.permits(pickup.itemId(), Math.toIntExact(snapshot.turn().pickerBase()))) {
                         throw new ScenarioWorldException("PICKUP_NOT_PERMITTED");
                     }
@@ -99,7 +126,7 @@ public final class PrepareScenarioAction {
                     );
                     draft.pickupBox(pickup.entityId(), pickup.itemId());
                     var recipient = snapshot.participants().stream()
-                        .filter(member -> member.sessionId().equals(session)).findFirst().orElseThrow();
+                        .filter(value -> value.sessionId().equals(session)).findFirst().orElseThrow();
                     loot.pickup(
                         recipient,
                         scenario.turnRevision(),
@@ -133,7 +160,7 @@ public final class PrepareScenarioAction {
             scenario.turnRevision(),
             Math.incrementExact(snapshot.world().revision())
         );
-        var world = draft.finish(receipt, refitted, journal.endTick());
+        var world = draft.finish(receipt, refitted, journal.endTick()).gauges(gauges.finish(damagingHit));
         return new PreparedScenario(
             scenario,
             snapshot.world().revision(),

@@ -107,7 +107,7 @@ class RoomCaptainIntegrationTest {
                         var firstTurn = new TurnStartCodec().decode(owner.read());
                         assertEquals(firstTurn, new TurnStartCodec().decode(guest.read()));
                         owner.send(MatchFixtures.root("give-up-empty"));
-                        int expectedResult = mode == 2 ? 2 : 0;
+                        int expectedResult = 2;
                         MatchResultAssertions.readEnd(owner::read, expectedResult);
                         MatchResultAssertions.readEnd(guest::read, expectedResult);
                         assertFalse(wire.ready(owner.read()).ready());

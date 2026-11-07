@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
+import taan.online.room.model.RoomTeam;
 
 public record MatchLootState(
     Map<UUID, BattleInventory> inventories,
@@ -119,7 +121,8 @@ public record MatchLootState(
                     turn.revision(),
                     receipt.fingerprint(),
                     Math.clamp(turn.pickerBase(), 0, 100),
-                    false
+                    false,
+                    Set.of(before.teamGauges().get(member.team()).committed())
                 );
                 next.put(member.slotIndex(), opportunity);
             }
@@ -146,6 +149,21 @@ public record MatchLootState(
             OptionalLong.empty(),
             Optional.of(opportunity.scenarioHash())
         );
+    }
+
+    public MatchLootState grantQuizGauge(int slot, List<MatchParticipant> participants, RoomTeam team, int value) {
+        var next = new HashMap<>(quizOpportunities);
+
+        for (var member : participants) {
+            var opportunity = next.get(member.slotIndex());
+
+            if (member.team() == team && opportunity != null) {
+                next.put(member.slotIndex(), opportunity.observed(value));
+            }
+        }
+
+        next.put(slot, next.get(slot).used());
+        return new MatchLootState(inventories, offers, next, grantSequence);
     }
 
     public MatchLootState closeQuiz(MatchWorldState world) {

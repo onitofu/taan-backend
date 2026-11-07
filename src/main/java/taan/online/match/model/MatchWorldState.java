@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import taan.online.room.model.RoomTeam;
 
 public record MatchWorldState(
     long revision,
@@ -18,8 +19,32 @@ public record MatchWorldState(
     Set<UUID> processedDeaths,
     Optional<ScenarioCommitReceipt> receipt,
     Map<Long, MatchItemBox> boxes,
-    MatchCombatStatistics combatStatistics
+    MatchCombatStatistics combatStatistics,
+    Map<RoomTeam, TeamGaugeState> teamGauges
 ) {
+    public MatchWorldState(
+        long revision,
+        Map<UUID, MatchActorState> actors,
+        List<TerrainLayerDefinition> terrain,
+        Map<UUID, List<MatchFall>> falls,
+        Set<UUID> processedDeaths,
+        Optional<ScenarioCommitReceipt> receipt,
+        Map<Long, MatchItemBox> boxes,
+        MatchCombatStatistics combatStatistics
+    ) {
+        this(
+            revision,
+            actors,
+            terrain,
+            falls,
+            processedDeaths,
+            receipt,
+            boxes,
+            combatStatistics,
+            Map.of(RoomTeam.BLUE, TeamGaugeState.empty(), RoomTeam.RED, TeamGaugeState.empty())
+        );
+    }
+
     public MatchWorldState(
         long revision,
         Map<UUID, MatchActorState> actors,
@@ -53,6 +78,9 @@ public record MatchWorldState(
         Objects.requireNonNull(receipt);
         boxes = Map.copyOf(boxes);
         Objects.requireNonNull(combatStatistics);
+        teamGauges = Map.copyOf(teamGauges);
+        Objects.requireNonNull(teamGauges.get(RoomTeam.BLUE));
+        Objects.requireNonNull(teamGauges.get(RoomTeam.RED));
     }
 
     public static MatchWorldState initial(Map<UUID, MatchActorState> actors, List<TerrainLayerDefinition> terrain) {
@@ -120,7 +148,22 @@ public record MatchWorldState(
             deaths,
             receipt,
             boxes,
-            combatStatistics
+            combatStatistics,
+            teamGauges
+        );
+    }
+
+    public MatchWorldState gauges(Map<RoomTeam, TeamGaugeState> values) {
+        return new MatchWorldState(
+            revision,
+            actors,
+            terrain,
+            falls,
+            processedDeaths,
+            receipt,
+            boxes,
+            combatStatistics,
+            values
         );
     }
 
@@ -137,7 +180,8 @@ public record MatchWorldState(
             processedDeaths,
             receipt,
             Map.of(),
-            combatStatistics
+            combatStatistics,
+            teamGauges
         );
     }
 }

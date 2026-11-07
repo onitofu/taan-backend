@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.OptionalInt;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.model.MatchBoxPolicy;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
@@ -35,7 +35,7 @@ final class PowerQuizFixture implements AutoCloseable {
     }
 
     ReportMatchBonusCommand claim(int slot, int item) {
-        return new ReportMatchBonusCommand(context(slot), slot, slot, OptionalInt.empty(), -1L, item, -17, -3, -1);
+        return new ReportMatchBonusCommand(context(slot), slot, slot, Optional.empty(), -1L, item, -17, -3, -1);
     }
 
     boolean report(ReportMatchBonusCommand command) {

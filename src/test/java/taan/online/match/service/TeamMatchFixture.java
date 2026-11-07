@@ -18,6 +18,7 @@ import taan.online.match.controller.ScenarioClaimsMapper;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.TeamGaugeRules;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
 import taan.online.match.service.model.ApplyScenarioCommand;
@@ -33,6 +34,7 @@ import taan.online.match.service.model.UseMatchItemCommand;
 import taan.online.room.controller.RoomSettingsMapper;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.view.RoomModeMapper;
 import taan.online.room.service.model.RoomMatchToken;
 
 final class TeamMatchFixture implements AutoCloseable {
@@ -72,7 +74,11 @@ final class TeamMatchFixture implements AutoCloseable {
         }
 
         owner = players.getFirst();
-        scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(1, mode == RoomMode.ITEM ? 0 : 2, 2));
+        scenario.rooms.changeSettings(owner, RoomSettingsMapper.settings(
+            1,
+            new RoomModeMapper().map(mode),
+            mode.usesItems() ? 2 : 0
+        ));
     }
 
     void start(boolean loaded) {
@@ -113,7 +119,11 @@ final class TeamMatchFixture implements AutoCloseable {
         return MatchItemSelectionRules.selected(
             snapshot.attacks().getOrDefault(member.sessionId(), MatchAttackSelection.NORMAL)
                 .activeItems(),
-            snapshot.captain(member.slotIndex())
+            snapshot.captain(member.slotIndex()),
+            mode.usesItems() ? List.of() : TeamGaugeRules.items(TeamGaugeRules.level(
+                snapshot.participants().size(),
+                snapshot.world().teamGauges().get(member.team()).committed()
+            ))
         );
     }
 

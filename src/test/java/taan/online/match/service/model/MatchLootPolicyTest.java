@@ -64,8 +64,7 @@ class MatchLootPolicyTest {
         var normal = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO);
         assertFalse(normal.lootPolicy().enabled());
         var controlled = new MatchBootstrapSettings(30, 20, 8, MatchExecutionMode.CLIENT_SCENARIO, 20, 10, policy);
-        assertEquals(policy, controlled.forProfile(true).lootPolicy());
-        assertFalse(controlled.forProfile(false).lootPolicy().enabled());
+        assertEquals(policy, controlled.lootPolicy());
         assertThrows(NullPointerException.class, () -> new MatchBootstrapSettings(
             30,
             20,

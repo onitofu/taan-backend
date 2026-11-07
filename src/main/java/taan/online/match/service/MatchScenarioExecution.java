@@ -196,6 +196,7 @@ final class MatchScenarioExecution {
         );
 
         MatchOutcomeExecution.decided(before, publication);
+        MatchGaugeLog.changed(before, publication, "SCENARIO");
         publication.world().boxes().values().stream()
             .filter(box -> !before.world().boxes().containsKey(box.entityId()))
             .forEach(box -> LOG.log(
@@ -261,7 +262,7 @@ final class MatchScenarioExecution {
                     lootPickerScalar(after.turn().pickerBase()),
                     inventoryIndex(receipt.map(value -> value.inventoryIndex()).orElse(null)),
                     grantSequence(inserted ? sequence : null),
-                    reason(inserted ? "INSERTED" : "INVENTORY_FULL")
+                    reason(after.mode().usesItems() ? inserted ? "INSERTED" : "INVENTORY_FULL" : "NO_ITEM_PICKUP")
                 );
             }
         }

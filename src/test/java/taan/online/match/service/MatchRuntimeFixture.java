@@ -2,7 +2,7 @@ package taan.online.match.service;
 
 import java.time.Duration;
 import java.util.ArrayDeque;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
@@ -17,6 +17,7 @@ import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
+import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
 import taan.online.room.service.model.RoomMatchToken;
@@ -70,7 +71,19 @@ final class MatchRuntimeFixture implements AutoCloseable {
         MatchBoxPolicy boxes,
         RoomRule rule
     ) {
-        room = new MatchRoomFixture(2, roomMode);
+        this(capacity, mode, policy, roomMode, boxes, rule, 2);
+    }
+
+    MatchRuntimeFixture(
+        int capacity,
+        MatchExecutionMode mode,
+        MatchLootPolicy policy,
+        RoomMode roomMode,
+        MatchBoxPolicy boxes,
+        RoomRule rule,
+        int count
+    ) {
+        room = new MatchRoomFixture(count, roomMode);
         var definitions = MatchFixtures.definitions();
         var draft = room.draft();
         token = draft.token();
@@ -84,7 +97,7 @@ final class MatchRuntimeFixture implements AutoCloseable {
             rule,
             definitions,
             new MatchPreparation(MatchFixtures.catalog()).participants(draft),
-            draft.captains(),
+            roomMode.requiresCaptainSelection() ? new CaptainSelectionResult(0, 2) : draft.captains(),
             0,
             boxes
         );
@@ -127,10 +140,14 @@ final class MatchRuntimeFixture implements AutoCloseable {
     }
 
     void activate() {
-        runtime.activate(
-            callbacks,
-            List.of(new MatchSubscription(room.owner, owner), new MatchSubscription(room.players.get(1), guest))
-        );
+        var subscriptions = new ArrayList<MatchSubscription>();
+
+        for (int index = 0; index < room.players.size(); index++) {
+            var output = index == 0 ? owner : index == 1 ? guest : new TestMatchOutput();
+            subscriptions.add(new MatchSubscription(room.players.get(index), output));
+        }
+
+        runtime.activate(callbacks, subscriptions);
     }
 
     MatchCommandContext context() {

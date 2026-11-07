@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
@@ -15,6 +16,8 @@ import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.ReportMatchPickupCommand;
+import taan.online.match.service.model.ScenarioEventTime;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 
 class MatchLootCompatibilityTest {
     @Test
@@ -126,7 +129,7 @@ class MatchLootCompatibilityTest {
                 assertFalse(receipt(f, c, 0, 0));
                 assertFalse(discard(f, c, 0, 0));
 
-                var pickup = new ReportMatchPickupCommand(c, 0, 0, OptionalInt.empty(), 123, 5);
+                var pickup = new ReportMatchPickupCommand(c, 0, 0, Optional.empty(), 123, 5);
                 var receipt = new ConfirmMatchItemReceiptCommand(c, 0, 0, 5);
                 var discard = new DiscardMatchItemCommand(c, 0, 0, 5);
                 assertFalse(MatchItemExecution.reportPickup(null, pickup).toCompletableFuture().join());
@@ -163,7 +166,20 @@ class MatchLootCompatibilityTest {
     ) {
         var result = MatchItemExecution.reportPickup(
             f.runtime,
-            new ReportMatchPickupCommand(context, slot, nested, gauge, entity, 5)
+            new ReportMatchPickupCommand(
+                context,
+                slot,
+                nested,
+                gauge.stream().mapToObj(value -> new ScenarioTeamGaugeClaim(
+                    new ScenarioEventTime(value, 12, 0, 0),
+                    0,
+                    0,
+                    0,
+                    0
+                )).findFirst(),
+                entity,
+                5
+            )
         );
         return complete(f, result);
     }

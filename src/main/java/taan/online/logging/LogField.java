@@ -283,6 +283,18 @@ public final class LogField {
         return new LogField("ready", value);
     }
 
+    public static LogField gaugeBefore(int value) {
+        return new LogField("gaugeBefore", value);
+    }
+
+    public static LogField gaugeAfter(int value) {
+        return new LogField("gaugeAfter", value);
+    }
+
+    public static LogField gaugeLevel(int value) {
+        return new LogField("gaugeLevel", value);
+    }
+
     public static LogField team(String value) {
         return new LogField("team", value);
     }

@@ -22,6 +22,9 @@ import taan.online.match.model.MatchItemSource;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.PowerQuizOpportunity;
+import taan.online.match.model.TeamGaugeDelta;
+import taan.online.match.model.TeamGaugeRules;
+import taan.online.match.model.TeamGaugeState;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
@@ -29,6 +32,7 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ReportMatchBonusCommand;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.room.model.RoomRule;
 
 final class MatchLootExecution {
@@ -99,7 +103,7 @@ final class MatchLootExecution {
 
             boolean valid = member(context).slotIndex() == command.slotIndex()
                 && command.slotIndex() == command.commandSlot()
-                && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
+                && (command.gauge().isEmpty() || command.gauge().orElseThrow().header().slot() == command.slotIndex())
                 && command.entityId() == -1L;
 
             if (!valid || !policy.enabled()) {
@@ -115,7 +119,7 @@ final class MatchLootExecution {
             var offer = match.loot().offers().get(context.sessionId());
 
             if (match.actors().get(context.sessionId()).dead() || offer == null || offer.consumed()
-                || !offer.admissionId().equals(context.admissionId()) || command.gaugeSlot().isPresent()
+                || !offer.admissionId().equals(context.admissionId()) || command.gauge().isPresent()
                 || !policy.permits(command.itemId(), offer.pickerScalar())) {
                 return ignored(context, command.slotIndex(), MatchLogEvent.BONUS_IGNORED, "INVALID_BONUS_OFFER", false);
             }
@@ -140,6 +144,10 @@ final class MatchLootExecution {
     }
 
     private boolean reportQuiz(ReportMatchBonusCommand command) {
+        if (!match.mode().usesItems()) {
+            return reportGaugeQuiz(command);
+        }
+
         var context = command.context();
         boolean inserted;
 
@@ -151,7 +159,7 @@ final class MatchLootExecution {
             var opportunity = match.loot().quizOpportunities().get(command.slotIndex());
             boolean valid = member(context).slotIndex() == command.slotIndex()
                 && command.commandSlot() == command.slotIndex() && command.entityId() == -1L
-                && command.gaugeSlot().isEmpty();
+                && command.gauge().isEmpty();
 
             if (!valid || opportunity == null || opportunity.consumed()
                 || !opportunity.admissionId().equals(context.admissionId()) || !quizWindow(opportunity)
@@ -189,6 +197,93 @@ final class MatchLootExecution {
         }
 
         return true;
+    }
+
+    private boolean reportGaugeQuiz(ReportMatchBonusCommand command) {
+        var context = command.context();
+        Optional<ScenarioTeamGaugeClaim> canonical;
+
+        synchronized (admission) {
+            if (!owner.reportCurrent(context)) {
+                return false;
+            }
+
+            var recipient = member(context);
+            var opportunity = match.loot().quizOpportunities().get(command.slotIndex());
+            var state = match.world().teamGauges().get(recipient.team());
+            boolean valid = recipient.slotIndex() == command.slotIndex()
+                && command.commandSlot() == command.slotIndex() && command.entityId() == -1L
+                && command.itemId() == 0 && policy.enabled();
+
+            if (!valid || opportunity == null || opportunity.consumed()
+                || !opportunity.admissionId().equals(context.admissionId()) || !quizWindow(opportunity)
+                || !validQuizGauge(command, opportunity, state)) {
+                return ignored(context, command.slotIndex(), MatchLogEvent.GAUGE_IGNORED, "INVALID_QUIZ_GAUGE", false);
+            }
+
+            canonical = command.gauge().map(claim -> {
+                var delta = TeamGaugeRules.generate(
+                    new TeamGaugeState(claim.oldGauge(), state.pending()),
+                    match.participants().size(),
+                    4,
+                    5
+                ).orElseThrow();
+                return new ScenarioTeamGaugeClaim(
+                    claim.header(),
+                    claim.scalar10(),
+                    delta.reason(),
+                    delta.newGauge(),
+                    delta.oldGauge()
+                );
+            });
+            var updated = canonical.map(claim -> TeamGaugeRules.replay(
+                new TeamGaugeDelta(claim.reason(), claim.newGauge(), claim.oldGauge())
+            )).orElse(state);
+            var before = owner.snapshot();
+            match.grantQuizGauge(command.slotIndex(), updated);
+            owner.refresh();
+            MatchGaugeLog.changed(before, owner.snapshot(), "POWER_QUIZ");
+            LOG.log(
+                MatchLogEvent.POWER_QUIZ_ACCEPTED,
+                matchId(match.id().value()),
+                sessionId(context.sessionId()),
+                admissionId(context.admissionId()),
+                slotIndex(command.slotIndex()),
+                turnRevision(opportunity.turnRevision()),
+                scenarioHash(opportunity.scenarioHash()),
+                reason(canonical.isPresent() ? "TEAM_GAUGE" : "GAUGE_LIMIT")
+            );
+        }
+
+        var delivery = new MatchBonusDelivery(
+            command.slotIndex(),
+            command.tick(),
+            command.scalar10(),
+            0,
+            command.opaque24(),
+            canonical
+        );
+        owner.items.deliver(output -> output.bonus(delivery));
+        return true;
+    }
+
+    private boolean validQuizGauge(
+        ReportMatchBonusCommand command,
+        PowerQuizOpportunity opportunity,
+        TeamGaugeState state
+    ) {
+        int count = match.participants().size();
+
+        if (command.gauge().isEmpty()) {
+            return TeamGaugeRules.level(count, state.committed()) >= 4;
+        }
+
+        var claim = command.gauge().orElseThrow();
+        return claim.header().kind() == 12 && claim.header().slot() == command.slotIndex()
+            && claim.reason() == 4 && claim.newGauge() >= 0 && claim.newGauge() <= 65535
+            && opportunity.knownGaugeValues().contains(claim.oldGauge())
+            && TeamGaugeRules.level(count, claim.oldGauge()) < 4
+            && ((claim.newGauge() - claim.oldGauge()) & 0xffff) == 5;
     }
 
     private boolean quizWindow(PowerQuizOpportunity opportunity) {

@@ -23,7 +23,7 @@ public final class MatchTurnPolicy {
         var definitions = match.definitions();
 
         if (channelId < 1 || channelId > 65535 || participants.size() < 2 || participants.size() > 8
-            || mode.usesItems() != (rule != RoomRule.BASIC)) {
+            || rule != RoomRule.POWER_QUIZ && mode.usesItems() != (rule != RoomRule.BASIC)) {
             throw new IllegalArgumentException("Invalid match setup");
         }
 

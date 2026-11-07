@@ -238,7 +238,7 @@ class MatchTurnBoundaryTest {
     }
 
     @Test
-    void validatesBothNewTimeoutsAndKeepsNonPlayableProfilesInPreview() {
+    void validatesBothNewTimeoutsAndKeepsTheConfiguredExecutionMode() {
         assertThrows(
             IllegalArgumentException.class,
             () ->
@@ -250,7 +250,6 @@ class MatchTurnBoundaryTest {
                     new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CLIENT_SCENARIO, 1, 0)
         );
         var settings = new MatchBootstrapSettings(1, 1, 1, MatchExecutionMode.CLIENT_SCENARIO);
-        assertSame(settings, settings.forProfile(true));
-        assertEquals(MatchExecutionMode.PREVIEW, settings.forProfile(false).executionMode());
+        assertEquals(MatchExecutionMode.CLIENT_SCENARIO, settings.executionMode());
     }
 }

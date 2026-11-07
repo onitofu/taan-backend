@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import taan.online.account.model.Account;
 import taan.online.account.model.AccountGender;
 import taan.online.bootstrap.Application;
@@ -32,14 +33,17 @@ import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.service.MatchRegistry;
 import taan.online.protocol.BinaryWriter;
 import taan.online.room.model.RoomTeam;
+import taan.online.room.model.RoomMode;
 import taan.online.room.protocol.codec.RoomResponseCodec;
 import taan.online.room.service.model.RoomMatchToken;
 
 class MatchEnergyIntegrationTest {
     private final RoomResponseCodec rooms = new RoomResponseCodec();
 
-    @Test
-    void chargesFromZeroAndReusesSpecialThroughCoalescedTcpPacketsWithoutPersistentRewards() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = RoomMode.class, names = {"ITEM", "NO_ITEM"})
+    void chargesFromZeroAndReusesSpecialThroughCoalescedTcpPacketsWithoutPersistentRewards(RoomMode mode)
+        throws Exception {
         try (var database = new CharacterTestDatabase()) {
             database.reset();
             database.execute("UPDATE channels SET kind = 0");
@@ -64,6 +68,13 @@ class MatchEnergyIntegrationTest {
                     guest.send(RoomEntryFixtures.enter(roomId));
                     rooms.initialize(guest.read());
                     rooms.slot(owner.read());
+
+                    if (!mode.usesItems()) {
+                        owner.send(RoomScenario.settings(1, 1, 0, 0));
+                        assertEquals(1, rooms.settings(owner.read()).gameType());
+                        assertEquals(1, rooms.settings(guest.read()).gameType());
+                    }
+
                     guest.send(RoomScenario.ready(1));
                     rooms.ready(owner.read());
                     rooms.ready(guest.read());
@@ -148,6 +159,16 @@ class MatchEnergyIntegrationTest {
         assertEquals(new TurnStartCodec().decode(owner.read()), new TurnStartCodec().decode(guest.read()));
 
         var before = matches.current(token).orElseThrow();
+
+        if (!before.mode().usesItems()) {
+            assertTrue(before.loot().offers().isEmpty());
+            assertTrue(before.loot().inventories().isEmpty());
+            active.send(SelectionFixtures.cash(0, 0));
+            assertArrayEquals(SelectionFixtures.cash(0, 0), active.read());
+            assertArrayEquals(SelectionFixtures.money(0), active.read());
+            return;
+        }
+
         String fixture = member.slotIndex() == 0 ? "pending-03-PcGamePlay_EatBonusItem"
             : "pending-04-PcGamePlay_EatBonusItem";
         byte[] bonus = MatchFixtures.root(fixture);
@@ -219,7 +240,9 @@ class MatchEnergyIntegrationTest {
         new TurnEndCodec().decode(owner.read());
         new TurnEndCodec().decode(guest.read());
         assertEquals(new TurnStartCodec().decode(owner.read()), new TurnStartCodec().decode(guest.read()));
-        assertEquals(0, matches.current(token).orElseThrow().actors().get(member.sessionId()).energy());
+        var after = matches.current(token).orElseThrow();
+        assertEquals(0, after.actors().get(member.sessionId()).energy());
+        assertEquals(snapshot.world().teamGauges(), after.world().teamGauges());
     }
 
     private Account player(CharacterTestDatabase database, String name) {

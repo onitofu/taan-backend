@@ -10,10 +10,7 @@ public final class RoomRulePolicy {
     }
 
     public static RoomRule select(RoomTitle title, RoomMode mode) {
-        if (!mode.usesItems()) {
-            return RoomRule.BASIC;
-        }
-
-        return title.value().contains("PowerQuiz") ? RoomRule.POWER_QUIZ : RoomRule.BONUS;
+        return title.value().contains("PowerQuiz") ? RoomRule.POWER_QUIZ
+            : mode.usesItems() ? RoomRule.BONUS : RoomRule.BASIC;
     }
 }

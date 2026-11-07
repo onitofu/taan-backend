@@ -1,11 +1,13 @@
 package taan.online.match.service;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.TeamGaugeRules;
 import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.service.model.MatchSnapshot;
 import taan.online.match.service.model.ScenarioActorClaim;
@@ -19,11 +21,12 @@ import taan.online.match.service.model.ScenarioGuidedClaim;
 import taan.online.match.service.model.ScenarioJournal;
 import taan.online.match.service.model.ScenarioMakeItemBoxClaim;
 import taan.online.match.service.model.ScenarioProjectileClaim;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.match.service.model.ScenarioUnsupportedClaim;
 
 final class ScenarioRules {
     private static final long HORIZON = 120000;
-    private static final Set<Integer> SHOOTER_KINDS = Set.of(0, 1, 2, 3, 9, 10, 11, 13, 14, 16);
+    private static final Set<Integer> SHOOTER_KINDS = Set.of(0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 16);
 
     ScenarioJournal validate(MatchSnapshot match, ScenarioClaims claims, MatchParticipant shooter) {
         var actor = match.actors().get(shooter.sessionId());
@@ -34,7 +37,17 @@ final class ScenarioRules {
             "INVALID_SHOOTER"
         );
         var selection = match.attacks().getOrDefault(shooter.sessionId(), MatchAttackSelection.NORMAL);
-        var selected = MatchItemSelectionRules.selected(selection.activeItems(), match.captain(shooter.slotIndex()));
+        var free = match.mode().usesItems() ? List.<Integer>of() : TeamGaugeRules.items(
+            TeamGaugeRules.level(
+                match.participants().size(),
+                match.world().teamGauges().get(shooter.team()).committed()
+            )
+        );
+        var selected = MatchItemSelectionRules.selected(
+            selection.activeItems(),
+            match.captain(shooter.slotIndex()),
+            free
+        );
         int attackKind = MatchItemSelectionRules.attackKind(selected);
         int shotLimit = MatchItemSelectionRules.shotLimit(selected);
         boolean special = attackKind == 2;
@@ -108,6 +121,7 @@ final class ScenarioRules {
                     "INVALID_FALL"
                 );
                 case ScenarioMakeItemBoxClaim ignored -> { }
+                case ScenarioTeamGaugeClaim ignored -> { }
                 case ScenarioEatItemBoxClaim ignored -> require(projectiles.hasFire(), "MISSING_PROJECTILE");
                 case ScenarioAnimationClaim animation -> {
                     boolean prelude = header.kind() == 14;

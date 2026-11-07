@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +24,8 @@ import taan.online.match.service.model.MatchExecutionMode;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.ReportMatchBonusCommand;
+import taan.online.match.service.model.ScenarioEventTime;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 import taan.online.room.model.RoomMode;
 import taan.online.room.service.model.RoomMatchEndReason;
 
@@ -36,7 +37,17 @@ class MatchLootBoundaryTest {
             loot.offerOwner();
             assertFalse(loot.report(0, 2));
             var source = loot.bonus(0, 5);
-            var gauged = new ReportMatchBonusCommand(source.context(), 0, 0, OptionalInt.of(0), -1, 5, 0, 0, 0);
+            var gauged = new ReportMatchBonusCommand(
+                source.context(),
+                0,
+                0,
+                Optional.of(new ScenarioTeamGaugeClaim(new ScenarioEventTime(0, 12, 0, 0), 0, 0, 0, 0)),
+                -1,
+                5,
+                0,
+                0,
+                0
+            );
             assertFalse(loot.complete(MatchItemExecution.reportBonus(f.runtime, gauged)));
             var offer = f.match.loot().offers().get(f.room.owner);
             f.match.updateLoot(f.match.loot().offered(new MatchBonusOffer(
@@ -81,7 +92,7 @@ class MatchLootBoundaryTest {
             );
             assertFalse(loot.complete(MatchItemExecution.reportBonus(
                 f.runtime,
-                new ReportMatchBonusCommand(wrong, 0, 0, OptionalInt.empty(), -1, 5, 0, 0, 0)
+                new ReportMatchBonusCommand(wrong, 0, 0, Optional.empty(), -1, 5, 0, 0, 0)
             )));
             assertTrue(f.owner.bonuses.isEmpty());
             assertTrue(f.owner.closed.isEmpty());

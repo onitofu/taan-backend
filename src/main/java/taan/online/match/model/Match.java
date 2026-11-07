@@ -149,6 +149,17 @@ public final class Match {
         return loot;
     }
 
+    public void grantQuizGauge(int slot, TeamGaugeState value) {
+        var member = participants.stream().filter(participant -> participant.slotIndex() == slot)
+            .findFirst().orElseThrow();
+        var gauges = new HashMap<>(world.teamGauges());
+        gauges.put(member.team(), value);
+        var updatedLoot = loot.grantQuizGauge(slot, participants, member.team(), value.committed());
+        var updatedWorld = world.gauges(gauges);
+        loot = updatedLoot;
+        world = updatedWorld;
+    }
+
     public void updateLoot(MatchLootState value) {
         loot = Objects.requireNonNull(value);
     }

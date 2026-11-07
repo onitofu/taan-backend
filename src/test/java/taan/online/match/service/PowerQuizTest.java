@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +23,8 @@ import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchLootPolicy;
 import taan.online.match.service.model.ReportMatchBonusCommand;
 import taan.online.match.service.model.ScenarioApplicationOutcome;
+import taan.online.match.service.model.ScenarioEventTime;
+import taan.online.match.service.model.ScenarioTeamGaugeClaim;
 
 class PowerQuizTest {
     @Test
@@ -132,10 +133,20 @@ class PowerQuizTest {
             var before = quiz.f.runtime.snapshot();
 
             for (var invalid : List.of(
-                new ReportMatchBonusCommand(context, 0, 0, OptionalInt.empty(), -1L, 5, 0, 0, 0),
-                new ReportMatchBonusCommand(context, 2, 0, OptionalInt.empty(), -1L, 5, 0, 0, 0),
-                new ReportMatchBonusCommand(context, 2, 2, OptionalInt.empty(), 1L, 5, 0, 0, 0),
-                new ReportMatchBonusCommand(context, 2, 2, OptionalInt.of(2), -1L, 5, 0, 0, 0),
+                new ReportMatchBonusCommand(context, 0, 0, Optional.empty(), -1L, 5, 0, 0, 0),
+                new ReportMatchBonusCommand(context, 2, 0, Optional.empty(), -1L, 5, 0, 0, 0),
+                new ReportMatchBonusCommand(context, 2, 2, Optional.empty(), 1L, 5, 0, 0, 0),
+                new ReportMatchBonusCommand(
+                    context,
+                    2,
+                    2,
+                    Optional.of(new ScenarioTeamGaugeClaim(new ScenarioEventTime(2, 12, 0, 0), 0, 0, 0, 0)),
+                    -1L,
+                    5,
+                    0,
+                    0,
+                    0
+                ),
                 quiz.claim(2, 0),
                 quiz.claim(2, 4),
                 new ReportMatchBonusCommand(
@@ -149,7 +160,7 @@ class PowerQuizTest {
                     ),
                     2,
                     2,
-                    OptionalInt.empty(),
+                    Optional.empty(),
                     -1L,
                     5,
                     0,

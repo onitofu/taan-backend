@@ -2,7 +2,6 @@ package taan.online.room.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -15,14 +14,13 @@ import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
 import taan.online.room.model.RoomSettings;
 import taan.online.room.model.RoomTitle;
-import taan.online.room.service.model.ChangeRoomSettingsOutcome;
 import taan.online.room.service.model.CreateRoomOutcome;
 import taan.online.room.view.RoomRuleMapper;
 import taan.online.room.view.RoomSnapshotMapper;
 
 class PowerQuizRoomTest {
     @Test
-    void appliesTheExactSubstringOnlyToItemModesAndPublishesTheSameRuleInTheLobbyAndRoom() {
+    void appliesTheExactSubstringToAllModesAndPublishesTheSameRuleInTheLobbyAndRoom() {
         for (String title : List.of(
             "PowerQuiz",
             "before PowerQuiz after",
@@ -42,7 +40,7 @@ class PowerQuizRoomTest {
                         RoomScenario.command(5, 0, title, 0, type, type % 2 == 0 ? 2 : 0, 0, 8, null, 0),
                         output
                     );
-                    int expected = type % 2 != 0 ? 0 : title.contains("PowerQuiz") ? 1 : 2;
+                    int expected = title.contains("PowerQuiz") ? 1 : type % 2 == 0 ? 2 : 0;
 
                     assertEquals(CreateRoomOutcome.CREATED, result.outcome());
                     assertEquals(expected, new RoomRuleMapper().map(result.room().settings().rule()));
@@ -58,7 +56,7 @@ class PowerQuizRoomTest {
     }
 
     @Test
-    void preservesTheRuleAcrossMapChangesAndClientDefaultsAndRestoresItAfterNoItem() {
+    void preservesTheRuleAcrossMapChangesClientDefaultsAndNoItem() {
         try (var scenario = new RoomScenario()) {
             var id = scenario.player(1, 1);
             var output = new RecordingRoomOutput();
@@ -79,27 +77,27 @@ class PowerQuizRoomTest {
             }
 
             assertEquals(
-                RoomRule.BASIC,
+                RoomRule.POWER_QUIZ,
                 scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 1, 0)).settings().rule()
             );
             assertEquals(
-                ChangeRoomSettingsOutcome.REJECTED,
-                scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 1, 1)).outcome()
+                RoomRule.POWER_QUIZ,
+                scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 1, 1)).settings().rule()
             );
             assertEquals(
                 RoomRule.POWER_QUIZ,
                 scenario.rooms.changeSettings(id, RoomSettingsMapper.settings(1, 0, 2)).settings().rule()
             );
-            assertThrows(
-                IllegalArgumentException.class,
-                () -> new RoomSettings(new RoomTitle("PowerQuiz"), RoomMode.NO_ITEM, RoomRule.POWER_QUIZ, 1, 8)
+            assertEquals(
+                RoomRule.POWER_QUIZ,
+                new RoomSettings(new RoomTitle("PowerQuiz"), RoomMode.NO_ITEM, RoomRule.POWER_QUIZ, 1, 8).rule()
             );
         }
     }
 
     @Test
     void rejectsWireRuleOneWithoutTheServerConditionBeforeLoadingTheCharacter() {
-        for (String title : List.of("Room", "powerquiz", "PowerQuiz")) {
+        for (String title : List.of("Room", "powerquiz")) {
             try (var scenario = new RoomScenario()) {
                 var id = scenario.player(1, 1);
                 var output = new RecordingRoomOutput();

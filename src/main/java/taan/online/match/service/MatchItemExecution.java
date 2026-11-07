@@ -101,7 +101,7 @@ final class MatchItemExecution {
 
         boolean valid = member(context).slotIndex() == command.slotIndex()
             && command.slotIndex() == command.commandSlot()
-            && (command.gaugeSlot().isEmpty() || command.gaugeSlot().orElseThrow() == command.slotIndex())
+            && (command.gauge().isEmpty() || command.gauge().orElseThrow().header().slot() == command.slotIndex())
             && command.entityId() != -1L;
         return ignored(context, command.slotIndex(), MatchLogEvent.PICKUP_IGNORED, valid, "UNSUPPORTED_PICKUP");
     }

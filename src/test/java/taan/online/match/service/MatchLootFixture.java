@@ -3,7 +3,7 @@ package taan.online.match.service;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.OptionalInt;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
@@ -26,7 +26,7 @@ final class MatchLootFixture implements AutoCloseable {
     }
 
     ReportMatchBonusCommand bonus(int slot, int item) {
-        return new ReportMatchBonusCommand(context(slot), slot, slot, OptionalInt.empty(), -1L, item, -17, -3, -1);
+        return new ReportMatchBonusCommand(context(slot), slot, slot, Optional.empty(), -1L, item, -17, -3, -1);
     }
 
     boolean report(int slot, int item) {

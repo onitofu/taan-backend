@@ -1,7 +1,6 @@
 package taan.online.bootstrap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 import taan.online.RuntimeRoomTestAccess;
@@ -24,9 +23,6 @@ class ApplicationLootConfigurationTest {
             assertEquals(MatchExecutionMode.CLIENT_SCENARIO, settings.executionMode());
             assertEquals(MatchLootPolicy.nativeItems(), settings.lootPolicy());
             assertEquals(MatchBoxPolicy.ENABLED, settings.boxPolicy());
-            assertEquals(MatchExecutionMode.PREVIEW, settings.forProfile(false).executionMode());
-            assertEquals(MatchBoxPolicy.DISABLED, settings.forProfile(false).boxPolicy());
-            assertFalse(settings.forProfile(false).lootPolicy().enabled());
         }
     }
 }

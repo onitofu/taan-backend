@@ -3,7 +3,6 @@ package taan.online.match.view;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
@@ -56,6 +55,7 @@ import taan.online.match.protocol.packet.PrResultSelectCard;
 import taan.online.match.protocol.packet.ResultBonus;
 import taan.online.match.protocol.packet.ScenarioCommandHeader;
 import taan.online.match.protocol.packet.ScenarioEatItemBoxCommand;
+import taan.online.match.protocol.packet.ScenarioTeamGaugeCommand;
 import taan.online.match.protocol.packet.SpentItem;
 import taan.online.match.service.MatchOutput;
 import taan.online.match.service.model.CommittedScenario;
@@ -267,7 +267,18 @@ public final class ProtocolMatchView implements MatchOutput {
             bonus.itemId(),
             bonus.opaque24()
         );
-        var packet = new PcGamePlayEatBonusItem(bonus.slotIndex(), command, Optional.empty());
+        var gauge = bonus.gauge().map(value -> new ScenarioTeamGaugeCommand(
+            new ScenarioCommandHeader(
+                value.header().slot(),
+                value.header().kind(),
+                (int) value.header().tick(),
+                value.scalar10()
+            ),
+            value.reason(),
+            value.newGauge(),
+            value.oldGauge()
+        ));
+        var packet = new PcGamePlayEatBonusItem(bonus.slotIndex(), command, gauge);
         return output.send(List.of(new EatBonusItemCodec().encode(packet)));
     }
 

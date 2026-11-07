@@ -70,20 +70,6 @@ public record MatchBootstrapSettings(
         );
     }
 
-    public MatchBootstrapSettings forProfile(boolean eligible) {
-        return executionMode == MatchExecutionMode.CLIENT_SCENARIO && !eligible
-            ? new MatchBootstrapSettings(
-                loadingTimeoutNanos,
-                previewTimeoutNanos,
-                reportsPerSecond,
-                MatchExecutionMode.PREVIEW,
-                actionTimeoutNanos,
-                completionGraceNanos,
-                MatchLootPolicy.disabled(),
-                MatchBoxPolicy.DISABLED
-            ) : this;
-    }
-
     public MatchBootstrapSettings(long loadingTimeoutNanos, long previewTimeoutNanos, int reportsPerSecond) {
         this(loadingTimeoutNanos, previewTimeoutNanos, reportsPerSecond, MatchExecutionMode.PREVIEW);
     }
