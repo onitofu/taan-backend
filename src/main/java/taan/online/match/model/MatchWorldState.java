@@ -167,6 +167,22 @@ public record MatchWorldState(
         );
     }
 
+    public MatchWorldState pickedBox(long entityId, int itemId) {
+        var updated = new HashMap<>(boxes);
+        updated.put(entityId, boxes.get(entityId).pickedUp(itemId));
+        return new MatchWorldState(
+            Math.incrementExact(revision),
+            actors,
+            terrain,
+            falls,
+            processedDeaths,
+            receipt,
+            updated,
+            combatStatistics,
+            teamGauges
+        );
+    }
+
     public MatchWorldState withoutBoxes() {
         if (boxes.isEmpty()) {
             return this;

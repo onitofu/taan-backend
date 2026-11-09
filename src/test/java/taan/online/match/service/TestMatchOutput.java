@@ -10,6 +10,7 @@ import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.MatchEndResult;
+import taan.online.match.service.model.MatchGhostNotice;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchRewardSelectionNotice;
 import taan.online.match.service.model.MatchSnapshot;
@@ -18,6 +19,7 @@ import taan.online.match.service.model.PendingMatchSpend;
 import taan.online.match.service.model.UseMatchItemCommand;
 
 public final class TestMatchOutput implements MatchOutput {
+    public final List<MatchGhostNotice> ghosts = new ArrayList<>();
     public final List<MatchMovementNotice> movements = new ArrayList<>();
     public final List<MatchBonusDelivery> bonuses = new ArrayList<>();
     public final List<DiscardMatchItemCommand> discards = new ArrayList<>();
@@ -91,6 +93,12 @@ public final class TestMatchOutput implements MatchOutput {
             throw motionFailure;
         }
 
+        return delivery;
+    }
+
+    @Override
+    public CompletionStage<Void> ghost(MatchGhostNotice notice) {
+        ghosts.add(notice);
         return delivery;
     }
 

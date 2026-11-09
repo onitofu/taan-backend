@@ -18,7 +18,6 @@ import taan.online.match.logging.MatchLogEvent;
 import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchBonusOffer;
-import taan.online.match.model.MatchItemSource;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.PowerQuizOpportunity;
@@ -332,16 +331,6 @@ final class MatchLootExecution {
         );
     }
 
-    private boolean quizReceipt(ConfirmMatchItemReceiptCommand command) {
-        var opportunity = match.loot().quizOpportunities().get(command.slotIndex());
-        return opportunity != null && quizWindow(opportunity)
-            && match.loot().inventory(command.context().sessionId()).receipts().stream().anyMatch(
-                receipt -> receipt.inventoryIndex() == command.inventoryIndex()
-                    && receipt.source() == MatchItemSource.POWER_QUIZ
-                    && receipt.scenarioHash().equals(Optional.of(opportunity.scenarioHash()))
-            );
-    }
-
     boolean confirm(ConfirmMatchItemReceiptCommand command) {
         var context = command.context();
 
@@ -358,10 +347,6 @@ final class MatchLootExecution {
                     "FEATURE_DISABLED",
                     true
                 );
-            }
-
-            if (match.actors().get(context.sessionId()).dead() && !quizReceipt(command)) {
-                return ignored(context, command.slotIndex(), MatchLogEvent.ITEM_RECEIPT_IGNORED, "DEAD_ACTOR", true);
             }
 
             var next = match.loot().confirmed(
@@ -406,7 +391,7 @@ final class MatchLootExecution {
                 );
             }
 
-            if (match.actors().get(context.sessionId()).dead()) {
+            if (match.actors().get(context.sessionId()).dead() && !match.ghosts().containsKey(context.sessionId())) {
                 return ignored(context, command.slotIndex(), MatchLogEvent.ITEM_DISCARD_IGNORED, "DEAD_ACTOR", false);
             }
 

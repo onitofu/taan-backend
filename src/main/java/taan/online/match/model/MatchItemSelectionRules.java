@@ -1,7 +1,6 @@
 package taan.online.match.model;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,17 +38,66 @@ public final class MatchItemSelectionRules {
     }
 
     public static List<Integer> selected(List<Integer> active) {
-        var sorted = active.stream().sorted(Comparator.comparingInt(PRIORITIES::get)).toList();
+        return selectedSources(active, List.of(), List.of(), false, List.of());
+    }
+
+    public static List<Integer> selected(List<Integer> active, boolean captain) {
+        return selected(active, captain, List.of());
+    }
+
+    public static List<Integer> selected(List<Integer> active, boolean captain, List<Integer> free) {
+        return selectedSources(active, List.of(), List.of(), captain, free);
+    }
+
+    public static List<Integer> selectedSources(
+        List<Integer> personal,
+        List<Integer> team,
+        List<Integer> ghost,
+        boolean captain,
+        List<Integer> free
+    ) {
+        var candidates = new ArrayList<MatchSelectedItem>();
+        personal.forEach(item -> candidates.add(new MatchSelectedItem(item, MatchItemRoute.PERSONAL)));
+        team.forEach(item -> candidates.add(new MatchSelectedItem(item, MatchItemRoute.TEAM)));
+
+        if (captain) {
+            ghost.forEach(item -> candidates.add(new MatchSelectedItem(item, MatchItemRoute.GHOST_TEAM)));
+        }
+
+        for (int first = 0; first < candidates.size(); first++) {
+            for (int next = first; next < candidates.size(); next++) {
+                var left = candidates.get(first);
+                var right = candidates.get(next);
+                int compared = Integer.compareUnsigned(PRIORITIES.get(left.itemId()), PRIORITIES.get(right.itemId()));
+                boolean sourceOrder = left.route() == MatchItemRoute.GHOST_TEAM
+                    && right.route() != MatchItemRoute.GHOST_TEAM
+                    || left.route() == MatchItemRoute.TEAM && right.route() != MatchItemRoute.TEAM;
+
+                if (compared > 0 || compared == 0 && sourceOrder) {
+                    candidates.set(first, right);
+                    candidates.set(next, left);
+                }
+            }
+        }
+
         var selected = new ArrayList<Integer>();
+
+        if (captain) {
+            selected.add(1);
+        }
+
+        selected.addAll(free);
         int repeats = 0;
         int damageUps = 0;
         boolean attack = false;
         boolean spread = false;
         boolean guided = false;
         boolean nuclear = false;
-        boolean ownSpecial = active.contains(6);
+        boolean ownSpecial = personal.contains(6);
 
-        for (int item : sorted) {
+        for (var candidate : candidates) {
+            int item = candidate.itemId();
+
             if (item == 1 || item == 2) {
                 if (repeats < 3) {
                     selected.add(item);
@@ -82,22 +130,6 @@ public final class MatchItemSelectionRules {
         }
 
         return List.copyOf(selected);
-    }
-
-    public static List<Integer> selected(List<Integer> active, boolean captain) {
-        return selected(active, captain, List.of());
-    }
-
-    public static List<Integer> selected(List<Integer> active, boolean captain, List<Integer> free) {
-        var result = new ArrayList<Integer>();
-
-        if (captain) {
-            result.add(1);
-        }
-
-        result.addAll(free);
-        result.addAll(selected(active));
-        return List.copyOf(result);
     }
 
     public static int shotLimit(List<Integer> selected) {

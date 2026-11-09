@@ -6,6 +6,7 @@ import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.MatchEndResult;
+import taan.online.match.service.model.MatchGhostNotice;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchRewardSelectionNotice;
 import taan.online.match.service.model.MatchSnapshot;
@@ -23,6 +24,8 @@ public interface MatchOutput {
     CompletionStage<Void> movement(MatchMovementNotice notice);
 
     CompletionStage<Void> stopTurn(int slot);
+
+    CompletionStage<Void> ghost(MatchGhostNotice notice);
 
     CompletionStage<Void> useItem(UseMatchItemCommand command);
 

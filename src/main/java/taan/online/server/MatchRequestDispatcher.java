@@ -3,6 +3,7 @@ package taan.online.server;
 import java.util.UUID;
 import taan.online.match.controller.MatchPacketHandler;
 import taan.online.match.controller.MatchRequestContext;
+import taan.online.match.protocol.packet.PcGamePlayDeathByDrop;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayEatItemBox;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
@@ -12,10 +13,12 @@ import taan.online.match.protocol.packet.PcGamePlayLoadingDone;
 import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostPos;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostTarget;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
-import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqGamePlayMakeGhost;
+import taan.online.match.protocol.packet.PqGameSessionReportEnemies;
 import taan.online.match.protocol.packet.PqResultRandSelect;
 import taan.online.match.protocol.packet.PqResultSelectCard;
 import taan.online.match.protocol.packet.UnsupportedGameplayPacket;
@@ -48,7 +51,9 @@ public final class MatchRequestDispatcher {
     }
 
     static boolean accepts(int type) {
-        return type == PqGamePlayMakeGhost.TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID
+        return type == PcGamePlayDeathByDrop.TYPE_ID || type == PcGamePlaySetGhostTarget.TYPE_ID
+            || type == PcGamePlaySetGhostPos.TYPE_ID
+            || type == PqGamePlayMakeGhost.TYPE_ID || type == PcGamePlaySpendItem.TYPE_ID
             || type == PcGamePlayEatBonusItem.TYPE_ID
             || type == PcGamePlayEatItemBox.TYPE_ID || type == PcGamePlayNotifyEatItem.TYPE_ID
             || type == PcGamePlayForsakeItem.TYPE_ID || type == PcGamePlayLoadingDone.TYPE_ID

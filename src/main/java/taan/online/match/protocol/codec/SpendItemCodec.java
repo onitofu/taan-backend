@@ -9,7 +9,7 @@ import taan.online.protocol.BinaryWriter;
 public final class SpendItemCodec {
     public byte[] encode(PcGamePlaySpendItem message) {
         MatchWireChecks.slot(message.slotIndex());
-        MatchWireChecks.count(message.items().size(), 3, 9, 3);
+        MatchWireChecks.count(message.items().size(), ScenarioCodec.MAX_VECTOR_ELEMENTS, Integer.MAX_VALUE, 3);
         var output = new BinaryWriter().unsignedInt(PcGamePlaySpendItem.TYPE_ID).unsignedByte(message.slotIndex())
             .unsignedByte(message.teamClear11()).unsignedByte(message.teamClear12())
             .unsignedInt(message.items().size());
@@ -23,7 +23,7 @@ public final class SpendItemCodec {
         MatchWireChecks.slot(slot);
         int first = input.unsignedByte();
         int second = input.unsignedByte();
-        int count = MatchWireChecks.count(input.unsignedInt(), 3, input.remaining(), 3);
+        int count = MatchWireChecks.count(input.unsignedInt(), ScenarioCodec.MAX_VECTOR_ELEMENTS, input.remaining(), 3);
         var items = new ArrayList<SpentItem>();
 
         for (int index = 0; index < count; index++) {

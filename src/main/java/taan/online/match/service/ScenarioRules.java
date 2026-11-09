@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
+import taan.online.match.model.MatchTeamItemState;
 import taan.online.match.model.TeamGaugeRules;
 import taan.online.match.model.WeaponAttackKey;
 import taan.online.match.service.model.MatchSnapshot;
@@ -43,8 +44,11 @@ final class ScenarioRules {
                 match.world().teamGauges().get(shooter.team()).committed()
             )
         );
-        var selected = MatchItemSelectionRules.selected(
+        var team = match.teamItems().getOrDefault(shooter.team(), MatchTeamItemState.empty());
+        var selected = MatchItemSelectionRules.selectedSources(
             selection.activeItems(),
+            team.team(),
+            team.ghostTeam(),
             match.captain(shooter.slotIndex()),
             free
         );
@@ -78,6 +82,8 @@ final class ScenarioRules {
             refitted.size() == claims.refittedSlots().size() && occupied.containsAll(refitted),
             "INVALID_REFITTED_SLOTS"
         );
+        int ghostDelay = match.ghosts().values().stream().filter(ghost -> ghost.queuedForShot())
+            .flatMap(ghost -> ghost.segment().stream()).mapToInt(segment -> segment.durationMillis()).max().orElse(0);
         var projectiles = new ScenarioProjectileRules(definition, shotLimit);
         long previous = -1;
         long finish = 0;
@@ -104,7 +110,10 @@ final class ScenarioRules {
             }
 
             switch (command) {
-                case ScenarioFireClaim value -> projectiles.fire(value);
+                case ScenarioFireClaim value -> {
+                    require(value.header().tick() >= ghostDelay, "MISSING_GHOST_DELAY");
+                    projectiles.fire(value);
+                }
                 case ScenarioProjectileClaim value -> projectiles.event(value);
                 case ScenarioGuidedClaim value -> {
                     require(guided, "UNAUTHORIZED_GUIDANCE");

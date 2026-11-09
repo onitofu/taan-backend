@@ -99,7 +99,7 @@ class MatchBonusCompatibilityTest {
                 new ReportMatchPickupCommand(f.context(), 0, 0, Optional.empty(), 123, 5)
             );
             f.run();
-            assertTrue(pickup.toCompletableFuture().join());
+            assertFalse(pickup.toCompletableFuture().join());
         }
 
         try (var live = new LiveMatchFixture()) {
@@ -112,7 +112,7 @@ class MatchBonusCompatibilityTest {
                 new ReportMatchPickupCommand(f.context(), 0, 0, Optional.empty(), 123, 5)
             );
             f.run();
-            assertTrue(pickup.toCompletableFuture().join());
+            assertFalse(pickup.toCompletableFuture().join());
         }
     }
 

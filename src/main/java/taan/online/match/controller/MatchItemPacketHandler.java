@@ -92,7 +92,11 @@ public final class MatchItemPacketHandler {
                 packet.command().header().slot(),
                 packet.gauge().map(this::gauge),
                 packet.command().entityId(),
-                packet.command().itemId()
+                packet.command().itemId(),
+                packet.command().header().tick(),
+                packet.command().header().scalar10(),
+                packet.command().opaque24(),
+                request.turnRevision()
             );
 
             return pickups.execute(command).thenApply(ignored -> null);

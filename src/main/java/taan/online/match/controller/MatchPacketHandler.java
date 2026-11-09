@@ -4,6 +4,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.character.model.CharacterLevelTable;
+import taan.online.match.protocol.codec.DeathByDropCodec;
 import taan.online.match.protocol.codec.EndScenarioCodec;
 import taan.online.match.protocol.codec.GiveUpCodec;
 import taan.online.match.protocol.codec.LoadingDoneCodec;
@@ -12,8 +13,11 @@ import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ReportEnemiesCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
+import taan.online.match.protocol.codec.SetGhostPosCodec;
+import taan.online.match.protocol.codec.SetGhostTargetCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.UnsupportedGameplayCodec;
+import taan.online.match.protocol.packet.PcGamePlayDeathByDrop;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
 import taan.online.match.protocol.packet.PcGamePlayEatItemBox;
 import taan.online.match.protocol.packet.PcGamePlayEndScenario;
@@ -24,6 +28,8 @@ import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayNotifyEatItem;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
 import taan.online.match.protocol.packet.PcGamePlayScenario;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostPos;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostTarget;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayUseItem;
@@ -48,12 +54,15 @@ import taan.online.match.service.ReportMatchPickupAction;
 import taan.online.match.service.SelectMatchRewardAction;
 import taan.online.match.service.TerminateMatchAction;
 import taan.online.match.service.UseMatchItemAction;
+import taan.online.match.service.model.ConfirmMatchDropCommand;
+import taan.online.match.service.model.ConfirmMatchGhostPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.MatchCommandContext;
 import taan.online.match.service.model.MatchMovementKind;
 import taan.online.match.service.model.MoveMatchActorCommand;
 import taan.online.match.service.model.PassMatchTurnCommand;
 import taan.online.match.service.model.SelectMatchRewardCommand;
+import taan.online.match.service.model.SetMatchGhostTargetCommand;
 import taan.online.match.view.ProtocolMatchView;
 import taan.online.protocol.MalformedPacketException;
 import taan.online.protocol.PacketOutput;
@@ -213,6 +222,55 @@ public final class MatchPacketHandler {
         if (type == PqGamePlayMakeGhost.TYPE_ID) {
             var packet = new MakeGhostRequestCodec().decode(root);
             return ghosts.execute(id, context, packet.slotIndex());
+        }
+
+        if (type == PcGamePlayDeathByDrop.TYPE_ID) {
+            var packet = new DeathByDropCodec().decode(root);
+
+            if (context == null || !context.membership().sessionId().equals(id)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            var command = new ConfirmMatchDropCommand(
+                MatchCommandContext.from(context),
+                packet.slotIndex(),
+                packet.x(),
+                packet.y()
+            );
+            return ghosts.drop(command).thenApply(ignored -> null);
+        }
+
+        if (type == PcGamePlaySetGhostTarget.TYPE_ID) {
+            var packet = new SetGhostTargetCodec().decode(root);
+
+            if (context == null || !context.membership().sessionId().equals(id)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            var command = new SetMatchGhostTargetCommand(
+                MatchCommandContext.from(context),
+                packet.slotIndex(),
+                packet.x(),
+                packet.y()
+            );
+            return ghosts.target(command).thenApply(ignored -> null);
+        }
+
+        if (type == PcGamePlaySetGhostPos.TYPE_ID) {
+            var packet = new SetGhostPosCodec().decode(root);
+
+            if (context == null || !context.membership().sessionId().equals(id)) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            var command = new ConfirmMatchGhostPositionCommand(
+                MatchCommandContext.from(context),
+                packet.slotIndex(),
+                packet.x(),
+                packet.y(),
+                packet.facing()
+            );
+            return ghosts.position(command).thenApply(ignored -> null);
         }
 
         if (type == PcGamePlayGiveUp.TYPE_ID) {

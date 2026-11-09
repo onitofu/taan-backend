@@ -5,17 +5,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import taan.online.match.model.GhostPickupWindow;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchActorState;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchCompletion;
 import taan.online.match.model.MatchDefinitions;
+import taan.online.match.model.MatchGhostState;
 import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchLootState;
 import taan.online.match.model.MatchMovementState;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchResolutionState;
+import taan.online.match.model.MatchTeamItemState;
 import taan.online.match.model.MatchTurn;
 import taan.online.match.model.MatchTurnClosure;
 import taan.online.match.model.MatchWorldState;
@@ -23,6 +26,7 @@ import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomTeam;
 
 public record MatchSnapshot(
     MatchId id,
@@ -46,8 +50,64 @@ public record MatchSnapshot(
     Optional<MatchTurnClosure> closure,
     Map<UUID, MatchAttackSelection> attacks,
     MatchResolutionState resolution,
-    MatchLootState loot
+    MatchLootState loot,
+    Map<UUID, MatchGhostState> ghosts,
+    Optional<GhostPickupWindow> ghostPickupWindow,
+    Map<RoomTeam, MatchTeamItemState> teamItems
 ) {
+    public MatchSnapshot(
+        MatchId id,
+        RoomId roomId,
+        UUID roomGeneration,
+        int channelId,
+        UUID ownerSessionId,
+        RoomMode mode,
+        RoomRule rule,
+        MatchDefinitions definitions,
+        List<MatchParticipant> participants,
+        CaptainSelectionResult captains,
+        MatchPhase phase,
+        Set<UUID> loadedSessions,
+        MatchWorldState world,
+        MatchTurn turn,
+        long phaseRevision,
+        long deadlineNanos,
+        Optional<MatchCompletion> completion,
+        Map<UUID, MatchMovementState> movements,
+        Optional<MatchTurnClosure> closure,
+        Map<UUID, MatchAttackSelection> attacks,
+        MatchResolutionState resolution,
+        MatchLootState loot
+    ) {
+        this(
+            id,
+            roomId,
+            roomGeneration,
+            channelId,
+            ownerSessionId,
+            mode,
+            rule,
+            definitions,
+            participants,
+            captains,
+            phase,
+            loadedSessions,
+            world,
+            turn,
+            phaseRevision,
+            deadlineNanos,
+            completion,
+            movements,
+            closure,
+            attacks,
+            resolution,
+            loot,
+            Map.of(),
+            Optional.empty(),
+            Map.of()
+        );
+    }
+
     public MatchSnapshot(
         MatchId id,
         RoomId roomId,
@@ -97,6 +157,8 @@ public record MatchSnapshot(
         loadedSessions = Set.copyOf(loadedSessions);
         movements = Map.copyOf(movements);
         attacks = Map.copyOf(attacks);
+        ghosts = Map.copyOf(ghosts);
+        teamItems = Map.copyOf(teamItems);
     }
 
     public Map<UUID, MatchActorState> actors() {
@@ -138,7 +200,10 @@ public record MatchSnapshot(
             match.closure(),
             match.attacks(),
             match.resolution(),
-            match.loot()
+            match.loot(),
+            match.ghosts(),
+            match.ghostPickupWindow(),
+            match.teamItems()
         );
     }
 }

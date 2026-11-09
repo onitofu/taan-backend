@@ -7,11 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
+import taan.online.match.protocol.packet.PcGamePlayUseItem;
 import taan.online.match.protocol.packet.SpentItem;
 import taan.online.protocol.MalformedPacketException;
 
@@ -60,7 +61,7 @@ class MatchItemCodecTest {
                 0,
                 1,
                 255,
-                List.of(new SpentItem(6, 1), new SpentItem(6, 2), new SpentItem(6, 3), new SpentItem(6, 4))
+                Collections.nCopies(ScenarioCodec.MAX_VECTOR_ELEMENTS + 1, new SpentItem(6, 1))
             ))
         );
         var full = new PcGamePlaySpendItem(2, 255, 2, List.of(new SpentItem(65535, 255), new SpentItem(6, 0)));

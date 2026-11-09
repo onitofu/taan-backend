@@ -1,6 +1,7 @@
 package taan.online.match.view;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -15,13 +16,18 @@ import taan.online.character.protocol.packet.PcUpdateMoney;
 import taan.online.match.model.MatchExitKind;
 import taan.online.match.model.MatchParticipantResult;
 import taan.online.match.model.MatchRewardCardKind;
+import taan.online.match.protocol.codec.DeathByDropCodec;
 import taan.online.match.protocol.codec.EatBonusItemCodec;
+import taan.online.match.protocol.codec.EatItemBoxCodec;
 import taan.online.match.protocol.codec.EndGameCodec;
 import taan.online.match.protocol.codec.ForsakeItemCodec;
 import taan.online.match.protocol.codec.LeaveUserCodec;
+import taan.online.match.protocol.codec.MakeGhostCodec;
 import taan.online.match.protocol.codec.MoveCodec;
 import taan.online.match.protocol.codec.PassTurnCodec;
 import taan.online.match.protocol.codec.ResultSelectionCodec;
+import taan.online.match.protocol.codec.SetGhostPosCodec;
+import taan.online.match.protocol.codec.SetGhostTargetCodec;
 import taan.online.match.protocol.codec.SetPosCodec;
 import taan.online.match.protocol.codec.SetRewardCodec;
 import taan.online.match.protocol.codec.SpendItemCodec;
@@ -37,11 +43,17 @@ import taan.online.match.protocol.packet.GameRewardExp;
 import taan.online.match.protocol.packet.GameRewardGold;
 import taan.online.match.protocol.packet.GameRewardQuest;
 import taan.online.match.protocol.packet.GameSlotPlayInfo;
+import taan.online.match.protocol.packet.GhostMove;
+import taan.online.match.protocol.packet.PcGamePlayDeathByDrop;
 import taan.online.match.protocol.packet.PcGamePlayEatBonusItem;
+import taan.online.match.protocol.packet.PcGamePlayEatItemBox;
 import taan.online.match.protocol.packet.PcGamePlayForsakeItem;
 import taan.online.match.protocol.packet.PcGamePlayLeaveUser;
+import taan.online.match.protocol.packet.PcGamePlayMakeGhost;
 import taan.online.match.protocol.packet.PcGamePlayMove;
 import taan.online.match.protocol.packet.PcGamePlayPassTurn;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostPos;
+import taan.online.match.protocol.packet.PcGamePlaySetGhostTarget;
 import taan.online.match.protocol.packet.PcGamePlaySetPos;
 import taan.online.match.protocol.packet.PcGamePlaySpendItem;
 import taan.online.match.protocol.packet.PcGamePlayTurnEnd;
@@ -62,6 +74,7 @@ import taan.online.match.service.model.CommittedScenario;
 import taan.online.match.service.model.DiscardMatchItemCommand;
 import taan.online.match.service.model.MatchBonusDelivery;
 import taan.online.match.service.model.MatchEndResult;
+import taan.online.match.service.model.MatchGhostNotice;
 import taan.online.match.service.model.MatchMovementNotice;
 import taan.online.match.service.model.MatchRewardSelectionNotice;
 import taan.online.match.service.model.MatchSnapshot;
@@ -231,8 +244,36 @@ public final class ProtocolMatchView implements MatchOutput {
             0,
             0,
             0,
-            0
+            0,
+            snapshot.ghosts().values().stream().filter(ghost -> ghost.queuedForShot())
+                .sorted(Comparator.comparingInt(ghost -> ghost.slotIndex()))
+                .map(ghost -> new GhostMove(
+                    ghost.slotIndex(),
+                    ghost.position().x(),
+                    ghost.position().y(),
+                    ghost.target().x(),
+                    ghost.target().y()
+                )).toList()
         ));
+    }
+
+    @Override
+    public CompletionStage<Void> ghost(MatchGhostNotice notice) {
+        byte[] root = switch (notice.kind()) {
+            case DROP -> new DeathByDropCodec().encode(
+                new PcGamePlayDeathByDrop(notice.slotIndex(), notice.x(), notice.y())
+            );
+            case CREATED -> new MakeGhostCodec().encode(
+                new PcGamePlayMakeGhost(notice.slotIndex(), notice.x(), notice.y(), notice.facing())
+            );
+            case TARGET -> new SetGhostTargetCodec().encode(
+                new PcGamePlaySetGhostTarget(notice.slotIndex(), notice.x(), notice.y())
+            );
+            case POSITION -> new SetGhostPosCodec().encode(
+                new PcGamePlaySetGhostPos(notice.slotIndex(), notice.x(), notice.y(), notice.facing())
+            );
+        };
+        return output.send(List.of(root));
     }
 
     @Override
@@ -263,7 +304,7 @@ public final class ProtocolMatchView implements MatchOutput {
     public CompletionStage<Void> bonus(MatchBonusDelivery bonus) {
         var command = new ScenarioEatItemBoxCommand(
             new ScenarioCommandHeader(bonus.slotIndex(), 11, bonus.tick(), bonus.scalar10()),
-            -1L,
+            bonus.entityId(),
             bonus.itemId(),
             bonus.opaque24()
         );
@@ -278,6 +319,11 @@ public final class ProtocolMatchView implements MatchOutput {
             value.newGauge(),
             value.oldGauge()
         ));
+        if (bonus.entityId() != -1L) {
+            var packet = new PcGamePlayEatItemBox(bonus.slotIndex(), command, gauge);
+            return output.send(List.of(new EatItemBoxCodec().encode(packet)));
+        }
+
         var packet = new PcGamePlayEatBonusItem(bonus.slotIndex(), command, gauge);
         return output.send(List.of(new EatBonusItemCodec().encode(packet)));
     }

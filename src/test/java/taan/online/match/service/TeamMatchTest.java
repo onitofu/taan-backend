@@ -109,7 +109,9 @@ class TeamMatchTest {
                     victim.slotIndex()
                 )
                     .toCompletableFuture().join();
-                assertEquals(committed, f.snapshot());
+                assertEquals(committed.world(), f.snapshot().world());
+                assertTrue(f.snapshot().ghosts().containsKey(victim.sessionId()));
+                assertEquals(0, f.snapshot().actors().get(victim.sessionId()).hp());
                 assertTrue(f.ack(shooter.sessionId()));
                 assertFalse(f.ack(shooter.sessionId()));
 

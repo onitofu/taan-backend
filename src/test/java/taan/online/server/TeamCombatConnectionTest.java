@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import taan.online.MatchResultAssertions;
 import taan.online.SelectionFixtures;
 import taan.online.TeamScenarioPackets;
+import taan.online.match.protocol.codec.MakeGhostCodec;
 import taan.online.match.protocol.codec.MakeGhostRequestCodec;
 import taan.online.match.protocol.codec.ScenarioCodec;
 import taan.online.match.protocol.codec.TurnEndCodec;
@@ -108,6 +109,10 @@ class TeamCombatConnectionTest {
             kill(f, victim.slotIndex());
             var observer = f.sessions.get(victim.sessionId());
             f.world.request(observer, new MakeGhostRequestCodec().encode(new PqGamePlayMakeGhost(victim.slotIndex())));
+            for (var client : f.clients) {
+                assertEquals(victim.slotIndex(), new MakeGhostCodec().decode(read(client)).slotIndex());
+            }
+
             f.world.request(observer, SelectionFixtures.cash(0, 0));
             assertArrayEquals(SelectionFixtures.cash(0, 0), read(observer));
             assertArrayEquals(SelectionFixtures.money(0), read(observer));

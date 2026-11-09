@@ -156,7 +156,7 @@ class MatchArchitectureTest {
                     + "|model\\.MatchMovementRules"
                     + "|service\\.MatchRegistry|service\\.MatchRuntime"
                     + "|service\\.MatchLifecycleCoordinator|service\\.MatchItemExecution"
-                    + "|service\\.MatchMovementExecution"
+                    + "|service\\.MatchMovementExecution|service\\.MatchGhostExecution"
                     + "|service\\.MatchLootExecution|service\\.MatchOutcomeExecution"
                     + "|service\\.model\\.MatchSnapshot)"
         );
@@ -173,7 +173,7 @@ class MatchArchitectureTest {
             "taan\\.online\\.match\\.service\\."
                 + "(MatchRuntime|MatchRegistry|MatchBootstrapDelivery|MatchTerminationDispatch"
                 + "|MatchScenarioExecution|MatchLifecycleCoordinator|MatchMovementExecution|MatchItemExecution"
-                + "|MatchLootExecution|MatchOutcomeExecution|MatchProgressPublication)"
+                + "|MatchLootExecution|MatchGhostExecution|MatchOutcomeExecution|MatchProgressPublication)"
         );
 
     @ArchTest

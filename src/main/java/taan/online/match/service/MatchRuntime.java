@@ -54,6 +54,7 @@ final class MatchRuntime {
     private final Match match;
     final MatchLifecycleCoordinator lifecycle;
     final MatchScenarioExecution scenarios;
+    final MatchGhostExecution ghosts;
     final MatchMovementExecution movement;
     final MatchItemExecution items;
     final MatchOutcomeExecution outcomes;
@@ -95,6 +96,7 @@ final class MatchRuntime {
         scenarios = new MatchScenarioExecution(this, access, settings.lootPolicy());
         outcomes = new MatchOutcomeExecution(this, match, admission, clock);
         items = new MatchItemExecution(this, match, admission, clock, settings.lootPolicy(), warnings);
+        ghosts = new MatchGhostExecution(this, match, admission);
         movement = new MatchMovementExecution(this, match, admission, clock, scheduler);
     }
 
@@ -104,6 +106,15 @@ final class MatchRuntime {
             ScenarioApplicationResult.ignored("CANCELLED"),
             () -> rejected(new TerminateMatchCommand(command.context(), RoomMatchEndReason.PREPARATION_FAILED))
         );
+    }
+
+    void advanceGhosts() {
+        synchronized (admission) {
+            if (running() && !match.ghosts().isEmpty()) {
+                match.advanceGhosts(clock.getAsLong());
+                refresh();
+            }
+        }
     }
 
     boolean scenarioCurrent(ApplyScenarioCommand command) {
@@ -125,6 +136,7 @@ final class MatchRuntime {
                 return Optional.empty();
             }
 
+            items.commitTeamSpend();
             match.updateParticipation(match.participation().finish(clock.getAsLong(), false));
             items.clear();
             refresh();

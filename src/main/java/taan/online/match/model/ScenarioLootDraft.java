@@ -22,13 +22,7 @@ public final class ScenarioLootDraft {
         );
     }
 
-    public MatchLootState finish(MatchWorldState world) {
-        for (var entry : world.actors().entrySet()) {
-            if (entry.getValue().dead()) {
-                loot = loot.without(entry.getKey());
-            }
-        }
-
+    public MatchLootState finish() {
         return loot;
     }
 }

@@ -26,12 +26,15 @@ import taan.online.match.model.MatchId;
 import taan.online.match.model.MatchPhase;
 import taan.online.match.model.MatchTurnPolicy;
 import taan.online.match.service.model.ApplyScenarioCommand;
+import taan.online.match.service.model.ConfirmMatchDropCommand;
+import taan.online.match.service.model.ConfirmMatchGhostPositionCommand;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.ConfirmMatchLoadingCommand;
 import taan.online.match.service.model.ConfirmMatchPositionCommand;
 import taan.online.match.service.model.ConfirmScenarioCommand;
 import taan.online.match.service.model.DepartMatchCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
+import taan.online.match.service.model.MakeMatchGhostCommand;
 import taan.online.match.service.model.MatchBootstrapSettings;
 import taan.online.match.service.model.MatchCommand;
 import taan.online.match.service.model.MatchCommandContext;
@@ -46,6 +49,7 @@ import taan.online.match.service.model.ReportMatchEnemiesCommand;
 import taan.online.match.service.model.ReportMatchPickupCommand;
 import taan.online.match.service.model.ScenarioApplicationResult;
 import taan.online.match.service.model.SelectMatchRewardCommand;
+import taan.online.match.service.model.SetMatchGhostTargetCommand;
 import taan.online.match.service.model.StartMatchCommand;
 import taan.online.match.service.model.TerminateMatchCommand;
 import taan.online.match.service.model.UseMatchItemCommand;
@@ -296,6 +300,30 @@ public final class MatchRegistry implements RoomMatchLifecycle {
     public boolean scenarioEnabled(RoomMatchContext context) {
         var runtime = context == null ? null : find(context.token());
         return runtime != null && runtime.live();
+    }
+
+    CompletionStage<Boolean> confirmDrop(ConfirmMatchDropCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.ghosts.drop(command, clock.getAsLong()));
+    }
+
+    CompletionStage<Boolean> makeGhost(MakeMatchGhostCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.ghosts.make(command));
+    }
+
+    CompletionStage<Boolean> setGhostTarget(SetMatchGhostTargetCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.ghosts.target(command, clock.getAsLong()));
+    }
+
+    CompletionStage<Boolean> confirmGhostPosition(ConfirmMatchGhostPositionCommand command) {
+        var runtime = find(command.context().token());
+        return runtime == null ? CompletableFuture.completedFuture(false)
+            : runtime.turnWork(() -> runtime.ghosts.position(command, clock.getAsLong()));
     }
 
     public CompletionStage<Boolean> useItem(UseMatchItemCommand command) {

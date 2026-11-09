@@ -27,8 +27,8 @@ class MatchLootCompatibilityTest {
             var context = f.context();
             var before = f.runtime.snapshot();
 
-            assertTrue(pickup(f, context, 0, 0, OptionalInt.empty(), 123));
-            assertTrue(pickup(f, context, 0, 0, OptionalInt.of(0), 123));
+            assertFalse(pickup(f, context, 0, 0, OptionalInt.empty(), 123));
+            assertFalse(pickup(f, context, 0, 0, OptionalInt.of(0), 123));
             assertFalse(pickup(f, context, 2, 2, OptionalInt.empty(), 123));
             assertFalse(pickup(f, context, 0, 2, OptionalInt.empty(), 123));
             assertFalse(pickup(f, context, 0, 0, OptionalInt.of(2), 123));
@@ -54,13 +54,12 @@ class MatchLootCompatibilityTest {
             assertTrue(f.guest.spends.isEmpty());
             assertTrue(f.owner.closed.isEmpty());
             assertTrue(f.guest.closed.isEmpty());
-            assertTrue(logs.text().contains("match.pickup.ignored"));
+            assertTrue(logs.text().contains("match.ghost.pickup.rejected"));
             assertTrue(logs.text().contains("match.item.receipt.ignored"));
             assertTrue(logs.text().contains("match.item.discard.ignored"));
-            assertTrue(logs.text().contains("UNSUPPORTED_PICKUP"));
+            assertTrue(logs.text().contains("INVALID_GHOST_CONTEXT"));
             assertTrue(logs.text().contains("FEATURE_DISABLED"));
             assertTrue(logs.text().contains("INVALID_ITEM_CONTEXT"));
-            assertFalse(logs.text().contains("itemId"));
             assertFalse(logs.text().contains("opaque24"));
         }
     }

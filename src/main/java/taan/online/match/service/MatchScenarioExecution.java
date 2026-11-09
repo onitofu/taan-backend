@@ -124,6 +124,7 @@ final class MatchScenarioExecution {
 
     private ScenarioApplicationResult apply(ApplyScenarioCommand command) {
         long started = System.nanoTime();
+        owner.advanceGhosts();
         var before = owner.snapshot();
         long revision = before.world().revision();
 

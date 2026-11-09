@@ -68,7 +68,7 @@ class PowerQuizStateTest {
             var world = snapshot.world();
             var empty = MatchLootState.empty();
             assertSame(empty, empty.grantQuiz(recipient.slotIndex(), 5));
-            assertSame(empty, empty.closeQuiz(world));
+            assertSame(empty, empty.closeQuiz());
             var opened = empty.openQuiz(
                 snapshot.participants(),
                 world,
@@ -79,18 +79,13 @@ class PowerQuizStateTest {
             var granted = opened.grantQuiz(recipient.slotIndex(), 5);
             assertTrue(granted.quizOpportunities().get(recipient.slotIndex()).consumed());
             assertSame(granted, granted.grantQuiz(recipient.slotIndex(), 7));
-            var closed = granted.closeQuiz(world);
+            var closed = granted.closeQuiz();
             assertTrue(closed.quizOpportunities().isEmpty());
             assertEquals(granted.inventories(), closed.inventories());
             var departed = opened.without(recipient.sessionId());
             assertTrue(departed.quizOpportunities().isEmpty());
             assertSame(departed, departed.without(recipient.sessionId()));
-            var actor = world.actors().get(recipient.sessionId());
-            var dead = world.placed(
-                recipient.sessionId(),
-                new MatchActorState(actor.x(), actor.y(), actor.facing(), 0, actor.energy())
-            );
-            assertTrue(granted.closeQuiz(dead).inventories().isEmpty());
+            assertEquals(granted.inventories(), granted.closeQuiz().inventories());
             assertTrue(granted.without(recipient.sessionId()).inventories().isEmpty());
         }
     }

@@ -22,6 +22,6 @@ public final class MatchStateTestAccess {
         Optional<MatchCompletion> pending
     ) {
         var loot = match.loot();
-        return match.commitScenario(world, turn, prepared, pending, loot, new ScenarioLootDraft(loot).finish(prepared));
+        return match.commitScenario(world, turn, prepared, pending, loot, new ScenarioLootDraft(loot).finish());
     }
 }

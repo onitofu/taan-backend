@@ -166,7 +166,7 @@ public final class PrepareScenarioAction {
             snapshot.world().revision(),
             world,
             snapshot.loot(),
-            loot.finish(world),
+            loot.finish(),
             draft.changedCells(),
             world.processedDeaths().size() - snapshot.world().processedDeaths().size()
         );

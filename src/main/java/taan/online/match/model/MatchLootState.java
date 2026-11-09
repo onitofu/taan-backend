@@ -166,14 +166,12 @@ public record MatchLootState(
         return new MatchLootState(inventories, offers, next, grantSequence);
     }
 
-    public MatchLootState closeQuiz(MatchWorldState world) {
+    public MatchLootState closeQuiz() {
         if (quizOpportunities.isEmpty()) {
             return this;
         }
 
-        var next = new HashMap<>(inventories);
-        next.keySet().removeIf(session -> world.actors().get(session).dead());
-        return new MatchLootState(next, offers, Map.of(), grantSequence);
+        return new MatchLootState(inventories, offers, Map.of(), grantSequence);
     }
 
     public MatchLootState confirmed(UUID session, UUID admission, int index, int itemId) {

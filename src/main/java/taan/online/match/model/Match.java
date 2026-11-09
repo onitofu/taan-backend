@@ -1,5 +1,6 @@
 package taan.online.match.model;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import taan.online.room.model.CaptainSelectionResult;
 import taan.online.room.model.RoomId;
 import taan.online.room.model.RoomMode;
 import taan.online.room.model.RoomRule;
+import taan.online.room.model.RoomTeam;
 
 public final class Match {
     private final MatchId id;
@@ -27,6 +29,9 @@ public final class Match {
     private final MatchBoxPolicy boxPolicy;
     private final List<MatchParticipant> participants;
     private final CaptainSelectionResult captains;
+    private final Map<UUID, MatchGhostState> ghosts = new HashMap<>();
+    private Optional<GhostPickupWindow> ghostPickupWindow = Optional.empty();
+    private final Map<RoomTeam, MatchTeamItemState> teamItems = new HashMap<>();
     private MatchTurn turn;
     private MatchWorldState world;
     private MatchResolutionState resolution = MatchResolutionState.initial();
@@ -132,7 +137,7 @@ public final class Match {
         var next = new MatchTurnPolicy().next(turn, alive, now);
         turn = next.withBoxAttemptBudget(MatchBoxRules.budget(boxPolicy, world.boxes()));
         var member = participants.stream().filter(p -> p.slotIndex() == next.activeSlot()).findFirst().orElseThrow();
-        loot = loot.closeQuiz(world).expired(member.sessionId());
+        loot = loot.closeQuiz().expired(member.sessionId());
         world = world.grantEnergy(member, next.energyGrant());
         completion = Optional.empty();
         lifecycle.on(MatchLifecycleEvent.NEXT_TURN, OptionalLong.of(now + timeoutNanos));
@@ -158,6 +163,7 @@ public final class Match {
         var updatedWorld = world.gauges(gauges);
         loot = updatedLoot;
         world = updatedWorld;
+        ghostPickupWindow = ghostPickupWindow.map(window -> window.observed(world.teamGauges()));
     }
 
     public void updateLoot(MatchLootState value) {
@@ -165,6 +171,7 @@ public final class Match {
     }
 
     public void withdraw(UUID session, MatchExitKind kind) {
+        removeGhost(session);
         loot = loot.without(session);
         attacks.remove(session);
         resolution = resolution.exit(session, kind, participants, world, turn.activeSlot(), captains);
@@ -180,6 +187,7 @@ public final class Match {
     }
 
     public void exclude(Set<UUID> sessions) {
+        sessions.forEach(this::removeGhost);
         sessions.forEach(session -> loot = loot.without(session));
         attacks.keySet().removeAll(sessions);
         resolution = resolution.exclude(sessions, participants, world, turn.activeSlot(), captains);
@@ -292,6 +300,8 @@ public final class Match {
         loot = rule == RoomRule.POWER_QUIZ
             ? preparedLoot.openQuiz(participants, world, resolution, turn, prepared) : preparedLoot;
         world = prepared;
+        ghostPickupWindow = ghostPickupWindow.map(window -> window.observed(world.teamGauges()));
+        ghosts.replaceAll((session, ghost) -> ghost.completed());
         resolution = resolution.evaluate(participants, world, turn.activeSlot(), captains);
         completion = pending;
         lifecycle.on(
@@ -416,6 +426,7 @@ public final class Match {
     }
 
     private void startMovement(long now) {
+        queueGhosts(now);
         participation = participation.start(activeSession(), now);
         int weapon = participants.stream().filter(p -> p.sessionId().equals(activeSession()))
             .findFirst().orElseThrow().weaponId();
@@ -467,10 +478,190 @@ public final class Match {
         }
 
         world = world.settled(session, movement.fall().orElseThrow().endY(), definitions.map().height());
-        loot = new ScenarioLootDraft(loot).finish(world);
         attacks.keySet().removeIf(id -> world.actors().get(id).dead());
         resolution = resolution.settled(participants, world, turn.activeSlot(), captains);
         movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
+    }
+
+    public boolean confirmDrop(UUID session, int x, int y, long now) {
+        var actor = world.actors().get(session);
+        var movement = movements.get(session);
+        int height = definitions.map().height();
+
+        if (phase() != MatchPhase.ACTION && phase() != MatchPhase.SETTLING
+            || !activeSession().equals(session) || actor.dead() || movement.fall().isEmpty()
+            || movement.fall().orElseThrow().endY() <= height || x != actor.x() || y < height || y > height + 200) {
+            return false;
+        }
+
+        world = world.placed(session, new MatchActorState(x, y, actor.facing(), 0, actor.energy()));
+        attacks.remove(session);
+        movements.put(session, new MatchMovementState(movement.allowance(), Optional.empty()));
+        resolution = resolution.settled(participants, world, turn.activeSlot(), captains);
+
+        if (phase() == MatchPhase.ACTION) {
+            closeTurn(MatchTurnClosureReason.PASS_TURN, now);
+        } else {
+            var previous = closure.orElseThrow();
+            var settled = new MatchTurnClosure(
+                previous.reason(),
+                previous.turnRevision(),
+                previous.actionPhaseRevision(),
+                now,
+                now
+            );
+            closure = Optional.of(settled);
+        }
+
+        return true;
+    }
+
+    public Map<UUID, MatchGhostState> ghosts() {
+        return Map.copyOf(ghosts);
+    }
+
+    public Optional<GhostPickupWindow> ghostPickupWindow() {
+        return ghostPickupWindow;
+    }
+
+    public Map<RoomTeam, MatchTeamItemState> teamItems() {
+        return Map.copyOf(teamItems);
+    }
+
+    public boolean makeGhost(UUID session, int slot) {
+        boolean participant = participants.stream().anyMatch(
+            member -> member.sessionId().equals(session) && member.slotIndex() == slot
+        );
+
+        if (!participant || !ghostActionAllowed(session) || !world.actors().get(session).dead()
+            || ghosts.containsKey(session)) {
+            return false;
+        }
+
+        var actor = world.actors().get(session);
+        var point = new GhostPoint(actor.x(), actor.y());
+        ghosts.put(session, new MatchGhostState(session, slot, point, point, actor.facing(), Optional.empty(), false));
+        attacks.remove(session);
+        return true;
+    }
+
+    public boolean setGhostTarget(UUID session, GhostPoint point) {
+        if (!ghostActionAllowed(session) || !ghosts.containsKey(session)
+            || point.x() < 0 || point.y() < 0 || point.x() >= definitions.map().width()
+            || point.y() >= definitions.map().height()) {
+            return false;
+        }
+
+        ghosts.put(session, ghosts.get(session).target(point));
+        return true;
+    }
+
+    private boolean ghostActionAllowed(UUID session) {
+        return (phase() == MatchPhase.ACTION || phase() == MatchPhase.SETTLING || phase() == MatchPhase.COMPLETION)
+            && !resolution.exits().containsKey(session) && resolution.pendingOutcome().isEmpty();
+    }
+
+    public void advanceGhosts(long now) {
+        ghosts.replaceAll((session, ghost) -> ghost.advance(now / 1000000));
+    }
+
+    private void queueGhosts(long now) {
+        advanceGhosts(now);
+        long ghostTurnTick = now / 1000000;
+
+        for (var ghost : ghosts.values().stream().sorted(
+            Comparator.comparingInt(MatchGhostState::slotIndex)
+        ).toList()) {
+            var motion = new GhostMotionRequest(
+                ghost.position(),
+                ghost.target(),
+                ghost.facing(),
+                GhostMovementRules.speed(null),
+                ghostTurnTick,
+                0x330e
+            );
+            var plan = GhostMovementRules.plan(motion);
+            var queued = new MatchGhostState(
+                ghost.sessionId(),
+                ghost.slotIndex(),
+                ghost.position(),
+                ghost.target(),
+                ghost.facing(),
+                plan.segment(),
+                true
+            );
+            ghosts.put(ghost.sessionId(), queued);
+        }
+
+        ghostPickupWindow = ghosts.isEmpty() ? Optional.empty()
+            : Optional.of(
+                GhostPickupWindow.create(
+                    turn.revision(),
+                    List.copyOf(ghosts.values()),
+                    world.boxes().values().stream().sorted(Comparator.comparingLong(MatchItemBox::entityId)).toList(),
+                    world.teamGauges()
+                )
+            );
+    }
+
+    public void commitGhostPickup(MatchWorldState prepared, MatchLootState inventory, GhostPickupWindow window) {
+        world = prepared;
+        loot = inventory;
+        ghostPickupWindow = Optional.of(window);
+    }
+
+    private void removeGhost(UUID session) {
+        var ghost = ghosts.remove(session);
+
+        if (ghost != null) {
+            ghostPickupWindow = ghostPickupWindow.map(window -> window.without(ghost.slotIndex()));
+        }
+    }
+
+    private void clearGhosts() {
+        ghosts.clear();
+        ghostPickupWindow = Optional.empty();
+        teamItems.clear();
+    }
+
+    public boolean useTeamItem(UUID sender, UUID source, MatchItemRoute route, int index, int item) {
+        var actor = world.actors().get(sender);
+        var owner = participants.stream().filter(member -> member.sessionId().equals(source)).findFirst().orElseThrow();
+        var active = participants.stream().filter(member -> member.sessionId().equals(sender))
+            .findFirst().orElseThrow();
+        boolean captain = captains != null
+            && (active.slotIndex() == captains.blueLeaderSlot() || active.slotIndex() == captains.redLeaderSlot());
+        boolean permitted = !sender.equals(source) && active.team() == owner.team()
+            && !resolution.exits().containsKey(source)
+            && (world.actors().get(source).dead() ? route == MatchItemRoute.TEAM
+                : route == MatchItemRoute.GHOST_TEAM && captain);
+
+        if (!permitted || !activeSession().equals(sender) || actor.dead() || item == 6
+            || index < 0 || index >= BattleInventory.CAPACITY) {
+            return false;
+        }
+
+        var inventory = loot.inventory(source);
+        var receipt = inventory.receipts().stream().filter(value -> value.inventoryIndex() == index
+            && value.itemId() == item && value.confirmed() && value.admissionId().equals(owner.admissionId()))
+            .findFirst();
+
+        if (inventory.slots().get(index) != item || receipt.isEmpty()) {
+            return false;
+        }
+
+        var state = teamItems.getOrDefault(owner.team(), MatchTeamItemState.empty()).activated(
+            new MatchSharedItemReceipt(source, route, receipt.orElseThrow())
+        );
+        loot = loot.discarded(source, index, item);
+        teamItems.put(owner.team(), state);
+        return true;
+    }
+
+    public void commitTeamSpend(int first, int second) {
+        var member = participants.stream().filter(value -> value.sessionId().equals(activeSession()))
+            .findFirst().orElseThrow();
+        teamItems.computeIfPresent(member.team(), (team, state) -> state.cleared(first != 255, second != 255));
     }
 
     public MatchLifecycleEvent lastLifecycleEvent() {
@@ -481,11 +672,13 @@ public final class Match {
         var transition = lifecycle.on(event, OptionalLong.empty());
 
         if (transition.effects().contains(MatchLifecycleEffect.STOP_GAMEPLAY)) {
+            clearGhosts();
             loot = MatchLootState.empty();
             world = world.withoutBoxes();
         }
 
         if (transition.effects().contains(MatchLifecycleEffect.CLEANUP)) {
+            clearGhosts();
             attacks.clear();
             world = world.withoutBoxes();
             loot = MatchLootState.empty();

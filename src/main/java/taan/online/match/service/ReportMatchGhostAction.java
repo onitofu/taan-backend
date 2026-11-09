@@ -11,7 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import taan.online.logging.EventLogger;
 import taan.online.match.logging.MatchLogEvent;
+import taan.online.match.service.model.ConfirmMatchDropCommand;
+import taan.online.match.service.model.ConfirmMatchGhostPositionCommand;
+import taan.online.match.service.model.MakeMatchGhostCommand;
 import taan.online.match.service.model.MatchCommandContext;
+import taan.online.match.service.model.SetMatchGhostTargetCommand;
 import taan.online.room.service.model.RoomMatchContext;
 
 public final class ReportMatchGhostAction {
@@ -35,8 +39,25 @@ public final class ReportMatchGhostAction {
             && snapshot.participants().stream().anyMatch(p -> p.sessionId().equals(id) && p.slotIndex() == slot)
             && snapshot.actors().get(id).dead();
 
-        ignored(id, sender, slot, ending ? "SPECTATOR" : "STALE_OR_INAPPLICABLE");
-        return CompletableFuture.completedFuture(null);
+        return matches.makeGhost(new MakeMatchGhostCommand(sender, slot)).thenApply(accepted -> {
+            if (!accepted) {
+                ignored(id, sender, slot, ending ? "SPECTATOR" : "STALE_OR_INAPPLICABLE");
+            }
+
+            return null;
+        });
+    }
+
+    public CompletionStage<Boolean> drop(ConfirmMatchDropCommand command) {
+        return matches.confirmDrop(command);
+    }
+
+    public CompletionStage<Boolean> target(SetMatchGhostTargetCommand command) {
+        return matches.setGhostTarget(command);
+    }
+
+    public CompletionStage<Boolean> position(ConfirmMatchGhostPositionCommand command) {
+        return matches.confirmGhostPosition(command);
     }
 
     private static void ignored(UUID id, MatchCommandContext context, int slot, String cause) {

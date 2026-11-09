@@ -189,13 +189,13 @@ class PowerQuizTest {
     }
 
     @Test
-    void preservesPreScenarioEligibilityForALethalShotAndClearsTheDeadInventoryAtCompletion() throws Exception {
+    void preservesPreScenarioEligibilityForALethalShotAndClearsTemporaryInventoryAtMatchEnd() throws Exception {
         try (var quiz = new PowerQuizFixture()) {
             quiz.shoot(true);
             var recipient = quiz.context(2).sessionId();
             assertTrue(quiz.f.runtime.snapshot().actors().get(recipient).dead());
             assertTrue(quiz.report(quiz.claim(2, 5)));
-            assertTrue(quiz.confirm(2, 1, 5));
+            assertFalse(quiz.confirm(2, 1, 5));
             assertFalse(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
             assertTrue(quiz.confirm(2, 0, 5));
             assertTrue(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
@@ -248,7 +248,7 @@ class PowerQuizTest {
     }
 
     @Test
-    void limitsTheDeadActorReceiptExceptionToTheCurrentQuizSourceAndWindow() throws Exception {
+    void confirmsOwnedReceiptsAfterDeathWithoutRequiringTheirOldQuizWindow() throws Exception {
         try (var quiz = new PowerQuizFixture()) {
             quiz.shoot(true);
             assertTrue(quiz.report(quiz.claim(2, 5)));
@@ -277,7 +277,7 @@ class PowerQuizTest {
                 ));
                 quiz.f.runtime.refresh();
                 assertTrue(quiz.confirm(2, 0, 5));
-                assertFalse(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
+                assertTrue(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
             }
 
             quiz.f.match.updateLoot(new MatchLootState(
@@ -288,12 +288,12 @@ class PowerQuizTest {
             ));
             quiz.f.runtime.refresh();
             assertTrue(quiz.confirm(2, 0, 5));
-            assertFalse(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
+            assertTrue(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
             quiz.f.match.updateLoot(original);
             quiz.f.runtime.refresh();
             quiz.f.timers.now = quiz.f.runtime.snapshot().deadlineNanos();
             assertTrue(quiz.confirm(2, 0, 5));
-            assertFalse(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
+            assertTrue(quiz.f.match.loot().inventory(recipient).receipts().getFirst().confirmed());
         }
     }
 

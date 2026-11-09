@@ -8,9 +8,21 @@ public record MatchBonusDelivery(
     int scalar10,
     int itemId,
     int opaque24,
-    Optional<ScenarioTeamGaugeClaim> gauge
+    Optional<ScenarioTeamGaugeClaim> gauge,
+    long entityId
 ) {
+    public MatchBonusDelivery(
+        int slotIndex,
+        int tick,
+        int scalar10,
+        int itemId,
+        int opaque24,
+        Optional<ScenarioTeamGaugeClaim> gauge
+    ) {
+        this(slotIndex, tick, scalar10, itemId, opaque24, gauge, -1L);
+    }
+
     public MatchBonusDelivery(int slotIndex, int tick, int scalar10, int itemId, int opaque24) {
-        this(slotIndex, tick, scalar10, itemId, opaque24, Optional.empty());
+        this(slotIndex, tick, scalar10, itemId, opaque24, Optional.empty(), -1L);
     }
 }

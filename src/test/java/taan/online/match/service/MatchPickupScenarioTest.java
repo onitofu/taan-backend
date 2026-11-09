@@ -232,7 +232,7 @@ class MatchPickupScenarioTest {
     }
 
     @Test
-    void atomicallyRemovesDeadRecipientsAndIgnoresTheirLateNotifyWithoutDisconnecting() throws Exception {
+    void retainsDeadRecipientsInventoryAndConfirmsTheirLateNotifyWithoutDisconnecting() throws Exception {
         try (var pickup = new MatchPickupFixture()) {
             var command = pickup.boxes.command(
                 pickup.boxes.box(BOX, 784, 100, 200),
@@ -242,7 +242,7 @@ class MatchPickupScenarioTest {
             assertEquals(ScenarioApplicationOutcome.APPLIED, pickup.boxes.apply(command).outcome());
             assertTrue(pickup.f.runtime.snapshot().actors().get(pickup.context().sessionId()).dead());
             var inventory = pickup.f.runtime.snapshot().loot().inventory(pickup.context().sessionId());
-            assertEquals(BattleInventory.empty(), inventory);
+            assertEquals(5, inventory.slots().getFirst());
             assertTrue(pickup.confirm(0, 5));
             assertTrue(pickup.f.runtime.running());
             assertEquals(1, pickup.f.runtime.snapshot().loot().grantSequence());

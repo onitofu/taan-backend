@@ -14,6 +14,7 @@ import static taan.online.logging.LogField.turnRevision;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -27,9 +28,11 @@ import taan.online.match.model.BattleInventory;
 import taan.online.match.model.Match;
 import taan.online.match.model.MatchAttackSelection;
 import taan.online.match.model.MatchItemRejection;
+import taan.online.match.model.MatchItemRoute;
 import taan.online.match.model.MatchItemSelectionRules;
 import taan.online.match.model.MatchParticipant;
 import taan.online.match.model.MatchPhase;
+import taan.online.match.model.MatchTeamItemState;
 import taan.online.match.model.ScenarioWorldException;
 import taan.online.match.service.model.ConfirmMatchItemReceiptCommand;
 import taan.online.match.service.model.DiscardMatchItemCommand;
@@ -93,40 +96,30 @@ final class MatchItemExecution {
     }
 
     boolean reportPickup(ReportMatchPickupCommand command) {
-        var context = command.context();
-
-        if (!owner.reportCurrent(context)) {
-            return false;
-        }
-
-        boolean valid = member(context).slotIndex() == command.slotIndex()
-            && command.slotIndex() == command.commandSlot()
-            && (command.gauge().isEmpty() || command.gauge().orElseThrow().header().slot() == command.slotIndex())
-            && command.entityId() != -1L;
-        return ignored(context, command.slotIndex(), MatchLogEvent.PICKUP_IGNORED, valid, "UNSUPPORTED_PICKUP");
-    }
-
-    private boolean ignored(MatchCommandContext context, int slot, MatchLogEvent event, boolean valid, String reason) {
-        LOG.log(
-            event,
-            matchId(match.id().value()),
-            sessionId(context.sessionId()),
-            admissionId(context.admissionId()),
-            slotIndex(slot),
-            reason(valid ? reason : "INVALID_ITEM_CONTEXT")
-        );
-        return valid;
+        return owner.ghosts.pickup(command, clock.getAsLong(), policy);
     }
 
     boolean activate(UseMatchItemCommand command) {
-        if (!current(command.context(), command.turnRevision(), command.phaseRevision(), command.slot())) {
+        if (!current(command.context(), command.turnRevision(), command.phaseRevision(), match.turn().activeSlot())) {
             return false;
         }
 
         var member = member(command.context());
         boolean card = command.itemId() != 6 && MatchItemSelectionRules.supports(command.itemId());
-        boolean route = command.flag12() == 0 && command.flag13() == 0 && command.team() == team(member)
-            && pending == null;
+        var inventoryOwner = match.participants().stream().filter(value -> value.slotIndex() == command.slot())
+            .findFirst().orElse(null);
+        var destination = command.flag12() == 1 ? MatchItemRoute.TEAM
+            : command.flag13() == 1 ? MatchItemRoute.GHOST_TEAM : MatchItemRoute.PERSONAL;
+        boolean personal = destination == MatchItemRoute.PERSONAL;
+
+        if (inventoryOwner == null || personal && member.slotIndex() != command.slot()) {
+            return false;
+        }
+
+        boolean route = command.flag12() >= 0 && command.flag12() <= 1
+            && command.flag13() >= 0 && command.flag13() <= 1
+            && command.team() == team(inventoryOwner) && pending == null
+            && (personal || card);
 
         if (!route || (card ? !policy.allowsUse(command.itemId()) || command.inventoryIndex() < 0
             || command.inventoryIndex() >= BattleInventory.CAPACITY
@@ -145,17 +138,31 @@ final class MatchItemExecution {
             }
 
             var selected = match.attacks().getOrDefault(member.sessionId(), MatchAttackSelection.NORMAL);
-            var inventory = match.loot().inventory(member.sessionId());
+            var inventory = match.loot().inventory(inventoryOwner.sessionId());
+            var teamState = match.teamItems().getOrDefault(member.team(), MatchTeamItemState.empty());
+            boolean sharedDuplicate = teamState.receipts().stream().anyMatch(receipt ->
+                receipt.inventoryOwner().equals(inventoryOwner.sessionId()) && receipt.route() == destination
+                    && receipt.receipt().inventoryIndex() == command.inventoryIndex()
+                    && receipt.receipt().itemId() == command.itemId());
             duplicate = card
                 ? inventory.slots().get(command.inventoryIndex()) == BattleInventory.EMPTY
-                    && selected.duplicate(command.inventoryIndex(), command.itemId())
+                    && (personal ? selected.duplicate(command.inventoryIndex(), command.itemId()) : sharedDuplicate)
                 : selected.activeItems().contains(6);
             before = match.actors().get(member.sessionId()).energy();
 
             if (!duplicate) {
-                if (selected.activeItems().size() >= MatchAttackSelection.MAX_ACTIVATIONS) {
+                if (selected.activeItems().size() + teamState.team().size() + teamState.ghostTeam().size()
+                    >= MatchAttackSelection.MAX_ACTIVATIONS) {
                     refusal = MatchItemRejection.ACTIVE_ITEM_LIMIT;
-                } else if (!match.useItem(member.sessionId(), command.inventoryIndex(), command.itemId())) {
+                } else if (!(personal
+                    ? match.useItem(member.sessionId(), command.inventoryIndex(), command.itemId())
+                    : match.useTeamItem(
+                        member.sessionId(),
+                        inventoryOwner.sessionId(),
+                        destination,
+                        command.inventoryIndex(),
+                        command.itemId()
+                    ))) {
                     refusal = card ? MatchItemRejection.INVALID_INVENTORY_ITEM
                         : MatchItemRejection.INSUFFICIENT_SPECIAL_ENERGY;
                 } else {
@@ -214,9 +221,12 @@ final class MatchItemExecution {
         int team = team(member);
         var selection = match.attacks().getOrDefault(member.sessionId(), MatchAttackSelection.NORMAL);
         var authorized = new ArrayList<>(selection.activeItems());
+        var shared = match.teamItems().getOrDefault(member.team(), MatchTeamItemState.empty());
+        authorized.addAll(shared.team());
+        authorized.addAll(shared.ghostTeam());
         boolean valid = (command.teamClear11() == team || command.teamClear11() == 255)
             && (command.teamClear12() == team || command.teamClear12() == 255)
-            && command.items().size() <= 3;
+            && command.items().size() <= MatchAttackSelection.MAX_ACTIVATIONS;
 
         for (var item : command.items()) {
             valid &= item.scalar2() >= 0 && item.scalar2() <= 255
@@ -277,12 +287,23 @@ final class MatchItemExecution {
         var actor = match.participants().stream().filter(p -> p.slotIndex() == match.turn().activeSlot())
             .findFirst().orElseThrow();
 
-        if (!match.attacks().getOrDefault(actor.sessionId(), MatchAttackSelection.NORMAL).activeItems().isEmpty()
-            && pending == null) {
+        var shared = match.teamItems().getOrDefault(actor.team(), MatchTeamItemState.empty());
+
+        boolean captain = match.captains() != null && (actor.slotIndex() == match.captains().blueLeaderSlot()
+            || actor.slotIndex() == match.captains().redLeaderSlot());
+
+        if ((!match.attacks().getOrDefault(actor.sessionId(), MatchAttackSelection.NORMAL).activeItems().isEmpty()
+            || !shared.team().isEmpty() || captain && !shared.ghostTeam().isEmpty()) && pending == null) {
             throw new ScenarioWorldException("MISSING_SPEND");
         }
 
         return Optional.ofNullable(pending);
+    }
+
+    void commitTeamSpend() {
+        if (pending != null) {
+            match.commitTeamSpend(pending.teamClear11(), pending.teamClear12());
+        }
     }
 
     void clear() {
@@ -322,9 +343,13 @@ final class MatchItemExecution {
     }
 
     void deliver(Function<MatchOutput, CompletionStage<Void>> delivery) {
+        deliver(null, delivery);
+    }
+
+    void deliver(UUID omitted, Function<MatchOutput, CompletionStage<Void>> delivery) {
         try {
             for (var recipient : owner.recipients()) {
-                if (recipientCurrent(recipient)) {
+                if (!recipient.sessionId().equals(omitted) && recipientCurrent(recipient)) {
                     observe(delivery.apply(recipient.output()));
                 }
             }

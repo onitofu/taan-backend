@@ -164,7 +164,7 @@ class MatchLootConnectionTest {
                 assertTrue(owner.channel().outboundMessages().isEmpty());
                 assertTrue(guest.channel().outboundMessages().isEmpty());
                 assertEquals(before, world.matches.current(token).orElseThrow());
-                assertTrue(logs.text().contains("match.pickup.ignored"));
+                assertTrue(logs.text().contains("match.ghost.pickup.rejected"));
                 assertTrue(logs.text().contains("match.item.receipt.ignored"));
                 assertTrue(logs.text().contains("match.item.discard.ignored"));
                 assertTrue(logs.text().contains("match.bonus.ignored"));
